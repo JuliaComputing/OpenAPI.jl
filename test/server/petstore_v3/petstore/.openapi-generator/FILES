@@ -1,0 +1,12 @@
+README.md
+src/PetStoreServer.jl
+src/api_PetApi.jl
+src/api_StoreApi.jl
+src/api_UserApi.jl
+src/model_ApiResponse.jl
+src/model_Category.jl
+src/model_Order.jl
+src/model_Pet.jl
+src/model_Tag.jl
+src/model_User.jl
+src/modelincludes.jl
