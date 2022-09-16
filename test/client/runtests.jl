@@ -17,8 +17,8 @@ include("petstore_v2/runtests.jl")
                 PetStoreV3Tests.runtests()
             end
             @testset "V2" begin
-                @info("Running petstore v2 tests")
-                PetStoreV2Tests.runtests()
+               @info("Running petstore v2 tests")
+               PetStoreV2Tests.runtests()
             end
         else
             @info("Skipping petstore tests in non Linux environment (can not run petstore docker on OSX or Windows)")
