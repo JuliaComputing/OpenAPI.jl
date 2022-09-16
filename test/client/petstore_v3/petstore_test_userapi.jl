@@ -16,7 +16,7 @@ const PRESET_TEST_USER = "user1"    # this is the username that works for get us
 
 function test_404(uri)
     @info("Error handling")
-    client = Client(uri*"_invalid")
+    client = Client(uri*"/invalid")
     api = UserApi(client)
 
     try

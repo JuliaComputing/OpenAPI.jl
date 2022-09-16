@@ -1,20 +1,29 @@
 module Servers
 
 using JSON
+using HTTP
 
-import ..OpenAPI: APIModel, ValidationException, from_json
+import ..OpenAPI: APIModel, ValidationException, from_json, to_json
 
-# const OpenAPIParams = :openapi_params
-
-function middleware(read, validate, invoke; init=nothing, pre_validation=nothing, pre_invoke=nothing, post_invoke=nothing)
-    ret = (init === nothing) ? read : init |> read
-    ret = (pre_validation === nothing) ? ret |> validate : ret |> pre_validation |> validate
-    ret = (pre_invoke === nothing) ? ret |> invoke : ret |> pre_invoke |> invoke
-    if post_invoke !== nothing
-        ret = ret |> post_invoke
+function middleware(impl, read, validate, invoke;
+        init=nothing,
+        pre_validation=nothing,
+        pre_invoke=nothing,
+        post_invoke=nothing
+    )
+    handler = req -> (invoke(impl; post_invoke=post_invoke))(req)
+    if !isnothing(pre_invoke)
+        handler = pre_invoke(handler)
     end
-
-    return ret
+    handler = validate(handler)
+    if !isnothing(pre_validation)
+        handler = pre_validation(handler)
+    end
+    handler = read(handler)
+    if !isnothing(init)
+        handler = init(handler)
+    end
+    return handler
 end
 
 ##############################
@@ -41,12 +50,21 @@ function to_param_type(::Type{T}, strval::String) where {T <: APIModel}
     from_json(T, JSON.parse(strval))
 end
 
+function to_param_type(::Type{T}, json::Dict{String,Any}) where {T <: APIModel}
+    from_json(T, json)
+end
+
 function to_param_type(::Type{Vector{T}}, strval::String, delim::String) where {T}
-    elems = strip.(split(strval, delim))
+    elems = string.(strip.(split(strval, delim)))
     return map(x->to_param_type(T, x), elems)
 end
 
-function to_param(T, source::Dict, name::String; required::Bool=false, collection_format::Union{String,Nothing}=nothing, multipart::Bool=false, isfile::Bool=false)
+function to_param_type(::Type{Vector{T}}, strval::String) where {T}
+    elems = JSON.parse(strval)
+    return map(x->to_param_type(T, x), elems)
+end
+
+function to_param(T, source::Dict, name::String; required::Bool=false, collection_format::Union{String,Nothing}=",", multipart::Bool=false, isfile::Bool=false)
     param = get_param(source, name, required)
     if param === nothing
         return nothing
@@ -61,5 +79,10 @@ function to_param(T, source::Dict, name::String; required::Bool=false, collectio
         return to_param_type(T, param)
     end
 end
+
+server_response(resp::HTTP.Response) = resp
+server_response(::Nothing) = server_response("")
+server_response(ret) = server_response(to_json(ret))
+server_response(resp::String) = HTTP.Response(200, resp)
 
 end # module Servers
