@@ -39,6 +39,8 @@ const VAL_API_PARAM = Dict{Symbol,Function}([
     :maxItems => val_max_length,
     :minItems => val_min_length,
     :uniqueItems => val_unique_items,
+    :maxProterties => val_max_length,
+    :minProterties => val_min_length,
     :enum => val_enum,
 ])
 
