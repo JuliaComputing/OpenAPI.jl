@@ -15,6 +15,10 @@ function val_enum(val::Dict, lst)
     end
     true
 end
+function val_unique_items(val::Vector, is_unique)
+    is_unique || return true
+    return length(Set(val)) == length(val)
+end
 
 const MSG_INVALID_API_PARAM = Dict{Symbol,Function}([
     :maximum => (val,excl)->string("must be a value less than ", excl ? "or equal to " : "", val),
@@ -23,7 +27,8 @@ const MSG_INVALID_API_PARAM = Dict{Symbol,Function}([
     :minLength => (len)->string("length must be greater than or equal to ", len),
     :maxItems => (val)->string("number of items must be less than or equal to ", val),
     :minItems => (val)->string("number of items must be greater than or equal to ", val),
-    :enum => (lst)->string("value is not from the allowed values", lst)
+    :uniqueItems => (val)->string("items must be unique"),
+    :enum => (lst)->string("value is not from the allowed values", lst),
 ])
 
 const VAL_API_PARAM = Dict{Symbol,Function}([
@@ -33,7 +38,8 @@ const VAL_API_PARAM = Dict{Symbol,Function}([
     :minLength => val_min_length,
     :maxItems => val_max_length,
     :minItems => val_min_length,
-    :enum => val_enum
+    :uniqueItems => val_unique_items,
+    :enum => val_enum,
 ])
 
 function validate_param(param, operation, rule, value, args...)
