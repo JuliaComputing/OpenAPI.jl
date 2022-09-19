@@ -7,66 +7,66 @@ Encapsulates generated server code for PetStoreServer
 
 The following server methods must be implemented:
 
-- **addPet**
+- **add_pet**
     - *invocation:* POST /pet
-    - *signature:* addPet(req::HTTP.Request, in\_body::Pet;) -> Nothing
-- **deletePet**
+    - *signature:* add_pet(req::HTTP.Request, in\_body::Pet;) -> Nothing
+- **delete_pet**
     - *invocation:* DELETE /pet/{petId}
-    - *signature:* deletePet(req::HTTP.Request, in\_petId::Int64; in\_api_key=nothing,) -> Nothing
-- **findPetsByStatus**
+    - *signature:* delete_pet(req::HTTP.Request, in\_pet_id::Int64; in\_api_key=nothing,) -> Nothing
+- **find_pets_by_status**
     - *invocation:* GET /pet/findByStatus
-    - *signature:* findPetsByStatus(req::HTTP.Request, in\_status::Vector{String};) -> Vector{Pet}
-- **findPetsByTags**
+    - *signature:* find_pets_by_status(req::HTTP.Request, in\_status::Vector{String};) -> Vector{Pet}
+- **find_pets_by_tags**
     - *invocation:* GET /pet/findByTags
-    - *signature:* findPetsByTags(req::HTTP.Request, in\_tags::Vector{String};) -> Vector{Pet}
-- **getPetById**
+    - *signature:* find_pets_by_tags(req::HTTP.Request, in\_tags::Vector{String};) -> Vector{Pet}
+- **get_pet_by_id**
     - *invocation:* GET /pet/{petId}
-    - *signature:* getPetById(req::HTTP.Request, in\_petId::Int64;) -> Pet
-- **updatePet**
+    - *signature:* get_pet_by_id(req::HTTP.Request, in\_pet_id::Int64;) -> Pet
+- **update_pet**
     - *invocation:* PUT /pet
-    - *signature:* updatePet(req::HTTP.Request, in\_body::Pet;) -> Nothing
-- **updatePetWithForm**
+    - *signature:* update_pet(req::HTTP.Request, in\_body::Pet;) -> Nothing
+- **update_pet_with_form**
     - *invocation:* POST /pet/{petId}
-    - *signature:* updatePetWithForm(req::HTTP.Request, in\_petId::Int64; in\_name=nothing, in\_status=nothing,) -> Nothing
-- **uploadFile**
+    - *signature:* update_pet_with_form(req::HTTP.Request, in\_pet_id::Int64; in\_name=nothing, in\_status=nothing,) -> Nothing
+- **upload_file**
     - *invocation:* POST /pet/{petId}/uploadImage
-    - *signature:* uploadFile(req::HTTP.Request, in\_petId::Int64; in\_additionalMetadata=nothing, in\_file=nothing,) -> ApiResponse
-- **deleteOrder**
+    - *signature:* upload_file(req::HTTP.Request, in\_pet_id::Int64; in\_additional_metadata=nothing, in\_file=nothing,) -> ApiResponse
+- **delete_order**
     - *invocation:* DELETE /store/order/{orderId}
-    - *signature:* deleteOrder(req::HTTP.Request, in\_orderId::Int64;) -> Nothing
-- **getInventory**
+    - *signature:* delete_order(req::HTTP.Request, in\_order_id::Int64;) -> Nothing
+- **get_inventory**
     - *invocation:* GET /store/inventory
-    - *signature:* getInventory(req::HTTP.Request;) -> Dict{String, Int64}
-- **getOrderById**
+    - *signature:* get_inventory(req::HTTP.Request;) -> Dict{String, Int64}
+- **get_order_by_id**
     - *invocation:* GET /store/order/{orderId}
-    - *signature:* getOrderById(req::HTTP.Request, in\_orderId::Int64;) -> Order
-- **placeOrder**
+    - *signature:* get_order_by_id(req::HTTP.Request, in\_order_id::Int64;) -> Order
+- **place_order**
     - *invocation:* POST /store/order
-    - *signature:* placeOrder(req::HTTP.Request, in\_body::Order;) -> Order
-- **createUser**
+    - *signature:* place_order(req::HTTP.Request, in\_body::Order;) -> Order
+- **create_user**
     - *invocation:* POST /user
-    - *signature:* createUser(req::HTTP.Request, in\_body::User;) -> Nothing
-- **createUsersWithArrayInput**
+    - *signature:* create_user(req::HTTP.Request, in\_body::User;) -> Nothing
+- **create_users_with_array_input**
     - *invocation:* POST /user/createWithArray
-    - *signature:* createUsersWithArrayInput(req::HTTP.Request, in\_body::Vector{User};) -> Nothing
-- **createUsersWithListInput**
+    - *signature:* create_users_with_array_input(req::HTTP.Request, in\_body::Vector{User};) -> Nothing
+- **create_users_with_list_input**
     - *invocation:* POST /user/createWithList
-    - *signature:* createUsersWithListInput(req::HTTP.Request, in\_body::Vector{User};) -> Nothing
-- **deleteUser**
+    - *signature:* create_users_with_list_input(req::HTTP.Request, in\_body::Vector{User};) -> Nothing
+- **delete_user**
     - *invocation:* DELETE /user/{username}
-    - *signature:* deleteUser(req::HTTP.Request, in\_username::String;) -> Nothing
-- **getUserByName**
+    - *signature:* delete_user(req::HTTP.Request, in\_username::String;) -> Nothing
+- **get_user_by_name**
     - *invocation:* GET /user/{username}
-    - *signature:* getUserByName(req::HTTP.Request, in\_username::String;) -> User
-- **loginUser**
+    - *signature:* get_user_by_name(req::HTTP.Request, in\_username::String;) -> User
+- **login_user**
     - *invocation:* GET /user/login
-    - *signature:* loginUser(req::HTTP.Request, in\_username::String, in\_password::String;) -> String
-- **logoutUser**
+    - *signature:* login_user(req::HTTP.Request, in\_username::String, in\_password::String;) -> String
+- **logout_user**
     - *invocation:* GET /user/logout
-    - *signature:* logoutUser(req::HTTP.Request;) -> Nothing
-- **updateUser**
+    - *signature:* logout_user(req::HTTP.Request;) -> Nothing
+- **update_user**
     - *invocation:* PUT /user/{username}
-    - *signature:* updateUser(req::HTTP.Request, in\_username::String, in\_body::User;) -> Nothing
+    - *signature:* update_user(req::HTTP.Request, in\_username::String, in\_body::User;) -> Nothing
 """
 module PetStoreServer
 

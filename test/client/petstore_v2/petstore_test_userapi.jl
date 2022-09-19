@@ -20,7 +20,7 @@ function test_404(uri)
     api = UserApi(client)
 
     try
-        loginUser(api, TEST_USER, "testpassword")
+        login_user(api, TEST_USER, "testpassword")
         @error("ApiException not thrown")
     catch ex
         @test isa(ex, ApiException)
@@ -31,7 +31,7 @@ function test_404(uri)
     api = UserApi(client)
 
     try
-        loginUser(api, TEST_USER, "testpassword")
+        login_user(api, TEST_USER, "testpassword")
         @error("ApiException not thrown")
     catch ex
         @test isa(ex, ApiException)
@@ -86,7 +86,7 @@ function test_userhook(uri)
     client = Client(uri; pre_request_hook=test_login_user_hook)
     api = UserApi(client)
 
-    login_result = loginUser(api, TEST_USER, "wrongpassword")
+    login_result = login_user(api, TEST_USER, "wrongpassword")
     @test !isempty(login_result)
     result = JSON.parse(login_result)
     @test startswith(result["message"], "logged in user session")
@@ -103,16 +103,16 @@ function test_parallel(uri)
             for idx in 1:10^3
                 @async begin
                     @debug("[$idx] UserApi Parallel begin")
-                    login_result = loginUser(api, TEST_USER, "testpassword")
+                    login_result = login_user(api, TEST_USER, "testpassword")
                     @test !isempty(login_result)
                     result = JSON.parse(login_result)
                     @test startswith(result["message"], "logged in user session")
                     @test result["code"] == 200
 
-                    @test_throws ApiException getUserByName(api, randstring())
-                    @test_throws ApiException getUserByName(api, TEST_USER)
+                    @test_throws ApiException get_user_by_name(api, randstring())
+                    @test_throws ApiException get_user_by_name(api, TEST_USER)
 
-                    logout_result = logoutUser(api)
+                    logout_result = logout_user(api)
                     @test logout_result === nothing
                     @debug("[$idx] UserApi Parallel end")
                 end
@@ -129,34 +129,34 @@ function test(uri)
     client = Client(uri)
     api = UserApi(client)
 
-    @info("UserApi - loginUser")
-    login_result = loginUser(api, TEST_USER, "testpassword")
+    @info("UserApi - login_user")
+    login_result = login_user(api, TEST_USER, "testpassword")
     @test !isempty(login_result)
 
-    @info("UserApi - createUser")
+    @info("UserApi - create_user")
     user1 = User(; id=100, username=TEST_USER1, firstName="test1", lastName="user1", email="jloac1@example.com", password="testpass1", phone="1000000001", userStatus=0)
-    @test createUser(api, user1) === nothing
+    @test create_user(api, user1) === nothing
 
-    @info("UserApi - createUsersWithArrayInput")
+    @info("UserApi - create_users_with_array_input")
     user2 = User(; id=200, username=TEST_USER2, firstName="test2", lastName="user2", email="jloac2@example.com", password="testpass2", phone="1000000002", userStatus=0)
-    @test createUsersWithArrayInput(api, [user1, user2]) === nothing
+    @test create_users_with_array_input(api, [user1, user2]) === nothing
 
-    @info("UserApi - createUsersWithListInput")
-    @test createUsersWithListInput(api, [user1, user2]) === nothing
+    @info("UserApi - create_users_with_array_input")
+    @test create_users_with_array_input(api, [user1, user2]) === nothing
 
-    @info("UserApi - getUserByName")
-    @test_throws ApiException getUserByName(api, randstring())
-    @test_throws ApiException getUserByName(api, TEST_USER)
-    getuser_result = getUserByName(api, PRESET_TEST_USER)
+    @info("UserApi - get_user_by_name")
+    @test_throws ApiException get_user_by_name(api, randstring())
+    @test_throws ApiException get_user_by_name(api, TEST_USER)
+    getuser_result = get_user_by_name(api, PRESET_TEST_USER)
     @test isa(getuser_result, User)
 
-    @info("UserApi - updateUser")
-    @test updateUser(api, TEST_USER2, getuser_result) === nothing
-    @info("UserApi - deleteUser")
-    @test deleteUser(api, TEST_USER2) === nothing
+    @info("UserApi - update_user")
+    @test update_user(api, TEST_USER2, getuser_result) === nothing
+    @info("UserApi - delete_user")
+    @test delete_user(api, TEST_USER2) === nothing
 
-    @info("UserApi - logoutUser")
-    logout_result = logoutUser(api)
+    @info("UserApi - logout_user")
+    logout_result = logout_user(api)
     @test logout_result === nothing
 
     nothing

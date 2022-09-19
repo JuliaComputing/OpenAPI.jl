@@ -4,15 +4,15 @@ All URIs are relative to *https://petstore.swagger.io/v2*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**deleteOrder**](StoreApi.md#deleteOrder) | **DELETE** /store/order/{orderId} | Delete purchase order by ID
-[**getInventory**](StoreApi.md#getInventory) | **GET** /store/inventory | Returns pet inventories by status
-[**getOrderById**](StoreApi.md#getOrderById) | **GET** /store/order/{orderId} | Find purchase order by ID
-[**placeOrder**](StoreApi.md#placeOrder) | **POST** /store/order | Place an order for a pet
+[**delete_order**](StoreApi.md#delete_order) | **DELETE** /store/order/{orderId} | Delete purchase order by ID
+[**get_inventory**](StoreApi.md#get_inventory) | **GET** /store/inventory | Returns pet inventories by status
+[**get_order_by_id**](StoreApi.md#get_order_by_id) | **GET** /store/order/{orderId} | Find purchase order by ID
+[**place_order**](StoreApi.md#place_order) | **POST** /store/order | Place an order for a pet
 
 
-# **deleteOrder**
-> deleteOrder(_api::StoreApi, in_orderId::Int64; _mediaType=nothing) <br/>
-> deleteOrder(_api::StoreApi, response_stream::Channel, in_orderId::Int64; _mediaType=nothing)
+# **delete_order**
+> delete_order(_api::StoreApi, order_id::Int64; _mediaType=nothing) <br/>
+> delete_order(_api::StoreApi, response_stream::Channel, order_id::Int64; _mediaType=nothing)
 
 Delete purchase order by ID
 
@@ -23,7 +23,7 @@ For valid response try integer IDs with positive integer value. Negative or non-
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **StoreApi** | API context | 
-**in_orderId** | **Int64**| ID of the order that needs to be deleted | [default to nothing]
+**order_id** | **Int64**| ID of the order that needs to be deleted | [default to nothing]
 
 ### Return type
 
@@ -40,9 +40,9 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **getInventory**
-> getInventory(_api::StoreApi; _mediaType=nothing) -> Dict{String, Int64}  <br/>
-> getInventory(_api::StoreApi, response_stream::Channel; _mediaType=nothing) -> Dict{String, Int64} 
+# **get_inventory**
+> get_inventory(_api::StoreApi; _mediaType=nothing) -> Dict{String, Int64}  <br/>
+> get_inventory(_api::StoreApi, response_stream::Channel; _mediaType=nothing) -> Dict{String, Int64} 
 
 Returns pet inventories by status
 
@@ -66,9 +66,9 @@ This endpoint does not need any parameter.
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **getOrderById**
-> getOrderById(_api::StoreApi, in_orderId::Int64; _mediaType=nothing) -> Order  <br/>
-> getOrderById(_api::StoreApi, response_stream::Channel, in_orderId::Int64; _mediaType=nothing) -> Order 
+# **get_order_by_id**
+> get_order_by_id(_api::StoreApi, order_id::Int64; _mediaType=nothing) -> Order  <br/>
+> get_order_by_id(_api::StoreApi, response_stream::Channel, order_id::Int64; _mediaType=nothing) -> Order 
 
 Find purchase order by ID
 
@@ -79,7 +79,7 @@ For valid response try integer IDs with value >= 1 and <= 10. Other values will 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **StoreApi** | API context | 
-**in_orderId** | **Int64**| ID of pet that needs to be fetched | [default to nothing]
+**order_id** | **Int64**| ID of pet that needs to be fetched | [default to nothing]
 
 ### Return type
 
@@ -96,9 +96,9 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **placeOrder**
-> placeOrder(_api::StoreApi, in_body::Order; _mediaType=nothing) -> Order  <br/>
-> placeOrder(_api::StoreApi, response_stream::Channel, in_body::Order; _mediaType=nothing) -> Order 
+# **place_order**
+> place_order(_api::StoreApi, body::Order; _mediaType=nothing) -> Order  <br/>
+> place_order(_api::StoreApi, response_stream::Channel, body::Order; _mediaType=nothing) -> Order 
 
 Place an order for a pet
 
@@ -107,7 +107,7 @@ Place an order for a pet
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **StoreApi** | API context | 
-**in_body** | [**Order**](Order.md)| order placed for purchasing the pet | 
+**body** | [**Order**](Order.md)| order placed for purchasing the pet | 
 
 ### Return type
 

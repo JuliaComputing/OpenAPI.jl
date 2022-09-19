@@ -4,19 +4,19 @@ All URIs are relative to */v3*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**addPet**](PetApi.md#addPet) | **POST** /pet | Add a new pet to the store
-[**deletePet**](PetApi.md#deletePet) | **DELETE** /pet/{petId} | Deletes a pet
-[**findPetsByStatus**](PetApi.md#findPetsByStatus) | **GET** /pet/findByStatus | Finds Pets by status
-[**findPetsByTags**](PetApi.md#findPetsByTags) | **GET** /pet/findByTags | Finds Pets by tags
-[**getPetById**](PetApi.md#getPetById) | **GET** /pet/{petId} | Find pet by ID
-[**updatePet**](PetApi.md#updatePet) | **PUT** /pet | Update an existing pet
-[**updatePetWithForm**](PetApi.md#updatePetWithForm) | **POST** /pet/{petId} | Updates a pet in the store with form data
-[**uploadFile**](PetApi.md#uploadFile) | **POST** /pet/{petId}/uploadImage | uploads an image
+[**add_pet**](PetApi.md#add_pet) | **POST** /pet | Add a new pet to the store
+[**delete_pet**](PetApi.md#delete_pet) | **DELETE** /pet/{petId} | Deletes a pet
+[**find_pets_by_status**](PetApi.md#find_pets_by_status) | **GET** /pet/findByStatus | Finds Pets by status
+[**find_pets_by_tags**](PetApi.md#find_pets_by_tags) | **GET** /pet/findByTags | Finds Pets by tags
+[**get_pet_by_id**](PetApi.md#get_pet_by_id) | **GET** /pet/{petId} | Find pet by ID
+[**update_pet**](PetApi.md#update_pet) | **PUT** /pet | Update an existing pet
+[**update_pet_with_form**](PetApi.md#update_pet_with_form) | **POST** /pet/{petId} | Updates a pet in the store with form data
+[**upload_file**](PetApi.md#upload_file) | **POST** /pet/{petId}/uploadImage | uploads an image
 
 
-# **addPet**
-> addPet(_api::PetApi, in_Pet::Pet; _mediaType=nothing) <br/>
-> addPet(_api::PetApi, response_stream::Channel, in_Pet::Pet; _mediaType=nothing)
+# **add_pet**
+> add_pet(_api::PetApi, pet::Pet; _mediaType=nothing) <br/>
+> add_pet(_api::PetApi, response_stream::Channel, pet::Pet; _mediaType=nothing)
 
 Add a new pet to the store
 
@@ -25,7 +25,7 @@ Add a new pet to the store
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **PetApi** | API context | 
-**in_Pet** | [**Pet**](Pet.md)| Pet object that needs to be added to the store | 
+**pet** | [**Pet**](Pet.md)| Pet object that needs to be added to the store | 
 
 ### Return type
 
@@ -42,9 +42,9 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **deletePet**
-> deletePet(_api::PetApi, in_petId::Int64; in_api_key=nothing, _mediaType=nothing) <br/>
-> deletePet(_api::PetApi, response_stream::Channel, in_petId::Int64; in_api_key=nothing, _mediaType=nothing)
+# **delete_pet**
+> delete_pet(_api::PetApi, pet_id::Int64; api_key=nothing, _mediaType=nothing) <br/>
+> delete_pet(_api::PetApi, response_stream::Channel, pet_id::Int64; api_key=nothing, _mediaType=nothing)
 
 Deletes a pet
 
@@ -53,13 +53,13 @@ Deletes a pet
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **PetApi** | API context | 
-**in_petId** | **Int64**| Pet id to delete | [default to nothing]
+**pet_id** | **Int64**| Pet id to delete | [default to nothing]
 
 ### Optional Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **in_api_key** | **String**|  | [default to nothing]
+ **api_key** | **String**|  | [default to nothing]
 
 ### Return type
 
@@ -76,9 +76,9 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **findPetsByStatus**
-> findPetsByStatus(_api::PetApi, in_status::Vector{String}; _mediaType=nothing) -> Vector{Pet}  <br/>
-> findPetsByStatus(_api::PetApi, response_stream::Channel, in_status::Vector{String}; _mediaType=nothing) -> Vector{Pet} 
+# **find_pets_by_status**
+> find_pets_by_status(_api::PetApi, status::Vector{String}; _mediaType=nothing) -> Vector{Pet}  <br/>
+> find_pets_by_status(_api::PetApi, response_stream::Channel, status::Vector{String}; _mediaType=nothing) -> Vector{Pet} 
 
 Finds Pets by status
 
@@ -89,7 +89,7 @@ Multiple status values can be provided with comma separated strings
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **PetApi** | API context | 
-**in_status** | [**Vector{String}**](String.md)| Status values that need to be considered for filter | [default to nothing]
+**status** | [**Vector{String}**](String.md)| Status values that need to be considered for filter | [default to nothing]
 
 ### Return type
 
@@ -106,9 +106,9 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **findPetsByTags**
-> findPetsByTags(_api::PetApi, in_tags::Vector{String}; _mediaType=nothing) -> Vector{Pet}  <br/>
-> findPetsByTags(_api::PetApi, response_stream::Channel, in_tags::Vector{String}; _mediaType=nothing) -> Vector{Pet} 
+# **find_pets_by_tags**
+> find_pets_by_tags(_api::PetApi, tags::Vector{String}; _mediaType=nothing) -> Vector{Pet}  <br/>
+> find_pets_by_tags(_api::PetApi, response_stream::Channel, tags::Vector{String}; _mediaType=nothing) -> Vector{Pet} 
 
 Finds Pets by tags
 
@@ -119,7 +119,7 @@ Multiple tags can be provided with comma separated strings. Use tag1, tag2, tag3
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **PetApi** | API context | 
-**in_tags** | [**Vector{String}**](String.md)| Tags to filter by | [default to nothing]
+**tags** | [**Vector{String}**](String.md)| Tags to filter by | [default to nothing]
 
 ### Return type
 
@@ -136,9 +136,9 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **getPetById**
-> getPetById(_api::PetApi, in_petId::Int64; _mediaType=nothing) -> Pet  <br/>
-> getPetById(_api::PetApi, response_stream::Channel, in_petId::Int64; _mediaType=nothing) -> Pet 
+# **get_pet_by_id**
+> get_pet_by_id(_api::PetApi, pet_id::Int64; _mediaType=nothing) -> Pet  <br/>
+> get_pet_by_id(_api::PetApi, response_stream::Channel, pet_id::Int64; _mediaType=nothing) -> Pet 
 
 Find pet by ID
 
@@ -149,7 +149,7 @@ Returns a single pet
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **PetApi** | API context | 
-**in_petId** | **Int64**| ID of pet to return | [default to nothing]
+**pet_id** | **Int64**| ID of pet to return | [default to nothing]
 
 ### Return type
 
@@ -166,9 +166,9 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **updatePet**
-> updatePet(_api::PetApi, in_Pet::Pet; _mediaType=nothing) <br/>
-> updatePet(_api::PetApi, response_stream::Channel, in_Pet::Pet; _mediaType=nothing)
+# **update_pet**
+> update_pet(_api::PetApi, pet::Pet; _mediaType=nothing) <br/>
+> update_pet(_api::PetApi, response_stream::Channel, pet::Pet; _mediaType=nothing)
 
 Update an existing pet
 
@@ -177,7 +177,7 @@ Update an existing pet
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **PetApi** | API context | 
-**in_Pet** | [**Pet**](Pet.md)| Pet object that needs to be added to the store | 
+**pet** | [**Pet**](Pet.md)| Pet object that needs to be added to the store | 
 
 ### Return type
 
@@ -194,9 +194,9 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **updatePetWithForm**
-> updatePetWithForm(_api::PetApi, in_petId::Int64; in_name=nothing, in_status=nothing, _mediaType=nothing) <br/>
-> updatePetWithForm(_api::PetApi, response_stream::Channel, in_petId::Int64; in_name=nothing, in_status=nothing, _mediaType=nothing)
+# **update_pet_with_form**
+> update_pet_with_form(_api::PetApi, pet_id::Int64; name=nothing, status=nothing, _mediaType=nothing) <br/>
+> update_pet_with_form(_api::PetApi, response_stream::Channel, pet_id::Int64; name=nothing, status=nothing, _mediaType=nothing)
 
 Updates a pet in the store with form data
 
@@ -205,14 +205,14 @@ Updates a pet in the store with form data
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **PetApi** | API context | 
-**in_petId** | **Int64**| ID of pet that needs to be updated | [default to nothing]
+**pet_id** | **Int64**| ID of pet that needs to be updated | [default to nothing]
 
 ### Optional Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **in_name** | **String**| Updated name of the pet | [default to nothing]
- **in_status** | **String**| Updated status of the pet | [default to nothing]
+ **name** | **String**| Updated name of the pet | [default to nothing]
+ **status** | **String**| Updated status of the pet | [default to nothing]
 
 ### Return type
 
@@ -229,9 +229,9 @@ Name | Type | Description  | Notes
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **uploadFile**
-> uploadFile(_api::PetApi, in_petId::Int64; in_additionalMetadata=nothing, in_file=nothing, _mediaType=nothing) -> ApiResponse  <br/>
-> uploadFile(_api::PetApi, response_stream::Channel, in_petId::Int64; in_additionalMetadata=nothing, in_file=nothing, _mediaType=nothing) -> ApiResponse 
+# **upload_file**
+> upload_file(_api::PetApi, pet_id::Int64; additional_metadata=nothing, file=nothing, _mediaType=nothing) -> ApiResponse  <br/>
+> upload_file(_api::PetApi, response_stream::Channel, pet_id::Int64; additional_metadata=nothing, file=nothing, _mediaType=nothing) -> ApiResponse 
 
 uploads an image
 
@@ -240,14 +240,14 @@ uploads an image
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **PetApi** | API context | 
-**in_petId** | **Int64**| ID of pet to update | [default to nothing]
+**pet_id** | **Int64**| ID of pet to update | [default to nothing]
 
 ### Optional Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
- **in_additionalMetadata** | **String**| Additional data to pass to server | [default to nothing]
- **in_file** | **String****String**| file to upload | [default to nothing]
+ **additional_metadata** | **String**| Additional data to pass to server | [default to nothing]
+ **file** | **String****String**| file to upload | [default to nothing]
 
 ### Return type
 

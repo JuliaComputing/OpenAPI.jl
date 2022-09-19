@@ -2,8 +2,8 @@
 # Do not modify this file directly. Modify the OpenAPI specification instead.
 
 
-function deleteOrder_read(handler)
-    function deleteOrder_read_handler(req::HTTP.Request)
+function delete_order_read(handler)
+    function delete_order_read_handler(req::HTTP.Request)
         openapi_params = Dict{String,Any}()
         path_params = HTTP.getparams(req)
         openapi_params["orderId"] = OpenAPI.Servers.to_param(String, path_params, "orderId", required=true, )
@@ -13,21 +13,21 @@ function deleteOrder_read(handler)
     end
 end
 
-function deleteOrder_validate(handler)
-    function deleteOrder_validate_handler(req::HTTP.Request)
+function delete_order_validate(handler)
+    function delete_order_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         
         return handler(req)
     end
 end
 
-function deleteOrder_invoke(impl; post_invoke=nothing)
-    function deleteOrder_invoke_handler(req::HTTP.Request)
+function delete_order_invoke(impl; post_invoke=nothing)
+    function delete_order_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = try
-            impl.deleteOrder(req::HTTP.Request, openapi_params["orderId"];)
+            impl.delete_order(req::HTTP.Request, openapi_params["orderId"];)
         catch ex
-            @error("Error in deleteOrder", exception=(ex, catch_backtrace()))
+            @error("Error in delete_order", exception=(ex, catch_backtrace()))
             HTTP.Response(500, "Internal Server Error")
         end
         resp = OpenAPI.Servers.server_response(ret)
@@ -35,8 +35,8 @@ function deleteOrder_invoke(impl; post_invoke=nothing)
     end
 end
 
-function getInventory_read(handler)
-    function getInventory_read_handler(req::HTTP.Request)
+function get_inventory_read(handler)
+    function get_inventory_read_handler(req::HTTP.Request)
         openapi_params = Dict{String,Any}()
         req.context[:openapi_params] = openapi_params
 
@@ -44,21 +44,21 @@ function getInventory_read(handler)
     end
 end
 
-function getInventory_validate(handler)
-    function getInventory_validate_handler(req::HTTP.Request)
+function get_inventory_validate(handler)
+    function get_inventory_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         
         return handler(req)
     end
 end
 
-function getInventory_invoke(impl; post_invoke=nothing)
-    function getInventory_invoke_handler(req::HTTP.Request)
+function get_inventory_invoke(impl; post_invoke=nothing)
+    function get_inventory_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = try
-            impl.getInventory(req::HTTP.Request;)
+            impl.get_inventory(req::HTTP.Request;)
         catch ex
-            @error("Error in getInventory", exception=(ex, catch_backtrace()))
+            @error("Error in get_inventory", exception=(ex, catch_backtrace()))
             HTTP.Response(500, "Internal Server Error")
         end
         resp = OpenAPI.Servers.server_response(ret)
@@ -66,8 +66,8 @@ function getInventory_invoke(impl; post_invoke=nothing)
     end
 end
 
-function getOrderById_read(handler)
-    function getOrderById_read_handler(req::HTTP.Request)
+function get_order_by_id_read(handler)
+    function get_order_by_id_read_handler(req::HTTP.Request)
         openapi_params = Dict{String,Any}()
         path_params = HTTP.getparams(req)
         openapi_params["orderId"] = OpenAPI.Servers.to_param(Int64, path_params, "orderId", required=true, )
@@ -77,24 +77,24 @@ function getOrderById_read(handler)
     end
 end
 
-function getOrderById_validate(handler)
-    function getOrderById_validate_handler(req::HTTP.Request)
+function get_order_by_id_validate(handler)
+    function get_order_by_id_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         
-        OpenAPI.validate_param("orderId", "getOrderById", :maximum, openapi_params["orderId"], 5, false)
-        OpenAPI.validate_param("orderId", "getOrderById", :minimum, openapi_params["orderId"], 1, false)
+        OpenAPI.validate_param("orderId", "get_order_by_id", :maximum, openapi_params["orderId"], 5, false)
+        OpenAPI.validate_param("orderId", "get_order_by_id", :minimum, openapi_params["orderId"], 1, false)
         
         return handler(req)
     end
 end
 
-function getOrderById_invoke(impl; post_invoke=nothing)
-    function getOrderById_invoke_handler(req::HTTP.Request)
+function get_order_by_id_invoke(impl; post_invoke=nothing)
+    function get_order_by_id_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = try
-            impl.getOrderById(req::HTTP.Request, openapi_params["orderId"];)
+            impl.get_order_by_id(req::HTTP.Request, openapi_params["orderId"];)
         catch ex
-            @error("Error in getOrderById", exception=(ex, catch_backtrace()))
+            @error("Error in get_order_by_id", exception=(ex, catch_backtrace()))
             HTTP.Response(500, "Internal Server Error")
         end
         resp = OpenAPI.Servers.server_response(ret)
@@ -102,8 +102,8 @@ function getOrderById_invoke(impl; post_invoke=nothing)
     end
 end
 
-function placeOrder_read(handler)
-    function placeOrder_read_handler(req::HTTP.Request)
+function place_order_read(handler)
+    function place_order_read_handler(req::HTTP.Request)
         openapi_params = Dict{String,Any}()
         openapi_params["Order"] = OpenAPI.Servers.to_param_type(Order, String(req.body))
         req.context[:openapi_params] = openapi_params
@@ -112,21 +112,21 @@ function placeOrder_read(handler)
     end
 end
 
-function placeOrder_validate(handler)
-    function placeOrder_validate_handler(req::HTTP.Request)
+function place_order_validate(handler)
+    function place_order_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         
         return handler(req)
     end
 end
 
-function placeOrder_invoke(impl; post_invoke=nothing)
-    function placeOrder_invoke_handler(req::HTTP.Request)
+function place_order_invoke(impl; post_invoke=nothing)
+    function place_order_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = try
-            impl.placeOrder(req::HTTP.Request, openapi_params["Order"];)
+            impl.place_order(req::HTTP.Request, openapi_params["Order"];)
         catch ex
-            @error("Error in placeOrder", exception=(ex, catch_backtrace()))
+            @error("Error in place_order", exception=(ex, catch_backtrace()))
             HTTP.Response(500, "Internal Server Error")
         end
         resp = OpenAPI.Servers.server_response(ret)
@@ -136,9 +136,9 @@ end
 
 
 function registerStoreApi(router::HTTP.Router, impl; path_prefix::String="", optional_middlewares...)
-    HTTP.register!(router, "DELETE", path_prefix * "/store/order/{orderId}", OpenAPI.Servers.middleware(impl, deleteOrder_read, deleteOrder_validate, deleteOrder_invoke; optional_middlewares...))
-    HTTP.register!(router, "GET", path_prefix * "/store/inventory", OpenAPI.Servers.middleware(impl, getInventory_read, getInventory_validate, getInventory_invoke; optional_middlewares...))
-    HTTP.register!(router, "GET", path_prefix * "/store/order/{orderId}", OpenAPI.Servers.middleware(impl, getOrderById_read, getOrderById_validate, getOrderById_invoke; optional_middlewares...))
-    HTTP.register!(router, "POST", path_prefix * "/store/order", OpenAPI.Servers.middleware(impl, placeOrder_read, placeOrder_validate, placeOrder_invoke; optional_middlewares...))
+    HTTP.register!(router, "DELETE", path_prefix * "/store/order/{orderId}", OpenAPI.Servers.middleware(impl, delete_order_read, delete_order_validate, delete_order_invoke; optional_middlewares...))
+    HTTP.register!(router, "GET", path_prefix * "/store/inventory", OpenAPI.Servers.middleware(impl, get_inventory_read, get_inventory_validate, get_inventory_invoke; optional_middlewares...))
+    HTTP.register!(router, "GET", path_prefix * "/store/order/{orderId}", OpenAPI.Servers.middleware(impl, get_order_by_id_read, get_order_by_id_validate, get_order_by_id_invoke; optional_middlewares...))
+    HTTP.register!(router, "POST", path_prefix * "/store/order", OpenAPI.Servers.middleware(impl, place_order_read, place_order_validate, place_order_invoke; optional_middlewares...))
     return router
 end

@@ -2,8 +2,8 @@
 # Do not modify this file directly. Modify the OpenAPI specification instead.
 
 
-function createUser_read(handler)
-    function createUser_read_handler(req::HTTP.Request)
+function create_user_read(handler)
+    function create_user_read_handler(req::HTTP.Request)
         openapi_params = Dict{String,Any}()
         openapi_params["body"] = OpenAPI.Servers.to_param_type(User, String(req.body))
         req.context[:openapi_params] = openapi_params
@@ -12,21 +12,21 @@ function createUser_read(handler)
     end
 end
 
-function createUser_validate(handler)
-    function createUser_validate_handler(req::HTTP.Request)
+function create_user_validate(handler)
+    function create_user_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         
         return handler(req)
     end
 end
 
-function createUser_invoke(impl; post_invoke=nothing)
-    function createUser_invoke_handler(req::HTTP.Request)
+function create_user_invoke(impl; post_invoke=nothing)
+    function create_user_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = try
-            impl.createUser(req::HTTP.Request, openapi_params["body"];)
+            impl.create_user(req::HTTP.Request, openapi_params["body"];)
         catch ex
-            @error("Error in createUser", exception=(ex, catch_backtrace()))
+            @error("Error in create_user", exception=(ex, catch_backtrace()))
             HTTP.Response(500, "Internal Server Error")
         end
         resp = OpenAPI.Servers.server_response(ret)
@@ -34,8 +34,8 @@ function createUser_invoke(impl; post_invoke=nothing)
     end
 end
 
-function createUsersWithArrayInput_read(handler)
-    function createUsersWithArrayInput_read_handler(req::HTTP.Request)
+function create_users_with_array_input_read(handler)
+    function create_users_with_array_input_read_handler(req::HTTP.Request)
         openapi_params = Dict{String,Any}()
         openapi_params["body"] = OpenAPI.Servers.to_param_type(Vector{User}, String(req.body))
         req.context[:openapi_params] = openapi_params
@@ -44,21 +44,21 @@ function createUsersWithArrayInput_read(handler)
     end
 end
 
-function createUsersWithArrayInput_validate(handler)
-    function createUsersWithArrayInput_validate_handler(req::HTTP.Request)
+function create_users_with_array_input_validate(handler)
+    function create_users_with_array_input_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         
         return handler(req)
     end
 end
 
-function createUsersWithArrayInput_invoke(impl; post_invoke=nothing)
-    function createUsersWithArrayInput_invoke_handler(req::HTTP.Request)
+function create_users_with_array_input_invoke(impl; post_invoke=nothing)
+    function create_users_with_array_input_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = try
-            impl.createUsersWithArrayInput(req::HTTP.Request, openapi_params["body"];)
+            impl.create_users_with_array_input(req::HTTP.Request, openapi_params["body"];)
         catch ex
-            @error("Error in createUsersWithArrayInput", exception=(ex, catch_backtrace()))
+            @error("Error in create_users_with_array_input", exception=(ex, catch_backtrace()))
             HTTP.Response(500, "Internal Server Error")
         end
         resp = OpenAPI.Servers.server_response(ret)
@@ -66,8 +66,8 @@ function createUsersWithArrayInput_invoke(impl; post_invoke=nothing)
     end
 end
 
-function createUsersWithListInput_read(handler)
-    function createUsersWithListInput_read_handler(req::HTTP.Request)
+function create_users_with_list_input_read(handler)
+    function create_users_with_list_input_read_handler(req::HTTP.Request)
         openapi_params = Dict{String,Any}()
         openapi_params["body"] = OpenAPI.Servers.to_param_type(Vector{User}, String(req.body))
         req.context[:openapi_params] = openapi_params
@@ -76,21 +76,21 @@ function createUsersWithListInput_read(handler)
     end
 end
 
-function createUsersWithListInput_validate(handler)
-    function createUsersWithListInput_validate_handler(req::HTTP.Request)
+function create_users_with_list_input_validate(handler)
+    function create_users_with_list_input_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         
         return handler(req)
     end
 end
 
-function createUsersWithListInput_invoke(impl; post_invoke=nothing)
-    function createUsersWithListInput_invoke_handler(req::HTTP.Request)
+function create_users_with_list_input_invoke(impl; post_invoke=nothing)
+    function create_users_with_list_input_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = try
-            impl.createUsersWithListInput(req::HTTP.Request, openapi_params["body"];)
+            impl.create_users_with_list_input(req::HTTP.Request, openapi_params["body"];)
         catch ex
-            @error("Error in createUsersWithListInput", exception=(ex, catch_backtrace()))
+            @error("Error in create_users_with_list_input", exception=(ex, catch_backtrace()))
             HTTP.Response(500, "Internal Server Error")
         end
         resp = OpenAPI.Servers.server_response(ret)
@@ -98,8 +98,8 @@ function createUsersWithListInput_invoke(impl; post_invoke=nothing)
     end
 end
 
-function deleteUser_read(handler)
-    function deleteUser_read_handler(req::HTTP.Request)
+function delete_user_read(handler)
+    function delete_user_read_handler(req::HTTP.Request)
         openapi_params = Dict{String,Any}()
         path_params = HTTP.getparams(req)
         openapi_params["username"] = OpenAPI.Servers.to_param(String, path_params, "username", required=true, )
@@ -109,21 +109,21 @@ function deleteUser_read(handler)
     end
 end
 
-function deleteUser_validate(handler)
-    function deleteUser_validate_handler(req::HTTP.Request)
+function delete_user_validate(handler)
+    function delete_user_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         
         return handler(req)
     end
 end
 
-function deleteUser_invoke(impl; post_invoke=nothing)
-    function deleteUser_invoke_handler(req::HTTP.Request)
+function delete_user_invoke(impl; post_invoke=nothing)
+    function delete_user_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = try
-            impl.deleteUser(req::HTTP.Request, openapi_params["username"];)
+            impl.delete_user(req::HTTP.Request, openapi_params["username"];)
         catch ex
-            @error("Error in deleteUser", exception=(ex, catch_backtrace()))
+            @error("Error in delete_user", exception=(ex, catch_backtrace()))
             HTTP.Response(500, "Internal Server Error")
         end
         resp = OpenAPI.Servers.server_response(ret)
@@ -131,8 +131,8 @@ function deleteUser_invoke(impl; post_invoke=nothing)
     end
 end
 
-function getUserByName_read(handler)
-    function getUserByName_read_handler(req::HTTP.Request)
+function get_user_by_name_read(handler)
+    function get_user_by_name_read_handler(req::HTTP.Request)
         openapi_params = Dict{String,Any}()
         path_params = HTTP.getparams(req)
         openapi_params["username"] = OpenAPI.Servers.to_param(String, path_params, "username", required=true, )
@@ -142,21 +142,21 @@ function getUserByName_read(handler)
     end
 end
 
-function getUserByName_validate(handler)
-    function getUserByName_validate_handler(req::HTTP.Request)
+function get_user_by_name_validate(handler)
+    function get_user_by_name_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         
         return handler(req)
     end
 end
 
-function getUserByName_invoke(impl; post_invoke=nothing)
-    function getUserByName_invoke_handler(req::HTTP.Request)
+function get_user_by_name_invoke(impl; post_invoke=nothing)
+    function get_user_by_name_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = try
-            impl.getUserByName(req::HTTP.Request, openapi_params["username"];)
+            impl.get_user_by_name(req::HTTP.Request, openapi_params["username"];)
         catch ex
-            @error("Error in getUserByName", exception=(ex, catch_backtrace()))
+            @error("Error in get_user_by_name", exception=(ex, catch_backtrace()))
             HTTP.Response(500, "Internal Server Error")
         end
         resp = OpenAPI.Servers.server_response(ret)
@@ -164,8 +164,8 @@ function getUserByName_invoke(impl; post_invoke=nothing)
     end
 end
 
-function loginUser_read(handler)
-    function loginUser_read_handler(req::HTTP.Request)
+function login_user_read(handler)
+    function login_user_read_handler(req::HTTP.Request)
         openapi_params = Dict{String,Any}()
         query_params = HTTP.queryparams(URIs.URI(req.target))
         openapi_params["username"] = OpenAPI.Servers.to_param(String, query_params, "username", required=true, )
@@ -176,21 +176,21 @@ function loginUser_read(handler)
     end
 end
 
-function loginUser_validate(handler)
-    function loginUser_validate_handler(req::HTTP.Request)
+function login_user_validate(handler)
+    function login_user_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         
         return handler(req)
     end
 end
 
-function loginUser_invoke(impl; post_invoke=nothing)
-    function loginUser_invoke_handler(req::HTTP.Request)
+function login_user_invoke(impl; post_invoke=nothing)
+    function login_user_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = try
-            impl.loginUser(req::HTTP.Request, openapi_params["username"], openapi_params["password"];)
+            impl.login_user(req::HTTP.Request, openapi_params["username"], openapi_params["password"];)
         catch ex
-            @error("Error in loginUser", exception=(ex, catch_backtrace()))
+            @error("Error in login_user", exception=(ex, catch_backtrace()))
             HTTP.Response(500, "Internal Server Error")
         end
         resp = OpenAPI.Servers.server_response(ret)
@@ -198,8 +198,8 @@ function loginUser_invoke(impl; post_invoke=nothing)
     end
 end
 
-function logoutUser_read(handler)
-    function logoutUser_read_handler(req::HTTP.Request)
+function logout_user_read(handler)
+    function logout_user_read_handler(req::HTTP.Request)
         openapi_params = Dict{String,Any}()
         req.context[:openapi_params] = openapi_params
 
@@ -207,21 +207,21 @@ function logoutUser_read(handler)
     end
 end
 
-function logoutUser_validate(handler)
-    function logoutUser_validate_handler(req::HTTP.Request)
+function logout_user_validate(handler)
+    function logout_user_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         
         return handler(req)
     end
 end
 
-function logoutUser_invoke(impl; post_invoke=nothing)
-    function logoutUser_invoke_handler(req::HTTP.Request)
+function logout_user_invoke(impl; post_invoke=nothing)
+    function logout_user_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = try
-            impl.logoutUser(req::HTTP.Request;)
+            impl.logout_user(req::HTTP.Request;)
         catch ex
-            @error("Error in logoutUser", exception=(ex, catch_backtrace()))
+            @error("Error in logout_user", exception=(ex, catch_backtrace()))
             HTTP.Response(500, "Internal Server Error")
         end
         resp = OpenAPI.Servers.server_response(ret)
@@ -229,8 +229,8 @@ function logoutUser_invoke(impl; post_invoke=nothing)
     end
 end
 
-function updateUser_read(handler)
-    function updateUser_read_handler(req::HTTP.Request)
+function update_user_read(handler)
+    function update_user_read_handler(req::HTTP.Request)
         openapi_params = Dict{String,Any}()
         path_params = HTTP.getparams(req)
         openapi_params["username"] = OpenAPI.Servers.to_param(String, path_params, "username", required=true, )
@@ -241,21 +241,21 @@ function updateUser_read(handler)
     end
 end
 
-function updateUser_validate(handler)
-    function updateUser_validate_handler(req::HTTP.Request)
+function update_user_validate(handler)
+    function update_user_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         
         return handler(req)
     end
 end
 
-function updateUser_invoke(impl; post_invoke=nothing)
-    function updateUser_invoke_handler(req::HTTP.Request)
+function update_user_invoke(impl; post_invoke=nothing)
+    function update_user_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = try
-            impl.updateUser(req::HTTP.Request, openapi_params["username"], openapi_params["body"];)
+            impl.update_user(req::HTTP.Request, openapi_params["username"], openapi_params["body"];)
         catch ex
-            @error("Error in updateUser", exception=(ex, catch_backtrace()))
+            @error("Error in update_user", exception=(ex, catch_backtrace()))
             HTTP.Response(500, "Internal Server Error")
         end
         resp = OpenAPI.Servers.server_response(ret)
@@ -265,13 +265,13 @@ end
 
 
 function registerUserApi(router::HTTP.Router, impl; path_prefix::String="", optional_middlewares...)
-    HTTP.register!(router, "POST", path_prefix * "/user", OpenAPI.Servers.middleware(impl, createUser_read, createUser_validate, createUser_invoke; optional_middlewares...))
-    HTTP.register!(router, "POST", path_prefix * "/user/createWithArray", OpenAPI.Servers.middleware(impl, createUsersWithArrayInput_read, createUsersWithArrayInput_validate, createUsersWithArrayInput_invoke; optional_middlewares...))
-    HTTP.register!(router, "POST", path_prefix * "/user/createWithList", OpenAPI.Servers.middleware(impl, createUsersWithListInput_read, createUsersWithListInput_validate, createUsersWithListInput_invoke; optional_middlewares...))
-    HTTP.register!(router, "DELETE", path_prefix * "/user/{username}", OpenAPI.Servers.middleware(impl, deleteUser_read, deleteUser_validate, deleteUser_invoke; optional_middlewares...))
-    HTTP.register!(router, "GET", path_prefix * "/user/{username}", OpenAPI.Servers.middleware(impl, getUserByName_read, getUserByName_validate, getUserByName_invoke; optional_middlewares...))
-    HTTP.register!(router, "GET", path_prefix * "/user/login", OpenAPI.Servers.middleware(impl, loginUser_read, loginUser_validate, loginUser_invoke; optional_middlewares...))
-    HTTP.register!(router, "GET", path_prefix * "/user/logout", OpenAPI.Servers.middleware(impl, logoutUser_read, logoutUser_validate, logoutUser_invoke; optional_middlewares...))
-    HTTP.register!(router, "PUT", path_prefix * "/user/{username}", OpenAPI.Servers.middleware(impl, updateUser_read, updateUser_validate, updateUser_invoke; optional_middlewares...))
+    HTTP.register!(router, "POST", path_prefix * "/user", OpenAPI.Servers.middleware(impl, create_user_read, create_user_validate, create_user_invoke; optional_middlewares...))
+    HTTP.register!(router, "POST", path_prefix * "/user/createWithArray", OpenAPI.Servers.middleware(impl, create_users_with_array_input_read, create_users_with_array_input_validate, create_users_with_array_input_invoke; optional_middlewares...))
+    HTTP.register!(router, "POST", path_prefix * "/user/createWithList", OpenAPI.Servers.middleware(impl, create_users_with_list_input_read, create_users_with_list_input_validate, create_users_with_list_input_invoke; optional_middlewares...))
+    HTTP.register!(router, "DELETE", path_prefix * "/user/{username}", OpenAPI.Servers.middleware(impl, delete_user_read, delete_user_validate, delete_user_invoke; optional_middlewares...))
+    HTTP.register!(router, "GET", path_prefix * "/user/{username}", OpenAPI.Servers.middleware(impl, get_user_by_name_read, get_user_by_name_validate, get_user_by_name_invoke; optional_middlewares...))
+    HTTP.register!(router, "GET", path_prefix * "/user/login", OpenAPI.Servers.middleware(impl, login_user_read, login_user_validate, login_user_invoke; optional_middlewares...))
+    HTTP.register!(router, "GET", path_prefix * "/user/logout", OpenAPI.Servers.middleware(impl, logout_user_read, logout_user_validate, logout_user_invoke; optional_middlewares...))
+    HTTP.register!(router, "PUT", path_prefix * "/user/{username}", OpenAPI.Servers.middleware(impl, update_user_read, update_user_validate, update_user_invoke; optional_middlewares...))
     return router
 end

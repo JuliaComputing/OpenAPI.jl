@@ -12,51 +12,26 @@ const orders = Vector{Order}()
 const users = Vector{User}()
 const PRESET_TEST_USER = "user1"
 
-"""
-**addPet**
-- *invocation:* POST /pet
-- *signature:* addPet(req::HTTP.Request, in_Pet::Pet;) -> Nothing
-"""
-function addPet(req::HTTP.Request, in_Pet::Pet;)
-    push!(pets, in_Pet)
+function add_pet(req::HTTP.Request, pet::Pet;)
+    push!(pets, pet)
     return nothing
 end
 
-"""
-- **deletePet**
-    - *invocation:* DELETE /pet/{petId}
-    - *signature:* deletePet(req::HTTP.Request, in_petId::Int64; in_api_key=nothing,) -> Nothing
-"""
-function deletePet(req::HTTP.Request, in_petId::Int64; in_api_key=nothing,)
-    filter!(x->x.id != in_petId, pets)
+function delete_pet(req::HTTP.Request, pet_id::Int64; api_key=nothing,)
+    filter!(x->x.id != pet_id, pets)
     return nothing
 end
 
-"""
-- **findPetsByStatus**
-    - *invocation:* GET /pet/findByStatus
-    - *signature:* findPetsByStatus(req::HTTP.Request, in_status::Vector{String};) -> Vector{Pet}
-"""
-function findPetsByStatus(req::HTTP.Request, in_status::Vector{String};)
-    return filter(x->x.status == in_status, pets)
+function find_pets_by_status(req::HTTP.Request, status::Vector{String};)
+    return filter(x->x.status == status, pets)
 end
 
-"""
-- **findPetsByTags**
-    - *invocation:* GET /pet/findByTags
-    - *signature:* findPetsByTags(req::HTTP.Request, in_tags::Vector{String};) -> Vector{Pet}
-"""
-function findPetsByTags(req::HTTP.Request, in_tags::Vector{String};)
-    return filter(x->!isempty(intersect(Set(x.tags), Set(in_tags))), pets)
+function find_pets_by_tags(req::HTTP.Request, tags::Vector{String};)
+    return filter(x->!isempty(intersect(Set(x.tags), Set(tags))), pets)
 end
 
-"""
-- **getPetById**
-    - *invocation:* GET /pet/{petId}
-    - *signature:* getPetById(req::HTTP.Request, in_petId::Int64;) -> Pet
-"""
-function getPetById(req::HTTP.Request, in_petId::Int64;)
-    pet = findfirst(x->x.id == in_petId, pets)
+function get_pet_by_id(req::HTTP.Request, pet_id::Int64;)
+    pet = findfirst(x->x.id == pet_id, pets)
     if pet === nothing
         return HTTP.Response(404, "Pet not found")
     else
@@ -64,61 +39,36 @@ function getPetById(req::HTTP.Request, in_petId::Int64;)
     end
 end
 
-"""
-- **updatePet**
-    - *invocation:* PUT /pet
-    - *signature:* updatePet(req::HTTP.Request, in_Pet::Pet;) -> Nothing
-"""
-function updatePet(req::HTTP.Request, in_Pet::Pet;)
-    filter!(x->x.id != in_Pet.id, pets)
-    push!(pets, in_Pet)
+function update_pet(req::HTTP.Request, pet::Pet;)
+    filter!(x->x.id != pet.id, pets)
+    push!(pets, pet)
     return nothing
 end
 
-"""
-- **updatePetWithForm**
-    - *invocation:* POST /pet/{petId}
-    - *signature:* updatePetWithForm(req::HTTP.Request, in_petId::Int64; in_name=nothing, in_status=nothing,) -> Nothing
-"""
-function updatePetWithForm(req::HTTP.Request, in_petId::Int64; in_name=nothing, in_status=nothing,)
+function update_pet_with_form(req::HTTP.Request, pet_id::Int64; name=nothing, status=nothing,)
     for pet in pets
-        if pet.id == in_petId
-            if !isnothing(in_name)
-                pet.name = in_name
+        if pet.id == pet_id
+            if !isnothing(name)
+                pet.name = name
             end
-            if !isnothing(in_status)
-                pet.status = in_status
+            if !isnothing(status)
+                pet.status = status
             end
         end
     end
     return nothing
 end
 
-"""
-- **uploadFile**
-    - *invocation:* POST /pet/{petId}/uploadImage
-    - *signature:* uploadFile(req::HTTP.Request, in_petId::Int64; in_additionalMetadata=nothing, in_file=nothing,) -> ApiResponse
-"""
-function uploadFile(req::HTTP.Request, in_petId::Int64; in_additionalMetadata=nothing, in_file=nothing,)
+function upload_file(req::HTTP.Request, pet_id::Int64; additional_metadata=nothing, file=nothing,)
     return ApiResponse(; code=1, type="pet", message="file uploaded", )
 end
 
-"""
-- **deleteOrder**
-    - *invocation:* DELETE /store/order/{orderId}
-    - *signature:* deleteOrder(req::HTTP.Request, in_orderId::String;) -> Nothing
-"""
-function deleteOrder(req::HTTP.Request, in_orderId::String;)
-    filter!(x->x.id != in_orderId, orders)
+function delete_order(req::HTTP.Request, order_id::String;)
+    filter!(x->x.id != order_id, orders)
     return nothing
 end
 
-"""
-- **getInventory**
-    - *invocation:* GET /store/inventory
-    - *signature:* getInventory(req::HTTP.Request;) -> Dict{String, Int64}
-"""
-function getInventory(req::HTTP.Request;)
+function get_inventory(req::HTTP.Request;)
     return Dict{String, Int64}(
         "additionalProp1" => 0,
         "additionalProp2" => 0,
@@ -126,13 +76,8 @@ function getInventory(req::HTTP.Request;)
     )
 end
 
-"""
-- **getOrderById**
-    - *invocation:* GET /store/order/{orderId}
-    - *signature:* getOrderById(req::HTTP.Request, in_orderId::Int64;) -> Order
-"""
-function getOrderById(req::HTTP.Request, in_orderId::Int64;)
-    order = findfirst(x->x.id == in_orderId, orders)
+function get_order_by_id(req::HTTP.Request, order_id::Int64;)
+    order = findfirst(x->x.id == order_id, orders)
     if order === nothing
         return HTTP.Response(404, "Order not found")
     else
@@ -140,105 +85,60 @@ function getOrderById(req::HTTP.Request, in_orderId::Int64;)
     end
 end
 
-"""
-- **placeOrder**
-    - *invocation:* POST /store/order
-    - *signature:* placeOrder(req::HTTP.Request, in_Order::Order;) -> Order
-"""
-function placeOrder(req::HTTP.Request, in_Order::Order;)
-    if isnothing(in_Order.id)
+function place_order(req::HTTP.Request, order::Order;)
+    if isnothing(order.id)
         max_OrderId = isempty(orders) ? 0 : maximum(x->x.id, orders)
-        in_Order.id = max_OrderId + 1
+        order.id = max_OrderId + 1
     end
-    push!(orders, in_Order)
-    return in_Order
+    push!(orders, order)
+    return order
 end
 
-"""
-- **createUser**
-    - *invocation:* POST /user
-    - *signature:* createUser(req::HTTP.Request, in_User::User;) -> Nothing
-"""
-function createUser(req::HTTP.Request, in_User::User;)
-    push!(users, in_User)
+function create_user(req::HTTP.Request, user::User;)
+    push!(users, user)
     return nothing
 end
 
-"""
-- **createUsersWithArrayInput**
-    - *invocation:* POST /user/createWithArray
-    - *signature:* createUsersWithArrayInput(req::HTTP.Request, in_User::Vector{User};) -> Nothing
-"""
-function createUsersWithArrayInput(req::HTTP.Request, in_User::Vector{User};)
-    append!(users, in_User)
+function create_users_with_array_input(req::HTTP.Request, user::Vector{User};)
+    append!(users, user)
     return nothing
 end
 
-"""
-- **createUsersWithListInput**
-    - *invocation:* POST /user/createWithList
-    - *signature:* createUsersWithListInput(req::HTTP.Request, in_User::Vector{User};) -> Nothing
-"""
-function createUsersWithListInput(req::HTTP.Request, in_User::Vector{User};)
-    append!(users, in_User)
+function create_users_with_list_input(req::HTTP.Request, user::Vector{User};)
+    append!(users, user)
     return nothing
 end
 
-"""
-- **deleteUser**
-    - *invocation:* DELETE /user/{username}
-    - *signature:* deleteUser(req::HTTP.Request, in_username::String;) -> Nothing
-"""
-function deleteUser(req::HTTP.Request, in_username::String;)
-    filter!(x->x.username != in_username, users)
+function delete_user(req::HTTP.Request, username::String;)
+    filter!(x->x.username != username, users)
     return nothing
 end
 
-"""
-- **getUserByName**
-    - *invocation:* GET /user/{username}
-    - *signature:* getUserByName(req::HTTP.Request, in_username::String;) -> User
-"""
-function getUserByName(req::HTTP.Request, in_username::String;)
-    # user = findfirst(x->x.username == in_username, users)
+function get_user_by_name(req::HTTP.Request, username::String;)
+    # user = findfirst(x->x.username == username, users)
     # if user === nothing
     #     return HTTP.Response(404, "User not found")
     # else
     #     return user
     # end
-    if in_username == PRESET_TEST_USER
+    if username == PRESET_TEST_USER
         return User(; id=1, username=PRESET_TEST_USER, firstName="John", lastName="Doe", email="jondoe@test.com", phone="1234567890", userStatus=1, )
     else
         return HTTP.Response(404, "User not found")
     end
 end
 
-"""
-- **loginUser**
-    - *invocation:* GET /user/login
-    - *signature:* loginUser(req::HTTP.Request, in_username::String, in_password::String;) -> String
-"""
-function loginUser(req::HTTP.Request, in_username::String, in_password::String;)
+function login_user(req::HTTP.Request, username::String, password::String;)
     return "logged in user session: test"
 end
 
-"""
-- **logoutUser**
-    - *invocation:* GET /user/logout
-    - *signature:* logoutUser(req::HTTP.Request;) -> Nothing
-"""
-function logoutUser(req::HTTP.Request;)
+function logout_user(req::HTTP.Request;)
     return nothing
 end
 
-"""
-- **updateUser**
-    - *invocation:* PUT /user/{username}
-    - *signature:* updateUser(req::HTTP.Request, in_username::String, in_User::User;) -> Nothing
-"""
-function updateUser(req::HTTP.Request, in_username::String, in_User::User;)
-    filter!(x->x.username != in_username, users)
-    push!(users, in_User)
+function update_user(req::HTTP.Request, username::String, user::User;)
+    filter!(x->x.username != username, users)
+    push!(users, user)
     return nothing
 end
 

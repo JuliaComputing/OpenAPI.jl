@@ -5,9 +5,9 @@ struct StoreApi <: OpenAPI.APIClientImpl
     client::OpenAPI.Clients.Client
 end
 
-function _oacinternal_deleteOrder(_api::StoreApi, in_orderId::String; _mediaType=nothing)
+function _oacinternal_delete_order(_api::StoreApi, order_id::String; _mediaType=nothing)
     _ctx = OpenAPI.Clients.Ctx(_api.client, "DELETE", Nothing, "/store/order/{orderId}", [])
-    OpenAPI.Clients.set_param(_ctx.path, "orderId", in_orderId)  # type String
+    OpenAPI.Clients.set_param(_ctx.path, "orderId", order_id)  # type String
     OpenAPI.Clients.set_header_accept(_ctx, [])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? [] : [_mediaType])
     return _ctx
@@ -18,21 +18,21 @@ end
 For valid response try integer IDs with value < 1000. Anything above 1000 or nonintegers will generate API errors
 
 Params:
-- in_orderId::String (required)
+- order_id::String (required)
 
 Return: Nothing
 """
-function deleteOrder(_api::StoreApi, in_orderId::String; _mediaType=nothing)
-    _ctx = _oacinternal_deleteOrder(_api, in_orderId; _mediaType=_mediaType)
+function delete_order(_api::StoreApi, order_id::String; _mediaType=nothing)
+    _ctx = _oacinternal_delete_order(_api, order_id; _mediaType=_mediaType)
     OpenAPI.Clients.exec(_ctx)
 end
 
-function deleteOrder(_api::StoreApi, response_stream::Channel, in_orderId::String; _mediaType=nothing)
-    _ctx = _oacinternal_deleteOrder(_api, in_orderId; _mediaType=_mediaType)
+function delete_order(_api::StoreApi, response_stream::Channel, order_id::String; _mediaType=nothing)
+    _ctx = _oacinternal_delete_order(_api, order_id; _mediaType=_mediaType)
     OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-function _oacinternal_getInventory(_api::StoreApi; _mediaType=nothing)
+function _oacinternal_get_inventory(_api::StoreApi; _mediaType=nothing)
     _ctx = OpenAPI.Clients.Ctx(_api.client, "GET", Dict{String, Int64}, "/store/inventory", ["api_key", ])
     OpenAPI.Clients.set_header_accept(_ctx, ["application/json", ])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? [] : [_mediaType])
@@ -47,22 +47,22 @@ Params:
 
 Return: Dict{String, Int64}
 """
-function getInventory(_api::StoreApi; _mediaType=nothing)
-    _ctx = _oacinternal_getInventory(_api; _mediaType=_mediaType)
+function get_inventory(_api::StoreApi; _mediaType=nothing)
+    _ctx = _oacinternal_get_inventory(_api; _mediaType=_mediaType)
     OpenAPI.Clients.exec(_ctx)
 end
 
-function getInventory(_api::StoreApi, response_stream::Channel; _mediaType=nothing)
-    _ctx = _oacinternal_getInventory(_api; _mediaType=_mediaType)
+function get_inventory(_api::StoreApi, response_stream::Channel; _mediaType=nothing)
+    _ctx = _oacinternal_get_inventory(_api; _mediaType=_mediaType)
     OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-function _oacinternal_getOrderById(_api::StoreApi, in_orderId::Int64; _mediaType=nothing)
-    OpenAPI.validate_param("orderId", "getOrderById", :maximum, in_orderId, 5, false)
-    OpenAPI.validate_param("orderId", "getOrderById", :minimum, in_orderId, 1, false)
+function _oacinternal_get_order_by_id(_api::StoreApi, order_id::Int64; _mediaType=nothing)
+    OpenAPI.validate_param("order_id", "get_order_by_id", :maximum, order_id, 5, false)
+    OpenAPI.validate_param("order_id", "get_order_by_id", :minimum, order_id, 1, false)
 
     _ctx = OpenAPI.Clients.Ctx(_api.client, "GET", Order, "/store/order/{orderId}", [])
-    OpenAPI.Clients.set_param(_ctx.path, "orderId", in_orderId)  # type Int64
+    OpenAPI.Clients.set_param(_ctx.path, "orderId", order_id)  # type Int64
     OpenAPI.Clients.set_header_accept(_ctx, ["application/xml", "application/json", ])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? [] : [_mediaType])
     return _ctx
@@ -73,22 +73,22 @@ end
 For valid response try integer IDs with value <= 5 or > 10. Other values will generated exceptions
 
 Params:
-- in_orderId::Int64 (required)
+- order_id::Int64 (required)
 
 Return: Order
 """
-function getOrderById(_api::StoreApi, in_orderId::Int64; _mediaType=nothing)
-    _ctx = _oacinternal_getOrderById(_api, in_orderId; _mediaType=_mediaType)
+function get_order_by_id(_api::StoreApi, order_id::Int64; _mediaType=nothing)
+    _ctx = _oacinternal_get_order_by_id(_api, order_id; _mediaType=_mediaType)
     OpenAPI.Clients.exec(_ctx)
 end
 
-function getOrderById(_api::StoreApi, response_stream::Channel, in_orderId::Int64; _mediaType=nothing)
-    _ctx = _oacinternal_getOrderById(_api, in_orderId; _mediaType=_mediaType)
+function get_order_by_id(_api::StoreApi, response_stream::Channel, order_id::Int64; _mediaType=nothing)
+    _ctx = _oacinternal_get_order_by_id(_api, order_id; _mediaType=_mediaType)
     OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-function _oacinternal_placeOrder(_api::StoreApi, in_Order::Order; _mediaType=nothing)
-    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", Order, "/store/order", [], in_Order)
+function _oacinternal_place_order(_api::StoreApi, order::Order; _mediaType=nothing)
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", Order, "/store/order", [], order)
     OpenAPI.Clients.set_header_accept(_ctx, ["application/xml", "application/json", ])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? ["application/json", ] : [_mediaType])
     return _ctx
@@ -97,21 +97,21 @@ end
 @doc raw"""Place an order for a pet
 
 Params:
-- in_Order::Order (required)
+- order::Order (required)
 
 Return: Order
 """
-function placeOrder(_api::StoreApi, in_Order::Order; _mediaType=nothing)
-    _ctx = _oacinternal_placeOrder(_api, in_Order; _mediaType=_mediaType)
+function place_order(_api::StoreApi, order::Order; _mediaType=nothing)
+    _ctx = _oacinternal_place_order(_api, order; _mediaType=_mediaType)
     OpenAPI.Clients.exec(_ctx)
 end
 
-function placeOrder(_api::StoreApi, response_stream::Channel, in_Order::Order; _mediaType=nothing)
-    _ctx = _oacinternal_placeOrder(_api, in_Order; _mediaType=_mediaType)
+function place_order(_api::StoreApi, response_stream::Channel, order::Order; _mediaType=nothing)
+    _ctx = _oacinternal_place_order(_api, order; _mediaType=_mediaType)
     OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-export deleteOrder
-export getInventory
-export getOrderById
-export placeOrder
+export delete_order
+export get_inventory
+export get_order_by_id
+export place_order

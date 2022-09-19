@@ -2,8 +2,8 @@
 # Do not modify this file directly. Modify the OpenAPI specification instead.
 
 
-function addPet_read(handler)
-    function addPet_read_handler(req::HTTP.Request)
+function add_pet_read(handler)
+    function add_pet_read_handler(req::HTTP.Request)
         openapi_params = Dict{String,Any}()
         openapi_params["Pet"] = OpenAPI.Servers.to_param_type(Pet, String(req.body))
         req.context[:openapi_params] = openapi_params
@@ -12,21 +12,21 @@ function addPet_read(handler)
     end
 end
 
-function addPet_validate(handler)
-    function addPet_validate_handler(req::HTTP.Request)
+function add_pet_validate(handler)
+    function add_pet_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         
         return handler(req)
     end
 end
 
-function addPet_invoke(impl; post_invoke=nothing)
-    function addPet_invoke_handler(req::HTTP.Request)
+function add_pet_invoke(impl; post_invoke=nothing)
+    function add_pet_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = try
-            impl.addPet(req::HTTP.Request, openapi_params["Pet"];)
+            impl.add_pet(req::HTTP.Request, openapi_params["Pet"];)
         catch ex
-            @error("Error in addPet", exception=(ex, catch_backtrace()))
+            @error("Error in add_pet", exception=(ex, catch_backtrace()))
             HTTP.Response(500, "Internal Server Error")
         end
         resp = OpenAPI.Servers.server_response(ret)
@@ -34,8 +34,8 @@ function addPet_invoke(impl; post_invoke=nothing)
     end
 end
 
-function deletePet_read(handler)
-    function deletePet_read_handler(req::HTTP.Request)
+function delete_pet_read(handler)
+    function delete_pet_read_handler(req::HTTP.Request)
         openapi_params = Dict{String,Any}()
         path_params = HTTP.getparams(req)
         openapi_params["petId"] = OpenAPI.Servers.to_param(Int64, path_params, "petId", required=true, )
@@ -47,21 +47,21 @@ function deletePet_read(handler)
     end
 end
 
-function deletePet_validate(handler)
-    function deletePet_validate_handler(req::HTTP.Request)
+function delete_pet_validate(handler)
+    function delete_pet_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         
         return handler(req)
     end
 end
 
-function deletePet_invoke(impl; post_invoke=nothing)
-    function deletePet_invoke_handler(req::HTTP.Request)
+function delete_pet_invoke(impl; post_invoke=nothing)
+    function delete_pet_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = try
-            impl.deletePet(req::HTTP.Request, openapi_params["petId"]; in_api_key=get(openapi_params, "api_key", nothing),)
+            impl.delete_pet(req::HTTP.Request, openapi_params["petId"]; api_key=get(openapi_params, "api_key", nothing),)
         catch ex
-            @error("Error in deletePet", exception=(ex, catch_backtrace()))
+            @error("Error in delete_pet", exception=(ex, catch_backtrace()))
             HTTP.Response(500, "Internal Server Error")
         end
         resp = OpenAPI.Servers.server_response(ret)
@@ -69,8 +69,8 @@ function deletePet_invoke(impl; post_invoke=nothing)
     end
 end
 
-function findPetsByStatus_read(handler)
-    function findPetsByStatus_read_handler(req::HTTP.Request)
+function find_pets_by_status_read(handler)
+    function find_pets_by_status_read_handler(req::HTTP.Request)
         openapi_params = Dict{String,Any}()
         query_params = HTTP.queryparams(URIs.URI(req.target))
         openapi_params["status"] = OpenAPI.Servers.to_param(Vector{String}, query_params, "status", required=true, )
@@ -80,21 +80,21 @@ function findPetsByStatus_read(handler)
     end
 end
 
-function findPetsByStatus_validate(handler)
-    function findPetsByStatus_validate_handler(req::HTTP.Request)
+function find_pets_by_status_validate(handler)
+    function find_pets_by_status_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         
         return handler(req)
     end
 end
 
-function findPetsByStatus_invoke(impl; post_invoke=nothing)
-    function findPetsByStatus_invoke_handler(req::HTTP.Request)
+function find_pets_by_status_invoke(impl; post_invoke=nothing)
+    function find_pets_by_status_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = try
-            impl.findPetsByStatus(req::HTTP.Request, openapi_params["status"];)
+            impl.find_pets_by_status(req::HTTP.Request, openapi_params["status"];)
         catch ex
-            @error("Error in findPetsByStatus", exception=(ex, catch_backtrace()))
+            @error("Error in find_pets_by_status", exception=(ex, catch_backtrace()))
             HTTP.Response(500, "Internal Server Error")
         end
         resp = OpenAPI.Servers.server_response(ret)
@@ -102,8 +102,8 @@ function findPetsByStatus_invoke(impl; post_invoke=nothing)
     end
 end
 
-function findPetsByTags_read(handler)
-    function findPetsByTags_read_handler(req::HTTP.Request)
+function find_pets_by_tags_read(handler)
+    function find_pets_by_tags_read_handler(req::HTTP.Request)
         openapi_params = Dict{String,Any}()
         query_params = HTTP.queryparams(URIs.URI(req.target))
         openapi_params["tags"] = OpenAPI.Servers.to_param(Vector{String}, query_params, "tags", required=true, )
@@ -113,21 +113,21 @@ function findPetsByTags_read(handler)
     end
 end
 
-function findPetsByTags_validate(handler)
-    function findPetsByTags_validate_handler(req::HTTP.Request)
+function find_pets_by_tags_validate(handler)
+    function find_pets_by_tags_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         
         return handler(req)
     end
 end
 
-function findPetsByTags_invoke(impl; post_invoke=nothing)
-    function findPetsByTags_invoke_handler(req::HTTP.Request)
+function find_pets_by_tags_invoke(impl; post_invoke=nothing)
+    function find_pets_by_tags_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = try
-            impl.findPetsByTags(req::HTTP.Request, openapi_params["tags"];)
+            impl.find_pets_by_tags(req::HTTP.Request, openapi_params["tags"];)
         catch ex
-            @error("Error in findPetsByTags", exception=(ex, catch_backtrace()))
+            @error("Error in find_pets_by_tags", exception=(ex, catch_backtrace()))
             HTTP.Response(500, "Internal Server Error")
         end
         resp = OpenAPI.Servers.server_response(ret)
@@ -135,8 +135,8 @@ function findPetsByTags_invoke(impl; post_invoke=nothing)
     end
 end
 
-function getPetById_read(handler)
-    function getPetById_read_handler(req::HTTP.Request)
+function get_pet_by_id_read(handler)
+    function get_pet_by_id_read_handler(req::HTTP.Request)
         openapi_params = Dict{String,Any}()
         path_params = HTTP.getparams(req)
         openapi_params["petId"] = OpenAPI.Servers.to_param(Int64, path_params, "petId", required=true, )
@@ -146,21 +146,21 @@ function getPetById_read(handler)
     end
 end
 
-function getPetById_validate(handler)
-    function getPetById_validate_handler(req::HTTP.Request)
+function get_pet_by_id_validate(handler)
+    function get_pet_by_id_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         
         return handler(req)
     end
 end
 
-function getPetById_invoke(impl; post_invoke=nothing)
-    function getPetById_invoke_handler(req::HTTP.Request)
+function get_pet_by_id_invoke(impl; post_invoke=nothing)
+    function get_pet_by_id_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = try
-            impl.getPetById(req::HTTP.Request, openapi_params["petId"];)
+            impl.get_pet_by_id(req::HTTP.Request, openapi_params["petId"];)
         catch ex
-            @error("Error in getPetById", exception=(ex, catch_backtrace()))
+            @error("Error in get_pet_by_id", exception=(ex, catch_backtrace()))
             HTTP.Response(500, "Internal Server Error")
         end
         resp = OpenAPI.Servers.server_response(ret)
@@ -168,8 +168,8 @@ function getPetById_invoke(impl; post_invoke=nothing)
     end
 end
 
-function updatePet_read(handler)
-    function updatePet_read_handler(req::HTTP.Request)
+function update_pet_read(handler)
+    function update_pet_read_handler(req::HTTP.Request)
         openapi_params = Dict{String,Any}()
         openapi_params["Pet"] = OpenAPI.Servers.to_param_type(Pet, String(req.body))
         req.context[:openapi_params] = openapi_params
@@ -178,21 +178,21 @@ function updatePet_read(handler)
     end
 end
 
-function updatePet_validate(handler)
-    function updatePet_validate_handler(req::HTTP.Request)
+function update_pet_validate(handler)
+    function update_pet_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         
         return handler(req)
     end
 end
 
-function updatePet_invoke(impl; post_invoke=nothing)
-    function updatePet_invoke_handler(req::HTTP.Request)
+function update_pet_invoke(impl; post_invoke=nothing)
+    function update_pet_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = try
-            impl.updatePet(req::HTTP.Request, openapi_params["Pet"];)
+            impl.update_pet(req::HTTP.Request, openapi_params["Pet"];)
         catch ex
-            @error("Error in updatePet", exception=(ex, catch_backtrace()))
+            @error("Error in update_pet", exception=(ex, catch_backtrace()))
             HTTP.Response(500, "Internal Server Error")
         end
         resp = OpenAPI.Servers.server_response(ret)
@@ -200,8 +200,8 @@ function updatePet_invoke(impl; post_invoke=nothing)
     end
 end
 
-function updatePetWithForm_read(handler)
-    function updatePetWithForm_read_handler(req::HTTP.Request)
+function update_pet_with_form_read(handler)
+    function update_pet_with_form_read_handler(req::HTTP.Request)
         openapi_params = Dict{String,Any}()
         path_params = HTTP.getparams(req)
         openapi_params["petId"] = OpenAPI.Servers.to_param(Int64, path_params, "petId", required=true, )
@@ -214,21 +214,21 @@ function updatePetWithForm_read(handler)
     end
 end
 
-function updatePetWithForm_validate(handler)
-    function updatePetWithForm_validate_handler(req::HTTP.Request)
+function update_pet_with_form_validate(handler)
+    function update_pet_with_form_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         
         return handler(req)
     end
 end
 
-function updatePetWithForm_invoke(impl; post_invoke=nothing)
-    function updatePetWithForm_invoke_handler(req::HTTP.Request)
+function update_pet_with_form_invoke(impl; post_invoke=nothing)
+    function update_pet_with_form_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = try
-            impl.updatePetWithForm(req::HTTP.Request, openapi_params["petId"]; in_name=get(openapi_params, "name", nothing), in_status=get(openapi_params, "status", nothing),)
+            impl.update_pet_with_form(req::HTTP.Request, openapi_params["petId"]; name=get(openapi_params, "name", nothing), status=get(openapi_params, "status", nothing),)
         catch ex
-            @error("Error in updatePetWithForm", exception=(ex, catch_backtrace()))
+            @error("Error in update_pet_with_form", exception=(ex, catch_backtrace()))
             HTTP.Response(500, "Internal Server Error")
         end
         resp = OpenAPI.Servers.server_response(ret)
@@ -236,8 +236,8 @@ function updatePetWithForm_invoke(impl; post_invoke=nothing)
     end
 end
 
-function uploadFile_read(handler)
-    function uploadFile_read_handler(req::HTTP.Request)
+function upload_file_read(handler)
+    function upload_file_read_handler(req::HTTP.Request)
         openapi_params = Dict{String,Any}()
         path_params = HTTP.getparams(req)
         openapi_params["petId"] = OpenAPI.Servers.to_param(Int64, path_params, "petId", required=true, )
@@ -250,21 +250,21 @@ function uploadFile_read(handler)
     end
 end
 
-function uploadFile_validate(handler)
-    function uploadFile_validate_handler(req::HTTP.Request)
+function upload_file_validate(handler)
+    function upload_file_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         
         return handler(req)
     end
 end
 
-function uploadFile_invoke(impl; post_invoke=nothing)
-    function uploadFile_invoke_handler(req::HTTP.Request)
+function upload_file_invoke(impl; post_invoke=nothing)
+    function upload_file_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = try
-            impl.uploadFile(req::HTTP.Request, openapi_params["petId"]; in_additionalMetadata=get(openapi_params, "additionalMetadata", nothing), in_file=get(openapi_params, "file", nothing),)
+            impl.upload_file(req::HTTP.Request, openapi_params["petId"]; additional_metadata=get(openapi_params, "additionalMetadata", nothing), file=get(openapi_params, "file", nothing),)
         catch ex
-            @error("Error in uploadFile", exception=(ex, catch_backtrace()))
+            @error("Error in upload_file", exception=(ex, catch_backtrace()))
             HTTP.Response(500, "Internal Server Error")
         end
         resp = OpenAPI.Servers.server_response(ret)
@@ -274,13 +274,13 @@ end
 
 
 function registerPetApi(router::HTTP.Router, impl; path_prefix::String="", optional_middlewares...)
-    HTTP.register!(router, "POST", path_prefix * "/pet", OpenAPI.Servers.middleware(impl, addPet_read, addPet_validate, addPet_invoke; optional_middlewares...))
-    HTTP.register!(router, "DELETE", path_prefix * "/pet/{petId}", OpenAPI.Servers.middleware(impl, deletePet_read, deletePet_validate, deletePet_invoke; optional_middlewares...))
-    HTTP.register!(router, "GET", path_prefix * "/pet/findByStatus", OpenAPI.Servers.middleware(impl, findPetsByStatus_read, findPetsByStatus_validate, findPetsByStatus_invoke; optional_middlewares...))
-    HTTP.register!(router, "GET", path_prefix * "/pet/findByTags", OpenAPI.Servers.middleware(impl, findPetsByTags_read, findPetsByTags_validate, findPetsByTags_invoke; optional_middlewares...))
-    HTTP.register!(router, "GET", path_prefix * "/pet/{petId}", OpenAPI.Servers.middleware(impl, getPetById_read, getPetById_validate, getPetById_invoke; optional_middlewares...))
-    HTTP.register!(router, "PUT", path_prefix * "/pet", OpenAPI.Servers.middleware(impl, updatePet_read, updatePet_validate, updatePet_invoke; optional_middlewares...))
-    HTTP.register!(router, "POST", path_prefix * "/pet/{petId}", OpenAPI.Servers.middleware(impl, updatePetWithForm_read, updatePetWithForm_validate, updatePetWithForm_invoke; optional_middlewares...))
-    HTTP.register!(router, "POST", path_prefix * "/pet/{petId}/uploadImage", OpenAPI.Servers.middleware(impl, uploadFile_read, uploadFile_validate, uploadFile_invoke; optional_middlewares...))
+    HTTP.register!(router, "POST", path_prefix * "/pet", OpenAPI.Servers.middleware(impl, add_pet_read, add_pet_validate, add_pet_invoke; optional_middlewares...))
+    HTTP.register!(router, "DELETE", path_prefix * "/pet/{petId}", OpenAPI.Servers.middleware(impl, delete_pet_read, delete_pet_validate, delete_pet_invoke; optional_middlewares...))
+    HTTP.register!(router, "GET", path_prefix * "/pet/findByStatus", OpenAPI.Servers.middleware(impl, find_pets_by_status_read, find_pets_by_status_validate, find_pets_by_status_invoke; optional_middlewares...))
+    HTTP.register!(router, "GET", path_prefix * "/pet/findByTags", OpenAPI.Servers.middleware(impl, find_pets_by_tags_read, find_pets_by_tags_validate, find_pets_by_tags_invoke; optional_middlewares...))
+    HTTP.register!(router, "GET", path_prefix * "/pet/{petId}", OpenAPI.Servers.middleware(impl, get_pet_by_id_read, get_pet_by_id_validate, get_pet_by_id_invoke; optional_middlewares...))
+    HTTP.register!(router, "PUT", path_prefix * "/pet", OpenAPI.Servers.middleware(impl, update_pet_read, update_pet_validate, update_pet_invoke; optional_middlewares...))
+    HTTP.register!(router, "POST", path_prefix * "/pet/{petId}", OpenAPI.Servers.middleware(impl, update_pet_with_form_read, update_pet_with_form_validate, update_pet_with_form_invoke; optional_middlewares...))
+    HTTP.register!(router, "POST", path_prefix * "/pet/{petId}/uploadImage", OpenAPI.Servers.middleware(impl, upload_file_read, upload_file_validate, upload_file_invoke; optional_middlewares...))
     return router
 end

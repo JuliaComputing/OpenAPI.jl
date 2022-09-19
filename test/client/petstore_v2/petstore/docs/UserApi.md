@@ -4,19 +4,19 @@ All URIs are relative to *https://petstore.swagger.io/v2*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**createUser**](UserApi.md#createUser) | **POST** /user | Create user
-[**createUsersWithArrayInput**](UserApi.md#createUsersWithArrayInput) | **POST** /user/createWithArray | Creates list of users with given input array
-[**createUsersWithListInput**](UserApi.md#createUsersWithListInput) | **POST** /user/createWithList | Creates list of users with given input array
-[**deleteUser**](UserApi.md#deleteUser) | **DELETE** /user/{username} | Delete user
-[**getUserByName**](UserApi.md#getUserByName) | **GET** /user/{username} | Get user by user name
-[**loginUser**](UserApi.md#loginUser) | **GET** /user/login | Logs user into the system
-[**logoutUser**](UserApi.md#logoutUser) | **GET** /user/logout | Logs out current logged in user session
-[**updateUser**](UserApi.md#updateUser) | **PUT** /user/{username} | Updated user
+[**create_user**](UserApi.md#create_user) | **POST** /user | Create user
+[**create_users_with_array_input**](UserApi.md#create_users_with_array_input) | **POST** /user/createWithArray | Creates list of users with given input array
+[**create_users_with_list_input**](UserApi.md#create_users_with_list_input) | **POST** /user/createWithList | Creates list of users with given input array
+[**delete_user**](UserApi.md#delete_user) | **DELETE** /user/{username} | Delete user
+[**get_user_by_name**](UserApi.md#get_user_by_name) | **GET** /user/{username} | Get user by user name
+[**login_user**](UserApi.md#login_user) | **GET** /user/login | Logs user into the system
+[**logout_user**](UserApi.md#logout_user) | **GET** /user/logout | Logs out current logged in user session
+[**update_user**](UserApi.md#update_user) | **PUT** /user/{username} | Updated user
 
 
-# **createUser**
-> createUser(_api::UserApi, in_body::User; _mediaType=nothing) <br/>
-> createUser(_api::UserApi, response_stream::Channel, in_body::User; _mediaType=nothing)
+# **create_user**
+> create_user(_api::UserApi, body::User; _mediaType=nothing) <br/>
+> create_user(_api::UserApi, response_stream::Channel, body::User; _mediaType=nothing)
 
 Create user
 
@@ -27,7 +27,7 @@ This can only be done by the logged in user.
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **UserApi** | API context | 
-**in_body** | [**User**](User.md)| Created user object | 
+**body** | [**User**](User.md)| Created user object | 
 
 ### Return type
 
@@ -44,9 +44,9 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **createUsersWithArrayInput**
-> createUsersWithArrayInput(_api::UserApi, in_body::Vector{User}; _mediaType=nothing) <br/>
-> createUsersWithArrayInput(_api::UserApi, response_stream::Channel, in_body::Vector{User}; _mediaType=nothing)
+# **create_users_with_array_input**
+> create_users_with_array_input(_api::UserApi, body::Vector{User}; _mediaType=nothing) <br/>
+> create_users_with_array_input(_api::UserApi, response_stream::Channel, body::Vector{User}; _mediaType=nothing)
 
 Creates list of users with given input array
 
@@ -55,7 +55,7 @@ Creates list of users with given input array
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **UserApi** | API context | 
-**in_body** | [**Vector{User}**](User.md)| List of user object | 
+**body** | [**Vector{User}**](User.md)| List of user object | 
 
 ### Return type
 
@@ -72,9 +72,9 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **createUsersWithListInput**
-> createUsersWithListInput(_api::UserApi, in_body::Vector{User}; _mediaType=nothing) <br/>
-> createUsersWithListInput(_api::UserApi, response_stream::Channel, in_body::Vector{User}; _mediaType=nothing)
+# **create_users_with_list_input**
+> create_users_with_list_input(_api::UserApi, body::Vector{User}; _mediaType=nothing) <br/>
+> create_users_with_list_input(_api::UserApi, response_stream::Channel, body::Vector{User}; _mediaType=nothing)
 
 Creates list of users with given input array
 
@@ -83,7 +83,7 @@ Creates list of users with given input array
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **UserApi** | API context | 
-**in_body** | [**Vector{User}**](User.md)| List of user object | 
+**body** | [**Vector{User}**](User.md)| List of user object | 
 
 ### Return type
 
@@ -100,9 +100,9 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **deleteUser**
-> deleteUser(_api::UserApi, in_username::String; _mediaType=nothing) <br/>
-> deleteUser(_api::UserApi, response_stream::Channel, in_username::String; _mediaType=nothing)
+# **delete_user**
+> delete_user(_api::UserApi, username::String; _mediaType=nothing) <br/>
+> delete_user(_api::UserApi, response_stream::Channel, username::String; _mediaType=nothing)
 
 Delete user
 
@@ -113,7 +113,7 @@ This can only be done by the logged in user.
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **UserApi** | API context | 
-**in_username** | **String**| The name that needs to be deleted | [default to nothing]
+**username** | **String**| The name that needs to be deleted | [default to nothing]
 
 ### Return type
 
@@ -130,9 +130,9 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **getUserByName**
-> getUserByName(_api::UserApi, in_username::String; _mediaType=nothing) -> User  <br/>
-> getUserByName(_api::UserApi, response_stream::Channel, in_username::String; _mediaType=nothing) -> User 
+# **get_user_by_name**
+> get_user_by_name(_api::UserApi, username::String; _mediaType=nothing) -> User  <br/>
+> get_user_by_name(_api::UserApi, response_stream::Channel, username::String; _mediaType=nothing) -> User 
 
 Get user by user name
 
@@ -141,7 +141,7 @@ Get user by user name
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **UserApi** | API context | 
-**in_username** | **String**| The name that needs to be fetched. Use user1 for testing.  | [default to nothing]
+**username** | **String**| The name that needs to be fetched. Use user1 for testing.  | [default to nothing]
 
 ### Return type
 
@@ -158,9 +158,9 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **loginUser**
-> loginUser(_api::UserApi, in_username::String, in_password::String; _mediaType=nothing) -> String  <br/>
-> loginUser(_api::UserApi, response_stream::Channel, in_username::String, in_password::String; _mediaType=nothing) -> String 
+# **login_user**
+> login_user(_api::UserApi, username::String, password::String; _mediaType=nothing) -> String  <br/>
+> login_user(_api::UserApi, response_stream::Channel, username::String, password::String; _mediaType=nothing) -> String 
 
 Logs user into the system
 
@@ -169,8 +169,8 @@ Logs user into the system
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **UserApi** | API context | 
-**in_username** | **String**| The user name for login | [default to nothing]
-**in_password** | **String**| The password for login in clear text | [default to nothing]
+**username** | **String**| The user name for login | [default to nothing]
+**password** | **String**| The password for login in clear text | [default to nothing]
 
 ### Return type
 
@@ -187,9 +187,9 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **logoutUser**
-> logoutUser(_api::UserApi; _mediaType=nothing) <br/>
-> logoutUser(_api::UserApi, response_stream::Channel; _mediaType=nothing)
+# **logout_user**
+> logout_user(_api::UserApi; _mediaType=nothing) <br/>
+> logout_user(_api::UserApi, response_stream::Channel; _mediaType=nothing)
 
 Logs out current logged in user session
 
@@ -211,9 +211,9 @@ No authorization required
 
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
-# **updateUser**
-> updateUser(_api::UserApi, in_username::String, in_body::User; _mediaType=nothing) <br/>
-> updateUser(_api::UserApi, response_stream::Channel, in_username::String, in_body::User; _mediaType=nothing)
+# **update_user**
+> update_user(_api::UserApi, username::String, body::User; _mediaType=nothing) <br/>
+> update_user(_api::UserApi, response_stream::Channel, username::String, body::User; _mediaType=nothing)
 
 Updated user
 
@@ -224,8 +224,8 @@ This can only be done by the logged in user.
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **UserApi** | API context | 
-**in_username** | **String**| name that need to be updated | [default to nothing]
-**in_body** | [**User**](User.md)| Updated user object | 
+**username** | **String**| name that need to be updated | [default to nothing]
+**body** | [**User**](User.md)| Updated user object | 
 
 ### Return type
 

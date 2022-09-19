@@ -5,8 +5,8 @@ struct UserApi <: OpenAPI.APIClientImpl
     client::OpenAPI.Clients.Client
 end
 
-function _oacinternal_createUser(_api::UserApi, in_User::User; _mediaType=nothing)
-    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", Nothing, "/user", [], in_User)
+function _oacinternal_create_user(_api::UserApi, user::User; _mediaType=nothing)
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", Nothing, "/user", [], user)
     OpenAPI.Clients.set_header_accept(_ctx, [])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? ["application/json", ] : [_mediaType])
     return _ctx
@@ -17,22 +17,22 @@ end
 This can only be done by the logged in user.
 
 Params:
-- in_User::User (required)
+- user::User (required)
 
 Return: Nothing
 """
-function createUser(_api::UserApi, in_User::User; _mediaType=nothing)
-    _ctx = _oacinternal_createUser(_api, in_User; _mediaType=_mediaType)
+function create_user(_api::UserApi, user::User; _mediaType=nothing)
+    _ctx = _oacinternal_create_user(_api, user; _mediaType=_mediaType)
     OpenAPI.Clients.exec(_ctx)
 end
 
-function createUser(_api::UserApi, response_stream::Channel, in_User::User; _mediaType=nothing)
-    _ctx = _oacinternal_createUser(_api, in_User; _mediaType=_mediaType)
+function create_user(_api::UserApi, response_stream::Channel, user::User; _mediaType=nothing)
+    _ctx = _oacinternal_create_user(_api, user; _mediaType=_mediaType)
     OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-function _oacinternal_createUsersWithArrayInput(_api::UserApi, in_User::Vector{User}; _mediaType=nothing)
-    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", Nothing, "/user/createWithArray", [], in_User)
+function _oacinternal_create_users_with_array_input(_api::UserApi, user::Vector{User}; _mediaType=nothing)
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", Nothing, "/user/createWithArray", [], user)
     OpenAPI.Clients.set_header_accept(_ctx, [])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? ["application/json", ] : [_mediaType])
     return _ctx
@@ -41,22 +41,22 @@ end
 @doc raw"""Creates list of users with given input array
 
 Params:
-- in_User::Vector{User} (required)
+- user::Vector{User} (required)
 
 Return: Nothing
 """
-function createUsersWithArrayInput(_api::UserApi, in_User::Vector{User}; _mediaType=nothing)
-    _ctx = _oacinternal_createUsersWithArrayInput(_api, in_User; _mediaType=_mediaType)
+function create_users_with_array_input(_api::UserApi, user::Vector{User}; _mediaType=nothing)
+    _ctx = _oacinternal_create_users_with_array_input(_api, user; _mediaType=_mediaType)
     OpenAPI.Clients.exec(_ctx)
 end
 
-function createUsersWithArrayInput(_api::UserApi, response_stream::Channel, in_User::Vector{User}; _mediaType=nothing)
-    _ctx = _oacinternal_createUsersWithArrayInput(_api, in_User; _mediaType=_mediaType)
+function create_users_with_array_input(_api::UserApi, response_stream::Channel, user::Vector{User}; _mediaType=nothing)
+    _ctx = _oacinternal_create_users_with_array_input(_api, user; _mediaType=_mediaType)
     OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-function _oacinternal_createUsersWithListInput(_api::UserApi, in_User::Vector{User}; _mediaType=nothing)
-    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", Nothing, "/user/createWithList", [], in_User)
+function _oacinternal_create_users_with_list_input(_api::UserApi, user::Vector{User}; _mediaType=nothing)
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", Nothing, "/user/createWithList", [], user)
     OpenAPI.Clients.set_header_accept(_ctx, [])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? ["application/json", ] : [_mediaType])
     return _ctx
@@ -65,23 +65,23 @@ end
 @doc raw"""Creates list of users with given input array
 
 Params:
-- in_User::Vector{User} (required)
+- user::Vector{User} (required)
 
 Return: Nothing
 """
-function createUsersWithListInput(_api::UserApi, in_User::Vector{User}; _mediaType=nothing)
-    _ctx = _oacinternal_createUsersWithListInput(_api, in_User; _mediaType=_mediaType)
+function create_users_with_list_input(_api::UserApi, user::Vector{User}; _mediaType=nothing)
+    _ctx = _oacinternal_create_users_with_list_input(_api, user; _mediaType=_mediaType)
     OpenAPI.Clients.exec(_ctx)
 end
 
-function createUsersWithListInput(_api::UserApi, response_stream::Channel, in_User::Vector{User}; _mediaType=nothing)
-    _ctx = _oacinternal_createUsersWithListInput(_api, in_User; _mediaType=_mediaType)
+function create_users_with_list_input(_api::UserApi, response_stream::Channel, user::Vector{User}; _mediaType=nothing)
+    _ctx = _oacinternal_create_users_with_list_input(_api, user; _mediaType=_mediaType)
     OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-function _oacinternal_deleteUser(_api::UserApi, in_username::String; _mediaType=nothing)
+function _oacinternal_delete_user(_api::UserApi, username::String; _mediaType=nothing)
     _ctx = OpenAPI.Clients.Ctx(_api.client, "DELETE", Nothing, "/user/{username}", [])
-    OpenAPI.Clients.set_param(_ctx.path, "username", in_username)  # type String
+    OpenAPI.Clients.set_param(_ctx.path, "username", username)  # type String
     OpenAPI.Clients.set_header_accept(_ctx, [])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? [] : [_mediaType])
     return _ctx
@@ -92,23 +92,23 @@ end
 This can only be done by the logged in user.
 
 Params:
-- in_username::String (required)
+- username::String (required)
 
 Return: Nothing
 """
-function deleteUser(_api::UserApi, in_username::String; _mediaType=nothing)
-    _ctx = _oacinternal_deleteUser(_api, in_username; _mediaType=_mediaType)
+function delete_user(_api::UserApi, username::String; _mediaType=nothing)
+    _ctx = _oacinternal_delete_user(_api, username; _mediaType=_mediaType)
     OpenAPI.Clients.exec(_ctx)
 end
 
-function deleteUser(_api::UserApi, response_stream::Channel, in_username::String; _mediaType=nothing)
-    _ctx = _oacinternal_deleteUser(_api, in_username; _mediaType=_mediaType)
+function delete_user(_api::UserApi, response_stream::Channel, username::String; _mediaType=nothing)
+    _ctx = _oacinternal_delete_user(_api, username; _mediaType=_mediaType)
     OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-function _oacinternal_getUserByName(_api::UserApi, in_username::String; _mediaType=nothing)
+function _oacinternal_get_user_by_name(_api::UserApi, username::String; _mediaType=nothing)
     _ctx = OpenAPI.Clients.Ctx(_api.client, "GET", User, "/user/{username}", [])
-    OpenAPI.Clients.set_param(_ctx.path, "username", in_username)  # type String
+    OpenAPI.Clients.set_param(_ctx.path, "username", username)  # type String
     OpenAPI.Clients.set_header_accept(_ctx, ["application/xml", "application/json", ])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? [] : [_mediaType])
     return _ctx
@@ -117,24 +117,24 @@ end
 @doc raw"""Get user by user name
 
 Params:
-- in_username::String (required)
+- username::String (required)
 
 Return: User
 """
-function getUserByName(_api::UserApi, in_username::String; _mediaType=nothing)
-    _ctx = _oacinternal_getUserByName(_api, in_username; _mediaType=_mediaType)
+function get_user_by_name(_api::UserApi, username::String; _mediaType=nothing)
+    _ctx = _oacinternal_get_user_by_name(_api, username; _mediaType=_mediaType)
     OpenAPI.Clients.exec(_ctx)
 end
 
-function getUserByName(_api::UserApi, response_stream::Channel, in_username::String; _mediaType=nothing)
-    _ctx = _oacinternal_getUserByName(_api, in_username; _mediaType=_mediaType)
+function get_user_by_name(_api::UserApi, response_stream::Channel, username::String; _mediaType=nothing)
+    _ctx = _oacinternal_get_user_by_name(_api, username; _mediaType=_mediaType)
     OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-function _oacinternal_loginUser(_api::UserApi, in_username::String, in_password::String; _mediaType=nothing)
+function _oacinternal_login_user(_api::UserApi, username::String, password::String; _mediaType=nothing)
     _ctx = OpenAPI.Clients.Ctx(_api.client, "GET", String, "/user/login", [])
-    OpenAPI.Clients.set_param(_ctx.query, "username", in_username)  # type String
-    OpenAPI.Clients.set_param(_ctx.query, "password", in_password)  # type String
+    OpenAPI.Clients.set_param(_ctx.query, "username", username)  # type String
+    OpenAPI.Clients.set_param(_ctx.query, "password", password)  # type String
     OpenAPI.Clients.set_header_accept(_ctx, ["application/xml", "application/json", ])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? [] : [_mediaType])
     return _ctx
@@ -143,22 +143,22 @@ end
 @doc raw"""Logs user into the system
 
 Params:
-- in_username::String (required)
-- in_password::String (required)
+- username::String (required)
+- password::String (required)
 
 Return: String
 """
-function loginUser(_api::UserApi, in_username::String, in_password::String; _mediaType=nothing)
-    _ctx = _oacinternal_loginUser(_api, in_username, in_password; _mediaType=_mediaType)
+function login_user(_api::UserApi, username::String, password::String; _mediaType=nothing)
+    _ctx = _oacinternal_login_user(_api, username, password; _mediaType=_mediaType)
     OpenAPI.Clients.exec(_ctx)
 end
 
-function loginUser(_api::UserApi, response_stream::Channel, in_username::String, in_password::String; _mediaType=nothing)
-    _ctx = _oacinternal_loginUser(_api, in_username, in_password; _mediaType=_mediaType)
+function login_user(_api::UserApi, response_stream::Channel, username::String, password::String; _mediaType=nothing)
+    _ctx = _oacinternal_login_user(_api, username, password; _mediaType=_mediaType)
     OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-function _oacinternal_logoutUser(_api::UserApi; _mediaType=nothing)
+function _oacinternal_logout_user(_api::UserApi; _mediaType=nothing)
     _ctx = OpenAPI.Clients.Ctx(_api.client, "GET", Nothing, "/user/logout", [])
     OpenAPI.Clients.set_header_accept(_ctx, [])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? [] : [_mediaType])
@@ -171,19 +171,19 @@ Params:
 
 Return: Nothing
 """
-function logoutUser(_api::UserApi; _mediaType=nothing)
-    _ctx = _oacinternal_logoutUser(_api; _mediaType=_mediaType)
+function logout_user(_api::UserApi; _mediaType=nothing)
+    _ctx = _oacinternal_logout_user(_api; _mediaType=_mediaType)
     OpenAPI.Clients.exec(_ctx)
 end
 
-function logoutUser(_api::UserApi, response_stream::Channel; _mediaType=nothing)
-    _ctx = _oacinternal_logoutUser(_api; _mediaType=_mediaType)
+function logout_user(_api::UserApi, response_stream::Channel; _mediaType=nothing)
+    _ctx = _oacinternal_logout_user(_api; _mediaType=_mediaType)
     OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-function _oacinternal_updateUser(_api::UserApi, in_username::String, in_User::User; _mediaType=nothing)
-    _ctx = OpenAPI.Clients.Ctx(_api.client, "PUT", Nothing, "/user/{username}", [], in_User)
-    OpenAPI.Clients.set_param(_ctx.path, "username", in_username)  # type String
+function _oacinternal_update_user(_api::UserApi, username::String, user::User; _mediaType=nothing)
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "PUT", Nothing, "/user/{username}", [], user)
+    OpenAPI.Clients.set_param(_ctx.path, "username", username)  # type String
     OpenAPI.Clients.set_header_accept(_ctx, [])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? ["application/json", ] : [_mediaType])
     return _ctx
@@ -194,26 +194,26 @@ end
 This can only be done by the logged in user.
 
 Params:
-- in_username::String (required)
-- in_User::User (required)
+- username::String (required)
+- user::User (required)
 
 Return: Nothing
 """
-function updateUser(_api::UserApi, in_username::String, in_User::User; _mediaType=nothing)
-    _ctx = _oacinternal_updateUser(_api, in_username, in_User; _mediaType=_mediaType)
+function update_user(_api::UserApi, username::String, user::User; _mediaType=nothing)
+    _ctx = _oacinternal_update_user(_api, username, user; _mediaType=_mediaType)
     OpenAPI.Clients.exec(_ctx)
 end
 
-function updateUser(_api::UserApi, response_stream::Channel, in_username::String, in_User::User; _mediaType=nothing)
-    _ctx = _oacinternal_updateUser(_api, in_username, in_User; _mediaType=_mediaType)
+function update_user(_api::UserApi, response_stream::Channel, username::String, user::User; _mediaType=nothing)
+    _ctx = _oacinternal_update_user(_api, username, user; _mediaType=_mediaType)
     OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-export createUser
-export createUsersWithArrayInput
-export createUsersWithListInput
-export deleteUser
-export getUserByName
-export loginUser
-export logoutUser
-export updateUser
+export create_user
+export create_users_with_array_input
+export create_users_with_list_input
+export delete_user
+export get_user_by_name
+export login_user
+export logout_user
+export update_user
