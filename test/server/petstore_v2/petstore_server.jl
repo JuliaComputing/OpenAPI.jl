@@ -1,4 +1,4 @@
-module PetStoreImpl
+module PetStoreV2Server
 
 using HTTP
 using JSON
@@ -256,6 +256,6 @@ function run_server(port=8080)
     wait(server[])
 end
 
-end # module PetStoreImpl
+end # module PetStoreV2Server
 
-PetStoreImpl.run_server()
+PetStoreV2Server.run_server()

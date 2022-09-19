@@ -1,4 +1,4 @@
-module PetStoreImpl
+module PetStoreV3Server
 
 using HTTP
 
@@ -255,6 +255,6 @@ function run_server(port=8081)
     wait(server[])
 end
 
-end # module PetStoreImpl
+end # module PetStoreV3Server
 
-PetStoreImpl.run_server()
+PetStoreV3Server.run_server()
