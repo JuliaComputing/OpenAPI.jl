@@ -5,25 +5,35 @@ include("client/runtests.jl")
 @testset "OpenAPI" begin
     @testset "Client" begin
         try
-            run(`client/petstore_v2/start_petstore_server.sh`)
-            run(`client/petstore_v3/start_petstore_server.sh`)
-            sleep(20)
+            if get(ENV, "RUNNER_OS", "") == "Linux"
+                run(`client/petstore_v2/start_petstore_server.sh`)
+                run(`client/petstore_v3/start_petstore_server.sh`)
+                sleep(20)
+            end
             OpenAPIClientTests.runtests()
         finally
-            run(`client/petstore_v2/stop_petstore_server.sh`)
-            run(`client/petstore_v3/stop_petstore_server.sh`)
+            if get(ENV, "RUNNER_OS", "") == "Linux"
+                run(`client/petstore_v2/stop_petstore_server.sh`)
+                run(`client/petstore_v3/stop_petstore_server.sh`)
+            end
         end
     end
-    sleep(20)
+    if get(ENV, "RUNNER_OS", "") == "Linux"
+        sleep(20)
+    end
     @testset "Server" begin
         try
-            run(`server/petstore_v2/start_petstore_server.sh`)
-            run(`server/petstore_v3/start_petstore_server.sh`)
-            sleep(20)
+            if get(ENV, "RUNNER_OS", "") == "Linux"
+                run(`server/petstore_v2/start_petstore_server.sh`)
+                run(`server/petstore_v3/start_petstore_server.sh`)
+                sleep(20)
+            end
             OpenAPIClientTests.runtests()
         finally
-            run(`server/petstore_v2/stop_petstore_server.sh`)
-            run(`server/petstore_v3/stop_petstore_server.sh`)
+            if get(ENV, "RUNNER_OS", "") == "Linux"
+                run(`server/petstore_v2/stop_petstore_server.sh`)
+                run(`server/petstore_v3/stop_petstore_server.sh`)
+            end
         end
     end
 end

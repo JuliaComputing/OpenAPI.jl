@@ -30,7 +30,7 @@ function test(uri)
     # @test update_pet_with_form(api, 10; in_name="meow") === nothing
 
     @info("PetApi - get_pet_by_id")
-    pet10 = get_pet_by_id(api, 10)
+    pet10 = get_pet_by_id(api, Int64(10))
     @test pet10.id == 10
 
     @info("PetApi - find_pets_by_status")
@@ -43,7 +43,7 @@ function test(uri)
     end
 
     @info("PetApi - delete_pet")
-    @test delete_pet(api, 10) === nothing
+    @test delete_pet(api, Int64(10)) === nothing
 
     # does not work yet. issue: https://github.com/JuliaWeb/Requests.jl/issues/139
     #@info("PetApi - upload_file")
