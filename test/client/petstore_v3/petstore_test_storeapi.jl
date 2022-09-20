@@ -25,18 +25,18 @@ function test(uri)
     @test neworder.id == 5
 
     @info("StoreApi - get_order_by_id")
-    @test_throws OpenAPI.ValidationException get_order_by_id(api, 0)
-    order = get_order_by_id(api, 5)
+    @test_throws OpenAPI.ValidationException get_order_by_id(api, Int64(0))
+    order = get_order_by_id(api, Int64(5))
     @test isa(order, Order)
     @test order.id == 5
     @test isa(order.shipDate, ZonedDateTime)
 
     @info("StoreApi - get_order_by_id (async)")
     response_channel = Channel{Order}(1)
-    @test_throws OpenAPI.ValidationException get_order_by_id(api, response_channel, 0)
+    @test_throws OpenAPI.ValidationException get_order_by_id(api, response_channel, Int64(0))
     @sync begin
         @async begin
-            resp = get_order_by_id(api, response_channel, 5)
+            resp = get_order_by_id(api, response_channel, Int64(5))
             @test (200 <= resp.status <= 206)
         end
         @async begin
@@ -49,7 +49,7 @@ function test(uri)
     # a closed channel is equivalent of cancellation of the call,
     # no error should be thrown, but response can be nothing if call was interrupted immediately
     @test !isopen(response_channel)
-    resp = get_order_by_id(api, response_channel, 5)
+    resp = get_order_by_id(api, response_channel, Int64(5))
     @test (resp === nothing) || (200 <= resp.status <= 206)
 
     @info("StoreApi - delete_order")
