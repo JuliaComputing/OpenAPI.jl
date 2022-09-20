@@ -44,13 +44,13 @@ const VAL_API_PARAM = Dict{Symbol,Function}([
     :enum => val_enum,
 ])
 
-function validate_param(param, operation, rule, value, args...)
+function validate_param(param, operation_or_model, rule, value, args...)
     # do not validate missing values
     (value === nothing) && return
 
     VAL_API_PARAM[rule](value, args...) && return
 
-    msg = string("Invalid value ($value) of parameter ", param, " for ", operation, ", ", MSG_INVALID_API_PARAM[rule](args...))
+    msg = string("Invalid value ($value) of parameter ", param, " for ", operation_or_model, ", ", MSG_INVALID_API_PARAM[rule](args...))
     throw(ValidationException(msg))
 end
 

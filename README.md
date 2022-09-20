@@ -9,13 +9,54 @@ The goal of OpenAPI is to define a standard, language-agnostic interface to REST
 
 Check out [OpenAPI-Spec](https://github.com/OAI/OpenAPI-Specification) for additional information about the OpenAPI project, including additional libraries with support for other languages and more.
 
-## How do I use this?
-
-### Code Generation
+## Code Generation
 
 Use [instructions](https://openapi-generator.tech/docs/generators) provided for the Julia OpenAPI code generator plugin to generate Julia code.
 
 ## Generated Code Structure
+
+### Models
+
+Each model from the specification is generated into a file named `model_<modelname>.jl`. It is represented as a `mutable struct` that is a subtype of the abstract type `APIModel`. Models have the following methods defined:
+
+- constructor that takes keyword arguments to fill in values for all model properties.
+- [`propertynames`](https://docs.julialang.org/en/v1/base/base/#Base.propertynames)
+- [`hasproperty`](https://docs.julialang.org/en/v1/base/base/#Base.hasproperty)
+- [`getproperty`](https://docs.julialang.org/en/v1/base/base/#Base.getproperty)
+- [`setproperty!`](https://docs.julialang.org/en/v1/base/base/#Base.setproperty!)
+
+In addition to these standard Julia methods, these convenience methods are also generated that help in checking value at a hierarchical path of the model.
+
+- `function haspropertyat(o::T, path...) where {T<:APIModel}`
+- `function getpropertyat(o::T, path...) where {T<:APIModel}`
+
+E.g:
+
+```julia
+# access o.field.subfield1.subfield2
+if haspropertyat(o, "field", "subfield1", "subfield2")
+    getpropertyat(o, "field", "subfield1", "subfield2")
+end
+
+# access nested array elements, e.g. o.field2.subfield1[10].subfield2
+if haspropertyat(o, "field", "subfield1", 10, "subfield2")
+    getpropertyat(o, "field", "subfield1", 10, "subfield2")
+end
+```
+
+### Validations
+
+Following validations are incorporated into models:
+
+- maximum value: must be a numeric value less than or equal to a specified value
+- minimum value: must be a numeric value greater than or equal to a specified value
+- maximum length: must be a string value of length less than or equal to a specified value
+- minimum length: must be a string value of length greater than or equal to a specified value
+- maximum item count: must be a list value with number of items less than or equal to a specified value
+- minimum item count: must be a list value with number of items greater than or equal to a specified value
+- enum: value must be from a list of allowed values
+
+Validations are imposed in the constructor and `setproperty!` methods of models.
 
 ### Client APIs
 
@@ -78,45 +119,29 @@ An API call involves the following steps:
 - Convert (deserialize) the response data into the return type and return.
 - In case of any errors, throw an instance of `ApiException`
 
-### Models
+## Server APIs
 
-Each model from the specification is generated into a file named `model_<modelname>.jl`. It is represented as a `mutable struct` that is a subtype of the abstract type `APIModel`. Models have the following methods defined:
+The server code is generated as a package. It contains API stubs and validations of API inputs. It requires the caller to
+have implemented the APIs, the signatures of which are provided in the generated package module docstring.
 
-- constructor that takes keyword arguments to fill in values for all model properties.
-- [`propertynames`](https://docs.julialang.org/en/v1/base/base/#Base.propertynames)
-- [`hasproperty`](https://docs.julialang.org/en/v1/base/base/#Base.hasproperty)
-- [`getproperty`](https://docs.julialang.org/en/v1/base/base/#Base.getproperty)
-- [`setproperty!`](https://docs.julialang.org/en/v1/base/base/#Base.setproperty!)
+A `register` function is made available that when provided with a `Router` instance, registers handlers
+for all the APIs.
 
-In addition to these standard Julia methods, these convenience methods are also generated that help in checking value at a hierarchical path of the model.
+`register(router, impl; path_prefix="", optional_middlewares...) -> HTTP.Router`
 
-- `function haspropertyat(o::T, path...) where {T<:APIModel}`
-- `function getpropertyat(o::T, path...) where {T<:APIModel}`
+Paramerets:
+- `router`: `HTTP.Router` to register handlers in, the same instance is also returned
+- `impl`: module that implements the server APIs
 
-E.g:
+Optional parameters:
+- `path_prefix`: prefix to be applied to all paths
+- `optional_middlewares`: Register one or more optional middlewares to be applied to all requests.
 
-```julia
-# access o.field.subfield1.subfield2
-if haspropertyat(o, "field", "subfield1", "subfield2")
-    getpropertyat(o, "field", "subfield1", "subfield2")
-end
+Optional middlewares can be one or more of:
+    - `init`: called before the request is processed
+    - `pre_validation`: called after the request is parsed but before validation
+    - `pre_invoke`: called after validation but before the handler is invoked
+    - `post_invoke`: called after the handler is invoked but before the response is sent
 
-# access nested array elements, e.g. o.field2.subfield1[10].subfield2
-if haspropertyat(o, "field", "subfield1", 10, "subfield2")
-    getpropertyat(o, "field", "subfield1", 10, "subfield2")
-end
-```
-
-### Validations
-
-Following validations are incorporated into models:
-
-- maximum value: must be a numeric value less than or equal to a specified value
-- minimum value: must be a numeric value greater than or equal to a specified value
-- maximum length: must be a string value of length less than or equal to a specified value
-- minimum length: must be a string value of length greater than or equal to a specified value
-- maximum item count: must be a list value with number of items less than or equal to a specified value
-- minimum item count: must be a list value with number of items greater than or equal to a specified value
-- enum: value must be from a list of allowed values
-
-Validations are imposed in the constructor and `setproperty!` methods of models.
+The order in which middlewares are invoked are:
+`init |> read |> pre_validation |> validate |> pre_invoke |> invoke |> post_invoke`
