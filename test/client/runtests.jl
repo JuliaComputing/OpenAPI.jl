@@ -13,6 +13,9 @@ function runtests()
         @testset "Utils" begin
             test_longpoll_exception_check()
         end
+        @testset "Validations" begin
+            test_validations()
+        end
         @testset "Petstore" begin
             if get(ENV, "RUNNER_OS", "") == "Linux"
                 @testset "V3" begin

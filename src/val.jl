@@ -19,6 +19,9 @@ function val_unique_items(val::Vector, is_unique)
     is_unique || return true
     return length(Set(val)) == length(val)
 end
+function val_pattern(val::AbstractString, pattern::Regex)
+    return !isnothing(match(pattern, val))
+end
 
 const MSG_INVALID_API_PARAM = Dict{Symbol,Function}([
     :maximum => (val,excl)->string("must be a value less than ", excl ? "or equal to " : "", val),
@@ -28,7 +31,10 @@ const MSG_INVALID_API_PARAM = Dict{Symbol,Function}([
     :maxItems => (val)->string("number of items must be less than or equal to ", val),
     :minItems => (val)->string("number of items must be greater than or equal to ", val),
     :uniqueItems => (val)->string("items must be unique"),
-    :enum => (lst)->string("value is not from the allowed values", lst),
+    :maxProperties => (val)->string("number of properties must be less than or equal to ", val),
+    :minProperties => (val)->string("number of properties must be greater than or equal to ", val),
+    :enum => (lst)->string("value is not from the allowed values ", lst),
+    :pattern => (val)->string("value does not match required pattern"),
 ])
 
 const VAL_API_PARAM = Dict{Symbol,Function}([
@@ -39,8 +45,9 @@ const VAL_API_PARAM = Dict{Symbol,Function}([
     :maxItems => val_max_length,
     :minItems => val_min_length,
     :uniqueItems => val_unique_items,
-    :maxProterties => val_max_length,
-    :minProterties => val_min_length,
+    :maxProperties => val_max_length,
+    :minProperties => val_min_length,
+    :pattern => val_pattern,
     :enum => val_enum,
 ])
 

@@ -54,6 +54,7 @@ Following validations are incorporated into models:
 - minimum length: must be a string value of length greater than or equal to a specified value
 - maximum item count: must be a list value with number of items less than or equal to a specified value
 - minimum item count: must be a list value with number of items greater than or equal to a specified value
+- pattern: must match the specified regex pattern
 - enum: value must be from a list of allowed values
 
 Validations are imposed in the constructor and `setproperty!` methods of models.
