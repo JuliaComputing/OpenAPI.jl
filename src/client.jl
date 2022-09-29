@@ -42,6 +42,25 @@ struct ApiException <: Exception
     end
 end
 
+function get_api_return_type(return_types::Dict{Regex,Type}, ::Nothing, response_data::String)
+    # this is the async case, where we do not have the response code yet
+    # in such cases we look for the 200 response code 
+    return get_api_return_type(return_types, 200, response_data)
+end
+function get_api_return_type(return_types::Dict{Regex,Type}, response_code::Integer, response_data::String)
+    default_response_code = 0
+    for code in string.([response_code, default_response_code])
+        for (re, rt) in return_types
+            if match(re, code) !== nothing
+                return rt
+            end
+        end
+    end
+    # if no specific return type was defined, we assume that:
+    # - if response code is 2xx, then we make the method call return nothing
+    # - otherwise we make it throw an ApiException
+    return (200 <= response_code <=206) ? Nothing : nothing # first(return_types)[2]
+end
 struct Client
     root::String
     headers::Dict{String,String}
@@ -54,7 +73,7 @@ struct Client
 
     function Client(root::String;
             headers::Dict{String,String}=Dict{String,String}(),
-            get_return_type::Function=(default,data)->default,
+            get_return_type::Function=get_api_return_type,
             long_polling_timeout::Int=DEFAULT_LONGPOLL_TIMEOUT_SECS,
             timeout::Int=DEFAULT_TIMEOUT_SECS,
             pre_request_hook::Function=noop_pre_request_hook)
@@ -96,7 +115,7 @@ end
 struct Ctx
     client::Client
     method::String
-    return_type::Type
+    return_types::Dict{Regex,Type}
     resource::String
     auth::Vector{String}
 
@@ -110,12 +129,13 @@ struct Ctx
     curl_mime_upload::Ref{Any}
     pre_request_hook::Function
 
-    function Ctx(client::Client, method::String, return_type, resource::String, auth, body=nothing;
+    function Ctx(client::Client, method::String, return_types::Dict{Regex,Type}, resource::String, auth, body=nothing;
             timeout::Int=client.timeout[],
-            pre_request_hook::Function=client.pre_request_hook)
+            pre_request_hook::Function=client.pre_request_hook,
+        )
         resource = client.root * resource
         headers = copy(client.headers)
-        new(client, method, return_type, resource, auth, Dict{String,String}(), Dict{String,String}(), headers, Dict{String,String}(), Dict{String,String}(), body, timeout, Ref{Any}(nothing), pre_request_hook)
+        new(client, method, return_types, resource, auth, Dict{String,String}(), Dict{String,String}(), headers, Dict{String,String}(), Dict{String,String}(), body, timeout, Ref{Any}(nothing), pre_request_hook)
     end
 end
 
@@ -325,7 +345,7 @@ function do_request(ctx::Ctx, stream::Bool=false; stream_to::Union{Channel,Nothi
                 @async begin
                     try
                         for chunk in ChunkReader(output)
-                            return_type = ctx.client.get_return_type(ctx.return_type, String(copy(chunk)))
+                            return_type = ctx.client.get_return_type(ctx.return_types, nothing, String(copy(chunk)))
                             data = response(return_type, resp, chunk)
                             put!(stream_to, data)
                         end
@@ -380,16 +400,21 @@ function exec(ctx::Ctx, stream_to::Union{Channel,Nothing}=nothing)
         return nothing
     end
 
-    if isa(resp, Downloads.RequestError) || !(200 <= resp.status <= 206)
+    if isa(resp, Downloads.RequestError)
         throw(ApiException(resp))
     end
 
     if stream
         return resp
+        # return the channel back?
     else
         data = read(output)
-        return_type = ctx.client.get_return_type(ctx.return_type, String(copy(data)))
+        return_type = ctx.client.get_return_type(ctx.return_types, resp.status, String(copy(data)))
+        if isnothing(return_type)
+            throw(ApiException(resp))
+        end
         return response(return_type, resp, data)
+        # TODO, return HTTP response as well?
     end
 end
 

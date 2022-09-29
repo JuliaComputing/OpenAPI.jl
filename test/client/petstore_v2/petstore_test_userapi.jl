@@ -145,8 +145,8 @@ function test(uri)
     @test create_users_with_array_input(api, [user1, user2]) === nothing
 
     @info("UserApi - get_user_by_name")
-    @test_throws ApiException get_user_by_name(api, randstring())
-    @test_throws ApiException get_user_by_name(api, TEST_USER)
+    @test nothing === get_user_by_name(api, randstring())
+    @test nothing === get_user_by_name(api, TEST_USER)
     getuser_result = get_user_by_name(api, PRESET_TEST_USER)
     @test isa(getuser_result, User)
 
