@@ -9,7 +9,7 @@ using TimeZones
 using LibCURL
 
 import Base: convert, show, summary, getproperty, setproperty!, iterate
-import ..OpenAPI: APIModel, APIClientImpl, OpenAPIException, to_json, from_json, validate_property, property_type
+import ..OpenAPI: APIModel, APIClientImpl, OpenAPIException, InvocationException, to_json, from_json, validate_property, property_type
 import ..OpenAPI: str2zoneddatetime, str2datetime, str2date
 
 # collection formats (OpenAPI v2)
@@ -39,6 +39,31 @@ struct ApiException <: Exception
     function ApiException(resp::Downloads.Response; reason::String="")
         isempty(reason) && (reason = resp.message)
         new(resp.status, reason, resp, nothing)
+    end
+end
+
+"""
+Represents the raw HTTP provol response from the server.
+Properties available:
+- status: the HTTP status code
+- message: the HTTP status message
+- headers: the HTTP headers
+- raw: the raw response ( as a Downloads.Response object)
+"""
+struct ApiResponse
+    raw::Downloads.Response
+end
+
+function Base.getproperty(resp::ApiResponse, name::Symbol)
+    raw = getfield(resp, :raw)
+    if name === :status
+        return raw.status
+    elseif name === :message
+        return raw.message
+    elseif name === :headers
+        return raw.headers
+    else
+        return getfield(resp, name)
     end
 end
 
@@ -397,7 +422,7 @@ function exec(ctx::Ctx, stream_to::Union{Channel,Nothing}=nothing)
 
     if resp === nothing
         # request was interrupted
-        return nothing
+        throw(InvocationException("request was interrupted"))
     end
 
     if isa(resp, Downloads.RequestError)
@@ -405,16 +430,14 @@ function exec(ctx::Ctx, stream_to::Union{Channel,Nothing}=nothing)
     end
 
     if stream
-        return resp
-        # return the channel back?
+        return stream_to, ApiResponse(resp)
     else
         data = read(output)
         return_type = ctx.client.get_return_type(ctx.return_types, resp.status, String(copy(data)))
         if isnothing(return_type)
-            throw(ApiException(resp))
+            return nothing, ApiResponse(resp)
         end
-        return response(return_type, resp, data)
-        # TODO, return HTTP response as well?
+        return response(return_type, resp, data), ApiResponse(resp)
     end
 end
 

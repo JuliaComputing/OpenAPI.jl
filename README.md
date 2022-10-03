@@ -63,19 +63,24 @@ Validations are imposed in the constructor and `setproperty!` methods of models.
 
 Each client API set is generated into a file named `api_<apiname>.jl`. It is represented as a `struct` and the APIs under it are generated as methods. An API set can be constructed by providing the OpenAPI client instance that it can use for communication.
 
-The required API parameters are generated as regular function arguments. Optional parameters are generated as keyword arguments. Method documentation is generated with description, parameter information and return value. Two variants of the API are generated. The first variant is suitable for calling synchronously and returns a single instance of the result struct.
+The required API parameters are generated as regular function arguments. Optional parameters are generated as keyword arguments. Method documentation is generated with description, parameter information and return value. Two variants of the API are generated. The first variant is suitable for calling synchronously. It returns a tuple of the result struct and the HTTP response.
 
 ```julia
 # example synchronous API that returns an Order instance
-getOrderById(api::StoreApi, orderId::Int64)
+getOrderById(api::StoreApi, orderId::Int64) -> (result, http_response)
 ```
 
 The second variant is suitable for asynchronous calls to methods that return chunked transfer encoded responses, where in the API streams the response objects into an output channel.
 
 ```julia
 # example asynchronous API that streams matching Pet instances into response_stream
-findPetsByStatus(api::PetApi, response_stream::Channel, status::Vector{String})
+findPetsByStatus(api::PetApi, response_stream::Channel, status::Vector{String}) -> (response_stream, http_response)
 ```
+
+The HTTP response returned from the API calls, have these properties:
+- `status`: integer status code
+- `message`: http message corresponding to status code
+- `headers`: http response headers as `Vector{Pair{String,String}}`
 
 A client context holds common information to be used across APIs. It also holds a connection to the server and uses that across API calls.
 The client context needs to be passed as the first parameter of all API calls. It can be created as:

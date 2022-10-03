@@ -22,7 +22,7 @@ This can only be done by the logged in user.
 Params:
 - body::User (required)
 
-Return: Nothing
+Return: Nothing, OpenAPI.Clients.ApiResponse
 """
 function create_user(_api::UserApi, body::User; _mediaType=nothing)
     _ctx = _oacinternal_create_user(_api, body; _mediaType=_mediaType)
@@ -49,7 +49,7 @@ end
 Params:
 - body::Vector{User} (required)
 
-Return: Nothing
+Return: Nothing, OpenAPI.Clients.ApiResponse
 """
 function create_users_with_array_input(_api::UserApi, body::Vector{User}; _mediaType=nothing)
     _ctx = _oacinternal_create_users_with_array_input(_api, body; _mediaType=_mediaType)
@@ -76,7 +76,7 @@ end
 Params:
 - body::Vector{User} (required)
 
-Return: Nothing
+Return: Nothing, OpenAPI.Clients.ApiResponse
 """
 function create_users_with_list_input(_api::UserApi, body::Vector{User}; _mediaType=nothing)
     _ctx = _oacinternal_create_users_with_list_input(_api, body; _mediaType=_mediaType)
@@ -107,7 +107,7 @@ This can only be done by the logged in user.
 Params:
 - username::String (required)
 
-Return: Nothing
+Return: Nothing, OpenAPI.Clients.ApiResponse
 """
 function delete_user(_api::UserApi, username::String; _mediaType=nothing)
     _ctx = _oacinternal_delete_user(_api, username; _mediaType=_mediaType)
@@ -137,7 +137,7 @@ end
 Params:
 - username::String (required)
 
-Return: User
+Return: User, OpenAPI.Clients.ApiResponse
 """
 function get_user_by_name(_api::UserApi, username::String; _mediaType=nothing)
     _ctx = _oacinternal_get_user_by_name(_api, username; _mediaType=_mediaType)
@@ -168,7 +168,7 @@ Params:
 - username::String (required)
 - password::String (required)
 
-Return: String
+Return: String, OpenAPI.Clients.ApiResponse
 """
 function login_user(_api::UserApi, username::String, password::String; _mediaType=nothing)
     _ctx = _oacinternal_login_user(_api, username, password; _mediaType=_mediaType)
@@ -194,7 +194,7 @@ end
 
 Params:
 
-Return: Nothing
+Return: Nothing, OpenAPI.Clients.ApiResponse
 """
 function logout_user(_api::UserApi; _mediaType=nothing)
     _ctx = _oacinternal_logout_user(_api; _mediaType=_mediaType)
@@ -226,7 +226,7 @@ Params:
 - username::String (required)
 - body::User (required)
 
-Return: Nothing
+Return: Nothing, OpenAPI.Clients.ApiResponse
 """
 function update_user(_api::UserApi, username::String, body::User; _mediaType=nothing)
     _ctx = _oacinternal_update_user(_api, username, body; _mediaType=_mediaType)

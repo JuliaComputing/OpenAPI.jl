@@ -20,7 +20,7 @@ end
 Params:
 - body::Pet (required)
 
-Return: Nothing
+Return: Nothing, OpenAPI.Clients.ApiResponse
 """
 function add_pet(_api::PetApi, body::Pet; _mediaType=nothing)
     _ctx = _oacinternal_add_pet(_api, body; _mediaType=_mediaType)
@@ -51,7 +51,7 @@ Params:
 - pet_id::Int64 (required)
 - api_key::String
 
-Return: Nothing
+Return: Nothing, OpenAPI.Clients.ApiResponse
 """
 function delete_pet(_api::PetApi, pet_id::Int64; api_key=nothing, _mediaType=nothing)
     _ctx = _oacinternal_delete_pet(_api, pet_id; api_key=api_key, _mediaType=_mediaType)
@@ -82,7 +82,7 @@ Multiple status values can be provided with comma separated strings
 Params:
 - status::Vector{String} (required)
 
-Return: Vector{Pet}
+Return: Vector{Pet}, OpenAPI.Clients.ApiResponse
 """
 function find_pets_by_status(_api::PetApi, status::Vector{String}; _mediaType=nothing)
     _ctx = _oacinternal_find_pets_by_status(_api, status; _mediaType=_mediaType)
@@ -113,7 +113,7 @@ Multiple tags can be provided with comma separated strings. Use tag1, tag2, tag3
 Params:
 - tags::Vector{String} (required)
 
-Return: Vector{Pet}
+Return: Vector{Pet}, OpenAPI.Clients.ApiResponse
 """
 function find_pets_by_tags(_api::PetApi, tags::Vector{String}; _mediaType=nothing)
     _ctx = _oacinternal_find_pets_by_tags(_api, tags; _mediaType=_mediaType)
@@ -145,7 +145,7 @@ Returns a single pet
 Params:
 - pet_id::Int64 (required)
 
-Return: Pet
+Return: Pet, OpenAPI.Clients.ApiResponse
 """
 function get_pet_by_id(_api::PetApi, pet_id::Int64; _mediaType=nothing)
     _ctx = _oacinternal_get_pet_by_id(_api, pet_id; _mediaType=_mediaType)
@@ -174,7 +174,7 @@ end
 Params:
 - body::Pet (required)
 
-Return: Nothing
+Return: Nothing, OpenAPI.Clients.ApiResponse
 """
 function update_pet(_api::PetApi, body::Pet; _mediaType=nothing)
     _ctx = _oacinternal_update_pet(_api, body; _mediaType=_mediaType)
@@ -206,7 +206,7 @@ Params:
 - name::String
 - status::String
 
-Return: Nothing
+Return: Nothing, OpenAPI.Clients.ApiResponse
 """
 function update_pet_with_form(_api::PetApi, pet_id::Int64; name=nothing, status=nothing, _mediaType=nothing)
     _ctx = _oacinternal_update_pet_with_form(_api, pet_id; name=name, status=status, _mediaType=_mediaType)
@@ -238,7 +238,7 @@ Params:
 - additional_metadata::String
 - file::String
 
-Return: ApiResponse
+Return: ApiResponse, OpenAPI.Clients.ApiResponse
 """
 function upload_file(_api::PetApi, pet_id::Int64; additional_metadata=nothing, file=nothing, _mediaType=nothing)
     _ctx = _oacinternal_upload_file(_api, pet_id; additional_metadata=additional_metadata, file=file, _mediaType=_mediaType)

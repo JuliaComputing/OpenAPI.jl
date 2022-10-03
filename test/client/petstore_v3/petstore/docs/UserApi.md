@@ -15,8 +15,8 @@ Method | HTTP request | Description
 
 
 # **create_user**
-> create_user(_api::UserApi, user::User; _mediaType=nothing) <br/>
-> create_user(_api::UserApi, response_stream::Channel, user::User; _mediaType=nothing)
+> create_user(_api::UserApi, user::User; _mediaType=nothing) -> Nothing, OpenAPI.Clients.ApiResponse <br/>
+> create_user(_api::UserApi, response_stream::Channel, user::User; _mediaType=nothing) -> Channel{ Nothing }, OpenAPI.Clients.ApiResponse
 
 Create user
 
@@ -31,7 +31,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
- nothing
+Nothing
 
 ### Authorization
 
@@ -45,8 +45,8 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **create_users_with_array_input**
-> create_users_with_array_input(_api::UserApi, user::Vector{User}; _mediaType=nothing) <br/>
-> create_users_with_array_input(_api::UserApi, response_stream::Channel, user::Vector{User}; _mediaType=nothing)
+> create_users_with_array_input(_api::UserApi, user::Vector{User}; _mediaType=nothing) -> Nothing, OpenAPI.Clients.ApiResponse <br/>
+> create_users_with_array_input(_api::UserApi, response_stream::Channel, user::Vector{User}; _mediaType=nothing) -> Channel{ Nothing }, OpenAPI.Clients.ApiResponse
 
 Creates list of users with given input array
 
@@ -59,7 +59,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
- nothing
+Nothing
 
 ### Authorization
 
@@ -73,8 +73,8 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **create_users_with_list_input**
-> create_users_with_list_input(_api::UserApi, user::Vector{User}; _mediaType=nothing) <br/>
-> create_users_with_list_input(_api::UserApi, response_stream::Channel, user::Vector{User}; _mediaType=nothing)
+> create_users_with_list_input(_api::UserApi, user::Vector{User}; _mediaType=nothing) -> Nothing, OpenAPI.Clients.ApiResponse <br/>
+> create_users_with_list_input(_api::UserApi, response_stream::Channel, user::Vector{User}; _mediaType=nothing) -> Channel{ Nothing }, OpenAPI.Clients.ApiResponse
 
 Creates list of users with given input array
 
@@ -87,7 +87,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
- nothing
+Nothing
 
 ### Authorization
 
@@ -101,8 +101,8 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **delete_user**
-> delete_user(_api::UserApi, username::String; _mediaType=nothing) <br/>
-> delete_user(_api::UserApi, response_stream::Channel, username::String; _mediaType=nothing)
+> delete_user(_api::UserApi, username::String; _mediaType=nothing) -> Nothing, OpenAPI.Clients.ApiResponse <br/>
+> delete_user(_api::UserApi, response_stream::Channel, username::String; _mediaType=nothing) -> Channel{ Nothing }, OpenAPI.Clients.ApiResponse
 
 Delete user
 
@@ -117,7 +117,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
- nothing
+Nothing
 
 ### Authorization
 
@@ -131,8 +131,8 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **get_user_by_name**
-> get_user_by_name(_api::UserApi, username::String; _mediaType=nothing) -> User  <br/>
-> get_user_by_name(_api::UserApi, response_stream::Channel, username::String; _mediaType=nothing) -> User 
+> get_user_by_name(_api::UserApi, username::String; _mediaType=nothing) -> User, OpenAPI.Clients.ApiResponse <br/>
+> get_user_by_name(_api::UserApi, response_stream::Channel, username::String; _mediaType=nothing) -> Channel{ User }, OpenAPI.Clients.ApiResponse
 
 Get user by user name
 
@@ -159,8 +159,8 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **login_user**
-> login_user(_api::UserApi, username::String, password::String; _mediaType=nothing) -> String  <br/>
-> login_user(_api::UserApi, response_stream::Channel, username::String, password::String; _mediaType=nothing) -> String 
+> login_user(_api::UserApi, username::String, password::String; _mediaType=nothing) -> String, OpenAPI.Clients.ApiResponse <br/>
+> login_user(_api::UserApi, response_stream::Channel, username::String, password::String; _mediaType=nothing) -> Channel{ String }, OpenAPI.Clients.ApiResponse
 
 Logs user into the system
 
@@ -188,8 +188,8 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **logout_user**
-> logout_user(_api::UserApi; _mediaType=nothing) <br/>
-> logout_user(_api::UserApi, response_stream::Channel; _mediaType=nothing)
+> logout_user(_api::UserApi; _mediaType=nothing) -> Nothing, OpenAPI.Clients.ApiResponse <br/>
+> logout_user(_api::UserApi, response_stream::Channel; _mediaType=nothing) -> Channel{ Nothing }, OpenAPI.Clients.ApiResponse
 
 Logs out current logged in user session
 
@@ -198,7 +198,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
- nothing
+Nothing
 
 ### Authorization
 
@@ -212,8 +212,8 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **update_user**
-> update_user(_api::UserApi, username::String, user::User; _mediaType=nothing) <br/>
-> update_user(_api::UserApi, response_stream::Channel, username::String, user::User; _mediaType=nothing)
+> update_user(_api::UserApi, username::String, user::User; _mediaType=nothing) -> Nothing, OpenAPI.Clients.ApiResponse <br/>
+> update_user(_api::UserApi, response_stream::Channel, username::String, user::User; _mediaType=nothing) -> Channel{ Nothing }, OpenAPI.Clients.ApiResponse
 
 Updated user
 
@@ -229,7 +229,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
- nothing
+Nothing
 
 ### Authorization
 

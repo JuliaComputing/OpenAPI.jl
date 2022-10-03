@@ -26,7 +26,7 @@ For valid response try integer IDs with positive integer value. Negative or non-
 Params:
 - order_id::Int64 (required)
 
-Return: Nothing
+Return: Nothing, OpenAPI.Clients.ApiResponse
 """
 function delete_order(_api::StoreApi, order_id::Int64; _mediaType=nothing)
     _ctx = _oacinternal_delete_order(_api, order_id; _mediaType=_mediaType)
@@ -54,7 +54,7 @@ Returns a map of status codes to quantities
 
 Params:
 
-Return: Dict{String, Int64}
+Return: Dict{String, Int64}, OpenAPI.Clients.ApiResponse
 """
 function get_inventory(_api::StoreApi; _mediaType=nothing)
     _ctx = _oacinternal_get_inventory(_api; _mediaType=_mediaType)
@@ -89,7 +89,7 @@ For valid response try integer IDs with value >= 1 and <= 10. Other values will 
 Params:
 - order_id::Int64 (required)
 
-Return: Order
+Return: Order, OpenAPI.Clients.ApiResponse
 """
 function get_order_by_id(_api::StoreApi, order_id::Int64; _mediaType=nothing)
     _ctx = _oacinternal_get_order_by_id(_api, order_id; _mediaType=_mediaType)
@@ -117,7 +117,7 @@ end
 Params:
 - body::Order (required)
 
-Return: Order
+Return: Order, OpenAPI.Clients.ApiResponse
 """
 function place_order(_api::StoreApi, body::Order; _mediaType=nothing)
     _ctx = _oacinternal_place_order(_api, body; _mediaType=_mediaType)
