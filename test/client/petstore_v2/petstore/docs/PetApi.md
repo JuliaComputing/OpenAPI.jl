@@ -15,8 +15,8 @@ Method | HTTP request | Description
 
 
 # **add_pet**
-> add_pet(_api::PetApi, body::Pet; _mediaType=nothing) <br/>
-> add_pet(_api::PetApi, response_stream::Channel, body::Pet; _mediaType=nothing)
+> add_pet(_api::PetApi, body::Pet; _mediaType=nothing) -> Nothing, OpenAPI.Clients.ApiResponse <br/>
+> add_pet(_api::PetApi, response_stream::Channel, body::Pet; _mediaType=nothing) -> Channel{ Nothing }, OpenAPI.Clients.ApiResponse
 
 Add a new pet to the store
 
@@ -29,7 +29,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
- nothing
+Nothing
 
 ### Authorization
 
@@ -43,8 +43,8 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **delete_pet**
-> delete_pet(_api::PetApi, pet_id::Int64; api_key=nothing, _mediaType=nothing) <br/>
-> delete_pet(_api::PetApi, response_stream::Channel, pet_id::Int64; api_key=nothing, _mediaType=nothing)
+> delete_pet(_api::PetApi, pet_id::Int64; api_key=nothing, _mediaType=nothing) -> Nothing, OpenAPI.Clients.ApiResponse <br/>
+> delete_pet(_api::PetApi, response_stream::Channel, pet_id::Int64; api_key=nothing, _mediaType=nothing) -> Channel{ Nothing }, OpenAPI.Clients.ApiResponse
 
 Deletes a pet
 
@@ -63,7 +63,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
- nothing
+Nothing
 
 ### Authorization
 
@@ -77,8 +77,8 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **find_pets_by_status**
-> find_pets_by_status(_api::PetApi, status::Vector{String}; _mediaType=nothing) -> Vector{Pet}  <br/>
-> find_pets_by_status(_api::PetApi, response_stream::Channel, status::Vector{String}; _mediaType=nothing) -> Vector{Pet} 
+> find_pets_by_status(_api::PetApi, status::Vector{String}; _mediaType=nothing) -> Vector{Pet}, OpenAPI.Clients.ApiResponse <br/>
+> find_pets_by_status(_api::PetApi, response_stream::Channel, status::Vector{String}; _mediaType=nothing) -> Channel{ Vector{Pet} }, OpenAPI.Clients.ApiResponse
 
 Finds Pets by status
 
@@ -107,8 +107,8 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **find_pets_by_tags**
-> find_pets_by_tags(_api::PetApi, tags::Vector{String}; _mediaType=nothing) -> Vector{Pet}  <br/>
-> find_pets_by_tags(_api::PetApi, response_stream::Channel, tags::Vector{String}; _mediaType=nothing) -> Vector{Pet} 
+> find_pets_by_tags(_api::PetApi, tags::Vector{String}; _mediaType=nothing) -> Vector{Pet}, OpenAPI.Clients.ApiResponse <br/>
+> find_pets_by_tags(_api::PetApi, response_stream::Channel, tags::Vector{String}; _mediaType=nothing) -> Channel{ Vector{Pet} }, OpenAPI.Clients.ApiResponse
 
 Finds Pets by tags
 
@@ -137,8 +137,8 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **get_pet_by_id**
-> get_pet_by_id(_api::PetApi, pet_id::Int64; _mediaType=nothing) -> Pet  <br/>
-> get_pet_by_id(_api::PetApi, response_stream::Channel, pet_id::Int64; _mediaType=nothing) -> Pet 
+> get_pet_by_id(_api::PetApi, pet_id::Int64; _mediaType=nothing) -> Pet, OpenAPI.Clients.ApiResponse <br/>
+> get_pet_by_id(_api::PetApi, response_stream::Channel, pet_id::Int64; _mediaType=nothing) -> Channel{ Pet }, OpenAPI.Clients.ApiResponse
 
 Find pet by ID
 
@@ -167,8 +167,8 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **update_pet**
-> update_pet(_api::PetApi, body::Pet; _mediaType=nothing) <br/>
-> update_pet(_api::PetApi, response_stream::Channel, body::Pet; _mediaType=nothing)
+> update_pet(_api::PetApi, body::Pet; _mediaType=nothing) -> Nothing, OpenAPI.Clients.ApiResponse <br/>
+> update_pet(_api::PetApi, response_stream::Channel, body::Pet; _mediaType=nothing) -> Channel{ Nothing }, OpenAPI.Clients.ApiResponse
 
 Update an existing pet
 
@@ -181,7 +181,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
- nothing
+Nothing
 
 ### Authorization
 
@@ -195,8 +195,8 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **update_pet_with_form**
-> update_pet_with_form(_api::PetApi, pet_id::Int64; name=nothing, status=nothing, _mediaType=nothing) <br/>
-> update_pet_with_form(_api::PetApi, response_stream::Channel, pet_id::Int64; name=nothing, status=nothing, _mediaType=nothing)
+> update_pet_with_form(_api::PetApi, pet_id::Int64; name=nothing, status=nothing, _mediaType=nothing) -> Nothing, OpenAPI.Clients.ApiResponse <br/>
+> update_pet_with_form(_api::PetApi, response_stream::Channel, pet_id::Int64; name=nothing, status=nothing, _mediaType=nothing) -> Channel{ Nothing }, OpenAPI.Clients.ApiResponse
 
 Updates a pet in the store with form data
 
@@ -216,7 +216,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
- nothing
+Nothing
 
 ### Authorization
 
@@ -230,8 +230,8 @@ Name | Type | Description  | Notes
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **upload_file**
-> upload_file(_api::PetApi, pet_id::Int64; additional_metadata=nothing, file=nothing, _mediaType=nothing) -> ApiResponse  <br/>
-> upload_file(_api::PetApi, response_stream::Channel, pet_id::Int64; additional_metadata=nothing, file=nothing, _mediaType=nothing) -> ApiResponse 
+> upload_file(_api::PetApi, pet_id::Int64; additional_metadata=nothing, file=nothing, _mediaType=nothing) -> ApiResponse, OpenAPI.Clients.ApiResponse <br/>
+> upload_file(_api::PetApi, response_stream::Channel, pet_id::Int64; additional_metadata=nothing, file=nothing, _mediaType=nothing) -> Channel{ ApiResponse }, OpenAPI.Clients.ApiResponse
 
 uploads an image
 

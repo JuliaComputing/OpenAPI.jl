@@ -19,13 +19,9 @@ function test_404(uri)
     client = Client(uri*"_invalid")
     api = UserApi(client)
 
-    try
-        login_user(api, TEST_USER, "testpassword")
-        @error("ApiException not thrown")
-    catch ex
-        @test isa(ex, ApiException)
-        @test ex.status == 404
-    end
+    api_return, http_resp = login_user(api, TEST_USER, "testpassword")
+    @test http_resp.status == 404
+    @test api_return === nothing
 
     client = Client("http://_invalid/")
     api = UserApi(client)
@@ -86,7 +82,8 @@ function test_userhook(uri)
     client = Client(uri; pre_request_hook=test_login_user_hook)
     api = UserApi(client)
 
-    login_result = login_user(api, TEST_USER, "wrongpassword")
+    login_result, http_resp = login_user(api, TEST_USER, "wrongpassword")
+    @test http_resp.status == 200
     @test !isempty(login_result)
     result = JSON.parse(login_result)
     @test startswith(result["message"], "logged in user session")
@@ -130,34 +127,51 @@ function test(uri)
     api = UserApi(client)
 
     @info("UserApi - login_user")
-    login_result = login_user(api, TEST_USER, "testpassword")
+    login_result, http_resp = login_user(api, TEST_USER, "testpassword")
     @test !isempty(login_result)
+    @test http_resp.status == 200
 
     @info("UserApi - create_user")
     user1 = User(; id=100, username=TEST_USER1, firstName="test1", lastName="user1", email="jloac1@example.com", password="testpass1", phone="1000000001", userStatus=0)
-    @test create_user(api, user1) === nothing
+    api_return, http_resp = create_user(api, user1)
+    @test api_return === nothing
+    @test http_resp.status == 200
 
     @info("UserApi - create_users_with_array_input")
     user2 = User(; id=200, username=TEST_USER2, firstName="test2", lastName="user2", email="jloac2@example.com", password="testpass2", phone="1000000002", userStatus=0)
-    @test create_users_with_array_input(api, [user1, user2]) === nothing
+    api_return, http_resp = create_users_with_array_input(api, [user1, user2])
+    @test api_return === nothing
+    @test http_resp.status == 200
 
     @info("UserApi - create_users_with_array_input")
-    @test create_users_with_array_input(api, [user1, user2]) === nothing
+    api_return, http_resp = create_users_with_array_input(api, [user1, user2])
+    @test api_return === nothing
+    @test http_resp.status == 200
 
     @info("UserApi - get_user_by_name")
-    @test_throws ApiException get_user_by_name(api, randstring())
-    @test_throws ApiException get_user_by_name(api, TEST_USER)
-    getuser_result = get_user_by_name(api, PRESET_TEST_USER)
+    getuser_result, http_resp = get_user_by_name(api, randstring())
+    @test getuser_result === nothing
+    @test http_resp.status == 404
+    getuser_result, http_resp = get_user_by_name(api, TEST_USER)
+    @test getuser_result === nothing
+    @test http_resp.status == 404
+    getuser_result, http_resp = get_user_by_name(api, PRESET_TEST_USER)
     @test isa(getuser_result, User)
+    @test http_resp.status == 200
 
     @info("UserApi - update_user")
-    @test update_user(api, TEST_USER2, getuser_result) === nothing
+    api_return, http_resp = update_user(api, TEST_USER2, getuser_result)
+    @test api_return === nothing
+    @test http_resp.status == 200
     @info("UserApi - delete_user")
-    @test delete_user(api, TEST_USER2) === nothing
+    api_return, http_resp = delete_user(api, TEST_USER2)
+    @test api_return === nothing
+    @test http_resp.status == 200
 
     @info("UserApi - logout_user")
-    logout_result = logout_user(api)
+    logout_result, http_resp = logout_user(api)
     @test logout_result === nothing
+    @test http_resp.status == 200
 
     nothing
 end

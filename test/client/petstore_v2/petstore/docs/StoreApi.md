@@ -11,8 +11,8 @@ Method | HTTP request | Description
 
 
 # **delete_order**
-> delete_order(_api::StoreApi, order_id::Int64; _mediaType=nothing) <br/>
-> delete_order(_api::StoreApi, response_stream::Channel, order_id::Int64; _mediaType=nothing)
+> delete_order(_api::StoreApi, order_id::Int64; _mediaType=nothing) -> Nothing, OpenAPI.Clients.ApiResponse <br/>
+> delete_order(_api::StoreApi, response_stream::Channel, order_id::Int64; _mediaType=nothing) -> Channel{ Nothing }, OpenAPI.Clients.ApiResponse
 
 Delete purchase order by ID
 
@@ -27,7 +27,7 @@ Name | Type | Description  | Notes
 
 ### Return type
 
- nothing
+Nothing
 
 ### Authorization
 
@@ -41,8 +41,8 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **get_inventory**
-> get_inventory(_api::StoreApi; _mediaType=nothing) -> Dict{String, Int64}  <br/>
-> get_inventory(_api::StoreApi, response_stream::Channel; _mediaType=nothing) -> Dict{String, Int64} 
+> get_inventory(_api::StoreApi; _mediaType=nothing) -> Dict{String, Int64}, OpenAPI.Clients.ApiResponse <br/>
+> get_inventory(_api::StoreApi, response_stream::Channel; _mediaType=nothing) -> Channel{ Dict{String, Int64} }, OpenAPI.Clients.ApiResponse
 
 Returns pet inventories by status
 
@@ -67,8 +67,8 @@ This endpoint does not need any parameter.
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **get_order_by_id**
-> get_order_by_id(_api::StoreApi, order_id::Int64; _mediaType=nothing) -> Order  <br/>
-> get_order_by_id(_api::StoreApi, response_stream::Channel, order_id::Int64; _mediaType=nothing) -> Order 
+> get_order_by_id(_api::StoreApi, order_id::Int64; _mediaType=nothing) -> Order, OpenAPI.Clients.ApiResponse <br/>
+> get_order_by_id(_api::StoreApi, response_stream::Channel, order_id::Int64; _mediaType=nothing) -> Channel{ Order }, OpenAPI.Clients.ApiResponse
 
 Find purchase order by ID
 
@@ -97,8 +97,8 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
 
 # **place_order**
-> place_order(_api::StoreApi, body::Order; _mediaType=nothing) -> Order  <br/>
-> place_order(_api::StoreApi, response_stream::Channel, body::Order; _mediaType=nothing) -> Order 
+> place_order(_api::StoreApi, body::Order; _mediaType=nothing) -> Order, OpenAPI.Clients.ApiResponse <br/>
+> place_order(_api::StoreApi, response_stream::Channel, body::Order; _mediaType=nothing) -> Channel{ Order }, OpenAPI.Clients.ApiResponse
 
 Place an order for a pet
 

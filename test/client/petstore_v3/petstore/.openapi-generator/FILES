@@ -1,3 +1,4 @@
+.openapi-generator-ignore
 README.md
 docs/ApiResponse.md
 docs/Category.md
