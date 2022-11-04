@@ -13,8 +13,6 @@ include("apis/api_PetApi.jl")
 include("apis/api_StoreApi.jl")
 include("apis/api_UserApi.jl")
 
-export check_required
-
 # export models
 export ApiResponse
 export Category
