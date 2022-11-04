@@ -73,7 +73,6 @@ module PetStoreServer
 using HTTP
 using URIs
 using Dates
-using Random
 using TimeZones
 using OpenAPI
 using OpenAPI.Servers

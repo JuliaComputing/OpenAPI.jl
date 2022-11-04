@@ -3,7 +3,6 @@
 
 module PetStoreClient
 
-using Random
 using Dates, TimeZones
 using OpenAPI
 using OpenAPI.Clients
