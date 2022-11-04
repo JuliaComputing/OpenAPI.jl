@@ -79,9 +79,9 @@ using OpenAPI.Servers
 
 include("modelincludes.jl")
 
-include("api_PetApi.jl")
-include("api_StoreApi.jl")
-include("api_UserApi.jl")
+include("apis/api_PetApi.jl")
+include("apis/api_StoreApi.jl")
+include("apis/api_UserApi.jl")
 
 """
 Register handlers for all APIs in this module in the supplier Router.
