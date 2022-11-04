@@ -73,16 +73,15 @@ module PetStoreServer
 using HTTP
 using URIs
 using Dates
-using Random
 using TimeZones
 using OpenAPI
 using OpenAPI.Servers
 
 include("modelincludes.jl")
 
-include("api_PetApi.jl")
-include("api_StoreApi.jl")
-include("api_UserApi.jl")
+include("apis/api_PetApi.jl")
+include("apis/api_StoreApi.jl")
+include("apis/api_UserApi.jl")
 
 """
 Register handlers for all APIs in this module in the supplier Router.
@@ -111,8 +110,6 @@ function register(router::HTTP.Router, impl; path_prefix::String="", optional_mi
     return router
 end
 
-export check_required
-
 # export models
 export ApiResponse
 export Category
@@ -120,6 +117,5 @@ export Order
 export Pet
 export Tag
 export User
-
 
 end # module PetStoreServer

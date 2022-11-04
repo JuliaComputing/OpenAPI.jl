@@ -3,18 +3,15 @@
 
 module PetStoreClient
 
-using Random
 using Dates, TimeZones
 using OpenAPI
 using OpenAPI.Clients
 
 include("modelincludes.jl")
 
-include("api_PetApi.jl")
-include("api_StoreApi.jl")
-include("api_UserApi.jl")
-
-export check_required
+include("apis/api_PetApi.jl")
+include("apis/api_StoreApi.jl")
+include("apis/api_UserApi.jl")
 
 # export models
 export ApiResponse

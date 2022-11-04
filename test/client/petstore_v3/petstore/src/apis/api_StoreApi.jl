@@ -5,12 +5,13 @@ struct StoreApi <: OpenAPI.APIClientImpl
     client::OpenAPI.Clients.Client
 end
 
-function _oacinternal_delete_order(_api::StoreApi, order_id::String; _mediaType=nothing)
-    return_types = Dict{Regex,Type}()
-    return_types[Regex("^" * replace("400", "x"=>".") * "\$")] = Nothing
-    return_types[Regex("^" * replace("404", "x"=>".") * "\$")] = Nothing
+const _returntypes_delete_order = Dict{Regex,Type}(
+    Regex("^" * replace("400", "x"=>".") * "\$") => Nothing,
+    Regex("^" * replace("404", "x"=>".") * "\$") => Nothing,
+)
 
-    _ctx = OpenAPI.Clients.Ctx(_api.client, "DELETE", return_types, "/store/order/{orderId}", [])
+function _oacinternal_delete_order(_api::StoreApi, order_id::String; _mediaType=nothing)
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "DELETE", _returntypes_delete_order, "/store/order/{orderId}", [])
     OpenAPI.Clients.set_param(_ctx.path, "orderId", order_id)  # type String
     OpenAPI.Clients.set_header_accept(_ctx, [])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? [] : [_mediaType])
@@ -36,11 +37,12 @@ function delete_order(_api::StoreApi, response_stream::Channel, order_id::String
     return OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-function _oacinternal_get_inventory(_api::StoreApi; _mediaType=nothing)
-    return_types = Dict{Regex,Type}()
-    return_types[Regex("^" * replace("200", "x"=>".") * "\$")] = Dict{String, Int64}
+const _returntypes_get_inventory = Dict{Regex,Type}(
+    Regex("^" * replace("200", "x"=>".") * "\$") => Dict{String, Int64},
+)
 
-    _ctx = OpenAPI.Clients.Ctx(_api.client, "GET", return_types, "/store/inventory", ["api_key", ])
+function _oacinternal_get_inventory(_api::StoreApi; _mediaType=nothing)
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "GET", _returntypes_get_inventory, "/store/inventory", ["api_key", ])
     OpenAPI.Clients.set_header_accept(_ctx, ["application/json", ])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? [] : [_mediaType])
     return _ctx
@@ -64,16 +66,17 @@ function get_inventory(_api::StoreApi, response_stream::Channel; _mediaType=noth
     return OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
+const _returntypes_get_order_by_id = Dict{Regex,Type}(
+    Regex("^" * replace("200", "x"=>".") * "\$") => Order,
+    Regex("^" * replace("400", "x"=>".") * "\$") => Nothing,
+    Regex("^" * replace("404", "x"=>".") * "\$") => Nothing,
+)
+
 function _oacinternal_get_order_by_id(_api::StoreApi, order_id::Int64; _mediaType=nothing)
     OpenAPI.validate_param("order_id", "get_order_by_id", :maximum, order_id, 5, false)
     OpenAPI.validate_param("order_id", "get_order_by_id", :minimum, order_id, 1, false)
 
-    return_types = Dict{Regex,Type}()
-    return_types[Regex("^" * replace("200", "x"=>".") * "\$")] = Order
-    return_types[Regex("^" * replace("400", "x"=>".") * "\$")] = Nothing
-    return_types[Regex("^" * replace("404", "x"=>".") * "\$")] = Nothing
-
-    _ctx = OpenAPI.Clients.Ctx(_api.client, "GET", return_types, "/store/order/{orderId}", [])
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "GET", _returntypes_get_order_by_id, "/store/order/{orderId}", [])
     OpenAPI.Clients.set_param(_ctx.path, "orderId", order_id)  # type Int64
     OpenAPI.Clients.set_header_accept(_ctx, ["application/xml", "application/json", ])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? [] : [_mediaType])
@@ -99,12 +102,13 @@ function get_order_by_id(_api::StoreApi, response_stream::Channel, order_id::Int
     return OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-function _oacinternal_place_order(_api::StoreApi, order::Order; _mediaType=nothing)
-    return_types = Dict{Regex,Type}()
-    return_types[Regex("^" * replace("200", "x"=>".") * "\$")] = Order
-    return_types[Regex("^" * replace("400", "x"=>".") * "\$")] = Nothing
+const _returntypes_place_order = Dict{Regex,Type}(
+    Regex("^" * replace("200", "x"=>".") * "\$") => Order,
+    Regex("^" * replace("400", "x"=>".") * "\$") => Nothing,
+)
 
-    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", return_types, "/store/order", [], order)
+function _oacinternal_place_order(_api::StoreApi, order::Order; _mediaType=nothing)
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", _returntypes_place_order, "/store/order", [], order)
     OpenAPI.Clients.set_header_accept(_ctx, ["application/xml", "application/json", ])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? ["application/json", ] : [_mediaType])
     return _ctx
