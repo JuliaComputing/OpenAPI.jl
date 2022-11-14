@@ -24,6 +24,7 @@ function str2zoneddatetime(str::String)
     return ZonedDateTime(str2datetime(str), localzone())
     throw(OpenAPIException("Unsupported ZonedDateTime format: $str"))
 end
+str2zoneddatetime(datetime::DateTime) = ZonedDateTime(datetime, localzone())
 
 str2datetime(bytes::Vector{UInt8}) = str2datetime(String(bytes))
 function str2datetime(str::String)
@@ -36,6 +37,7 @@ function str2datetime(str::String)
     end
     throw(OpenAPIException("Unsupported DateTime format: $str"))
 end
+str2datetime(datetime::DateTime) = datetime
 
 str2date(bytes::Vector{UInt8}) = str2date(String(bytes))
 function str2date(str::String)
@@ -48,3 +50,4 @@ function str2date(str::String)
     end
     throw(OpenAPIException("Unsupported Date format: $str"))
 end
+str2date(date::Date) = date
