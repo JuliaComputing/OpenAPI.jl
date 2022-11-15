@@ -26,12 +26,7 @@ end
 function delete_order_invoke(impl; post_invoke=nothing)
     function delete_order_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
-        ret = try
-            impl.delete_order(req::HTTP.Request, openapi_params["orderId"];)
-        catch ex
-            @error("Error in delete_order", exception=(ex, catch_backtrace()))
-            HTTP.Response(500, "Internal Server Error")
-        end
+        ret = impl.delete_order(req::HTTP.Request, openapi_params["orderId"];)
         resp = OpenAPI.Servers.server_response(ret)
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
@@ -57,12 +52,7 @@ end
 function get_inventory_invoke(impl; post_invoke=nothing)
     function get_inventory_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
-        ret = try
-            impl.get_inventory(req::HTTP.Request;)
-        catch ex
-            @error("Error in get_inventory", exception=(ex, catch_backtrace()))
-            HTTP.Response(500, "Internal Server Error")
-        end
+        ret = impl.get_inventory(req::HTTP.Request;)
         resp = OpenAPI.Servers.server_response(ret)
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
@@ -93,12 +83,7 @@ end
 function get_order_by_id_invoke(impl; post_invoke=nothing)
     function get_order_by_id_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
-        ret = try
-            impl.get_order_by_id(req::HTTP.Request, openapi_params["orderId"];)
-        catch ex
-            @error("Error in get_order_by_id", exception=(ex, catch_backtrace()))
-            HTTP.Response(500, "Internal Server Error")
-        end
+        ret = impl.get_order_by_id(req::HTTP.Request, openapi_params["orderId"];)
         resp = OpenAPI.Servers.server_response(ret)
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
@@ -125,12 +110,7 @@ end
 function place_order_invoke(impl; post_invoke=nothing)
     function place_order_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
-        ret = try
-            impl.place_order(req::HTTP.Request, openapi_params["body"];)
-        catch ex
-            @error("Error in place_order", exception=(ex, catch_backtrace()))
-            HTTP.Response(500, "Internal Server Error")
-        end
+        ret = impl.place_order(req::HTTP.Request, openapi_params["body"];)
         resp = OpenAPI.Servers.server_response(ret)
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end

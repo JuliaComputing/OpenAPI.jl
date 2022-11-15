@@ -23,12 +23,7 @@ end
 function create_user_invoke(impl; post_invoke=nothing)
     function create_user_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
-        ret = try
-            impl.create_user(req::HTTP.Request, openapi_params["User"];)
-        catch ex
-            @error("Error in create_user", exception=(ex, catch_backtrace()))
-            HTTP.Response(500, "Internal Server Error")
-        end
+        ret = impl.create_user(req::HTTP.Request, openapi_params["User"];)
         resp = OpenAPI.Servers.server_response(ret)
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
@@ -55,12 +50,7 @@ end
 function create_users_with_array_input_invoke(impl; post_invoke=nothing)
     function create_users_with_array_input_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
-        ret = try
-            impl.create_users_with_array_input(req::HTTP.Request, openapi_params["User"];)
-        catch ex
-            @error("Error in create_users_with_array_input", exception=(ex, catch_backtrace()))
-            HTTP.Response(500, "Internal Server Error")
-        end
+        ret = impl.create_users_with_array_input(req::HTTP.Request, openapi_params["User"];)
         resp = OpenAPI.Servers.server_response(ret)
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
@@ -87,12 +77,7 @@ end
 function create_users_with_list_input_invoke(impl; post_invoke=nothing)
     function create_users_with_list_input_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
-        ret = try
-            impl.create_users_with_list_input(req::HTTP.Request, openapi_params["User"];)
-        catch ex
-            @error("Error in create_users_with_list_input", exception=(ex, catch_backtrace()))
-            HTTP.Response(500, "Internal Server Error")
-        end
+        ret = impl.create_users_with_list_input(req::HTTP.Request, openapi_params["User"];)
         resp = OpenAPI.Servers.server_response(ret)
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
@@ -120,12 +105,7 @@ end
 function delete_user_invoke(impl; post_invoke=nothing)
     function delete_user_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
-        ret = try
-            impl.delete_user(req::HTTP.Request, openapi_params["username"];)
-        catch ex
-            @error("Error in delete_user", exception=(ex, catch_backtrace()))
-            HTTP.Response(500, "Internal Server Error")
-        end
+        ret = impl.delete_user(req::HTTP.Request, openapi_params["username"];)
         resp = OpenAPI.Servers.server_response(ret)
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
@@ -153,12 +133,7 @@ end
 function get_user_by_name_invoke(impl; post_invoke=nothing)
     function get_user_by_name_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
-        ret = try
-            impl.get_user_by_name(req::HTTP.Request, openapi_params["username"];)
-        catch ex
-            @error("Error in get_user_by_name", exception=(ex, catch_backtrace()))
-            HTTP.Response(500, "Internal Server Error")
-        end
+        ret = impl.get_user_by_name(req::HTTP.Request, openapi_params["username"];)
         resp = OpenAPI.Servers.server_response(ret)
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
@@ -187,12 +162,7 @@ end
 function login_user_invoke(impl; post_invoke=nothing)
     function login_user_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
-        ret = try
-            impl.login_user(req::HTTP.Request, openapi_params["username"], openapi_params["password"];)
-        catch ex
-            @error("Error in login_user", exception=(ex, catch_backtrace()))
-            HTTP.Response(500, "Internal Server Error")
-        end
+        ret = impl.login_user(req::HTTP.Request, openapi_params["username"], openapi_params["password"];)
         resp = OpenAPI.Servers.server_response(ret)
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
@@ -218,12 +188,7 @@ end
 function logout_user_invoke(impl; post_invoke=nothing)
     function logout_user_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
-        ret = try
-            impl.logout_user(req::HTTP.Request;)
-        catch ex
-            @error("Error in logout_user", exception=(ex, catch_backtrace()))
-            HTTP.Response(500, "Internal Server Error")
-        end
+        ret = impl.logout_user(req::HTTP.Request;)
         resp = OpenAPI.Servers.server_response(ret)
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
@@ -252,12 +217,7 @@ end
 function update_user_invoke(impl; post_invoke=nothing)
     function update_user_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
-        ret = try
-            impl.update_user(req::HTTP.Request, openapi_params["username"], openapi_params["User"];)
-        catch ex
-            @error("Error in update_user", exception=(ex, catch_backtrace()))
-            HTTP.Response(500, "Internal Server Error")
-        end
+        ret = impl.update_user(req::HTTP.Request, openapi_params["username"], openapi_params["User"];)
         resp = OpenAPI.Servers.server_response(ret)
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
