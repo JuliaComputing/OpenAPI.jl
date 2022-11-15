@@ -77,6 +77,8 @@ using TimeZones
 using OpenAPI
 using OpenAPI.Servers
 
+const API_VERSION = "1.0.0"
+
 include("modelincludes.jl")
 
 include("apis/api_PetApi.jl")

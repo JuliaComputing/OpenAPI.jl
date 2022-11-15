@@ -5,6 +5,12 @@ struct PetApi <: OpenAPI.APIClientImpl
     client::OpenAPI.Clients.Client
 end
 
+"""
+The default API base path for APIs in `PetApi`.
+This can be used to construct the `OpenAPI.Clients.Client` instance.
+"""
+basepath(::Type{ PetApi }) = "https://petstore.swagger.io/v2"
+
 const _returntypes_add_pet = Dict{Regex,Type}(
     Regex("^" * replace("405", "x"=>".") * "\$") => Nothing,
 )

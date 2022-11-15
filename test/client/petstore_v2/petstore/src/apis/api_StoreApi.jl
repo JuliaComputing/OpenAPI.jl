@@ -5,6 +5,12 @@ struct StoreApi <: OpenAPI.APIClientImpl
     client::OpenAPI.Clients.Client
 end
 
+"""
+The default API base path for APIs in `StoreApi`.
+This can be used to construct the `OpenAPI.Clients.Client` instance.
+"""
+basepath(::Type{ StoreApi }) = "https://petstore.swagger.io/v2"
+
 const _returntypes_delete_order = Dict{Regex,Type}(
     Regex("^" * replace("400", "x"=>".") * "\$") => Nothing,
     Regex("^" * replace("404", "x"=>".") * "\$") => Nothing,

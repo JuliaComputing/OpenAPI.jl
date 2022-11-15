@@ -5,6 +5,12 @@ struct UserApi <: OpenAPI.APIClientImpl
     client::OpenAPI.Clients.Client
 end
 
+"""
+The default API base path for APIs in `UserApi`.
+This can be used to construct the `OpenAPI.Clients.Client` instance.
+"""
+basepath(::Type{ UserApi }) = "/v3"
+
 const _returntypes_create_user = Dict{Regex,Type}(
     Regex("^" * replace("0", "x"=>".") * "\$") => Nothing,
 )
