@@ -151,3 +151,18 @@ Optional middlewares can be one or more of:
 
 The order in which middlewares are invoked are:
 `init |> read |> pre_validation |> validate |> pre_invoke |> invoke |> post_invoke`
+
+## TODO
+
+Not all OpenAPI features are supported yet, e.g.:
+- [`oneOf`, `anyOf`, `allOf`, `not`](https://swagger.io/docs/specification/data-models/oneof-anyof-allof-not/)
+- [inheritance and polymorphism](https://swagger.io/docs/specification/data-models/inheritance-and-polymorphism/)
+- [some of the JSON schema keywords](https://swagger.io/docs/specification/data-models/keywords/)
+- some [subtler data types](https://swagger.io/docs/specification/data-models/data-types/)
+    - native representaion of some of the string formats, e.g. uuid, url
+    - read-only and write-only properties
+- authentication schemes
+
+There could be more unsupported features than what is listed above.
+
+This is currently a beta version. It requires the Julia code generator hosted in [this forked branch](https://github.com/tanmaykm/openapi-generator/tree/tan/juliacodegen) of the OpenAPI code generator. The plan is to submit it for inclusion in the upstream repo soon.
