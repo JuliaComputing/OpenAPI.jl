@@ -1,5 +1,14 @@
 .openapi-generator-ignore
 README.md
+docs/ApiResponse.md
+docs/Category.md
+docs/Order.md
+docs/Pet.md
+docs/PetApi.md
+docs/StoreApi.md
+docs/Tag.md
+docs/User.md
+docs/UserApi.md
 src/PetStoreServer.jl
 src/apis/api_PetApi.jl
 src/apis/api_StoreApi.jl

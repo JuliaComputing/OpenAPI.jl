@@ -9,64 +9,64 @@ The following server methods must be implemented:
 
 - **add_pet**
     - *invocation:* POST /pet
-    - *signature:* add_pet(req::HTTP.Request, in\_pet::Pet;) -> Nothing
+    - *signature:* add_pet(req::HTTP.Request, pet::Pet;) -> Nothing
 - **delete_pet**
     - *invocation:* DELETE /pet/{petId}
-    - *signature:* delete_pet(req::HTTP.Request, in\_pet_id::Int64; in\_api_key=nothing,) -> Nothing
+    - *signature:* delete_pet(req::HTTP.Request, pet_id::Int64; api_key=nothing,) -> Nothing
 - **find_pets_by_status**
     - *invocation:* GET /pet/findByStatus
-    - *signature:* find_pets_by_status(req::HTTP.Request, in\_status::Vector{String};) -> Vector{Pet}
+    - *signature:* find_pets_by_status(req::HTTP.Request, status::Vector{String};) -> Vector{Pet}
 - **find_pets_by_tags**
     - *invocation:* GET /pet/findByTags
-    - *signature:* find_pets_by_tags(req::HTTP.Request, in\_tags::Vector{String};) -> Vector{Pet}
+    - *signature:* find_pets_by_tags(req::HTTP.Request, tags::Vector{String};) -> Vector{Pet}
 - **get_pet_by_id**
     - *invocation:* GET /pet/{petId}
-    - *signature:* get_pet_by_id(req::HTTP.Request, in\_pet_id::Int64;) -> Pet
+    - *signature:* get_pet_by_id(req::HTTP.Request, pet_id::Int64;) -> Pet
 - **update_pet**
     - *invocation:* PUT /pet
-    - *signature:* update_pet(req::HTTP.Request, in\_pet::Pet;) -> Nothing
+    - *signature:* update_pet(req::HTTP.Request, pet::Pet;) -> Nothing
 - **update_pet_with_form**
     - *invocation:* POST /pet/{petId}
-    - *signature:* update_pet_with_form(req::HTTP.Request, in\_pet_id::Int64; in\_name=nothing, in\_status=nothing,) -> Nothing
+    - *signature:* update_pet_with_form(req::HTTP.Request, pet_id::Int64; name=nothing, status=nothing,) -> Nothing
 - **upload_file**
     - *invocation:* POST /pet/{petId}/uploadImage
-    - *signature:* upload_file(req::HTTP.Request, in\_pet_id::Int64; in\_additional_metadata=nothing, in\_file=nothing,) -> ApiResponse
+    - *signature:* upload_file(req::HTTP.Request, pet_id::Int64; additional_metadata=nothing, file=nothing,) -> ApiResponse
 - **delete_order**
     - *invocation:* DELETE /store/order/{orderId}
-    - *signature:* delete_order(req::HTTP.Request, in\_order_id::String;) -> Nothing
+    - *signature:* delete_order(req::HTTP.Request, order_id::String;) -> Nothing
 - **get_inventory**
     - *invocation:* GET /store/inventory
     - *signature:* get_inventory(req::HTTP.Request;) -> Dict{String, Int64}
 - **get_order_by_id**
     - *invocation:* GET /store/order/{orderId}
-    - *signature:* get_order_by_id(req::HTTP.Request, in\_order_id::Int64;) -> Order
+    - *signature:* get_order_by_id(req::HTTP.Request, order_id::Int64;) -> Order
 - **place_order**
     - *invocation:* POST /store/order
-    - *signature:* place_order(req::HTTP.Request, in\_order::Order;) -> Order
+    - *signature:* place_order(req::HTTP.Request, order::Order;) -> Order
 - **create_user**
     - *invocation:* POST /user
-    - *signature:* create_user(req::HTTP.Request, in\_user::User;) -> Nothing
+    - *signature:* create_user(req::HTTP.Request, user::User;) -> Nothing
 - **create_users_with_array_input**
     - *invocation:* POST /user/createWithArray
-    - *signature:* create_users_with_array_input(req::HTTP.Request, in\_user::Vector{User};) -> Nothing
+    - *signature:* create_users_with_array_input(req::HTTP.Request, user::Vector{User};) -> Nothing
 - **create_users_with_list_input**
     - *invocation:* POST /user/createWithList
-    - *signature:* create_users_with_list_input(req::HTTP.Request, in\_user::Vector{User};) -> Nothing
+    - *signature:* create_users_with_list_input(req::HTTP.Request, user::Vector{User};) -> Nothing
 - **delete_user**
     - *invocation:* DELETE /user/{username}
-    - *signature:* delete_user(req::HTTP.Request, in\_username::String;) -> Nothing
+    - *signature:* delete_user(req::HTTP.Request, username::String;) -> Nothing
 - **get_user_by_name**
     - *invocation:* GET /user/{username}
-    - *signature:* get_user_by_name(req::HTTP.Request, in\_username::String;) -> User
+    - *signature:* get_user_by_name(req::HTTP.Request, username::String;) -> User
 - **login_user**
     - *invocation:* GET /user/login
-    - *signature:* login_user(req::HTTP.Request, in\_username::String, in\_password::String;) -> String
+    - *signature:* login_user(req::HTTP.Request, username::String, password::String;) -> String
 - **logout_user**
     - *invocation:* GET /user/logout
     - *signature:* logout_user(req::HTTP.Request;) -> Nothing
 - **update_user**
     - *invocation:* PUT /user/{username}
-    - *signature:* update_user(req::HTTP.Request, in\_username::String, in\_user::User;) -> Nothing
+    - *signature:* update_user(req::HTTP.Request, username::String, user::User;) -> Nothing
 """
 module PetStoreServer
 
@@ -86,7 +86,7 @@ include("apis/api_StoreApi.jl")
 include("apis/api_UserApi.jl")
 
 """
-Register handlers for all APIs in this module in the supplier Router.
+Register handlers for all APIs in this module in the supplied `Router` instance.
 
 Paramerets:
 - `router`: Router to register handlers in

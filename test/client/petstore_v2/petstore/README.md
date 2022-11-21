@@ -18,8 +18,6 @@ Documentation is also embedded in Julia which can be used with a Julia specific 
 
 ## Documentation for API Endpoints
 
-All URIs are relative to *https://petstore.swagger.io/v2*
-
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
 *PetApi* | [**add_pet**](docs/PetApi.md#add_pet) | **POST** /pet | Add a new pet to the store
