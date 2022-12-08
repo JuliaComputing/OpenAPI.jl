@@ -155,7 +155,7 @@ The order in which middlewares are invoked are:
 ## TODO
 
 Not all OpenAPI features are supported yet, e.g.:
-- [`oneOf`, `anyOf`, `allOf`, `not`](https://swagger.io/docs/specification/data-models/oneof-anyof-allof-not/)
+- [`not`](https://swagger.io/docs/specification/data-models/oneof-anyof-allof-not/)
 - [inheritance and polymorphism](https://swagger.io/docs/specification/data-models/inheritance-and-polymorphism/)
 - [some of the JSON schema keywords](https://swagger.io/docs/specification/data-models/keywords/)
 - some [subtler data types](https://swagger.io/docs/specification/data-models/data-types/)

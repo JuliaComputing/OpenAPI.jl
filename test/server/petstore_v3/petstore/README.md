@@ -35,7 +35,7 @@ The order in which middlewares are invoked are:
 `init |> read |> pre_validation |> validate |> pre_invoke |> invoke |> post_invoke`
 
 
-## Documentation for API Endpoints
+## API Endpoints
 
 The following server methods must be implemented:
 
@@ -64,7 +64,7 @@ Class | Method | HTTP request | Description
 
 
 
-## Documentation For Models
+## Models
 
  - [ApiResponse](docs/ApiResponse.md)
  - [Category](docs/Category.md)

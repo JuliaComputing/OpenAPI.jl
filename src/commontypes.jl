@@ -1,5 +1,8 @@
 abstract type APIModel end
 abstract type APIClientImpl end
+abstract type UnionAPIModel <: APIModel end
+abstract type OneOfAPIModel <: UnionAPIModel end
+abstract type AnyOfAPIModel <: UnionAPIModel end
 struct OpenAPIException <: Exception
     reason::String
 end

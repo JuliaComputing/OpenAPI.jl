@@ -1,0 +1,131 @@
+openapi: 3.0.3
+info:
+  title: oneof anyof allof tests
+  description: |-
+    API to test code generation for oneof anyof allof
+  contact:
+    email: test@example.com
+  version: 0.0.1
+paths:
+  /echo_oneof_mapped_pets:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OneOfMappedPets'
+        required: true
+      responses:
+        '200':
+          description: Successful response (echoes the request body)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OneOfMappedPets'
+  /echo_oneof_pets:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OneOfPets'
+        required: true
+      responses:
+        '200':
+          description: Successful response (echoes the request body)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OneOfPets'
+  /echo_anyof_mapped_pets:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnyOfMappedPets'
+        required: true
+      responses:
+        '200':
+          description: Successful response (echoes the request body)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnyOfMappedPets'
+  /echo_anyof_pets:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnyOfPets'
+        required: true
+      responses:
+        '200':
+          description: Successful response (echoes the request body)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnyOfPets'
+components:
+  schemas:
+    Pet:
+      type: object
+      required:
+        - pet_type
+      properties:
+        pet_type:
+          type: string
+      discriminator:
+        propertyName: pet_type
+    Dog:
+      allOf:
+        - $ref: '#/components/schemas/Pet'
+        - type: object
+          # all other properties specific to a `Dog`
+          properties:
+            bark:
+              type: boolean
+            breed:
+              type: string
+              enum: [Dingo, Husky, Retriever, Shepherd]
+    Cat:
+      allOf:
+        - $ref: '#/components/schemas/Pet'
+        - type: object
+          # all other properties specific to a `Cat`
+          properties:
+            hunts:
+              type: boolean
+            age:
+              type: integer
+    AnyOfPets:
+      anyOf:
+        - $ref: '#/components/schemas/Cat'
+        - $ref: '#/components/schemas/Dog'
+      discriminator:
+        propertyName: pet_type
+    AnyOfMappedPets:
+      anyOf:
+        - $ref: '#/components/schemas/Cat'
+        - $ref: '#/components/schemas/Dog'
+      discriminator:
+        propertyName: pet_type
+        mapping:
+          dog: '#/components/schemas/Dog'
+          cat: '#/components/schemas/Cat'
+    OneOfPets:
+      oneOf:
+        - $ref: '#/components/schemas/Cat'
+        - $ref: '#/components/schemas/Dog'
+      discriminator:
+        propertyName: pet_type
+    OneOfMappedPets:
+      oneOf:
+        - $ref: '#/components/schemas/Cat'
+        - $ref: '#/components/schemas/Dog'
+      discriminator:
+        propertyName: pet_type
+        mapping:
+          dog: '#/components/schemas/Dog'
+          cat: '#/components/schemas/Cat'
