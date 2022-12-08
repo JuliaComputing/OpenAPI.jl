@@ -24,7 +24,7 @@ function iterate(w::JSONWrapper, state...)
 end
 
 lower(o::T) where {T<:APIModel} = JSONWrapper(o)
-lower(o::T) where {T<:UnionAPIModel} = JSONWrapper(o.value)
+lower(o::T) where {T<:UnionAPIModel} = typeof(o.value) <: APIModel ? JSONWrapper(o.value) : to_json(o.value)
 
 to_json(o) = JSON.json(o)
 
@@ -81,7 +81,13 @@ function from_json(o::T, name::Symbol, v::Vector) where {T <: APIModel}
     elseif Date <: veltype
         setfield!(o, name, map(str2date, v))
     else
-        setfield!(o, name, convert(ftype, v))
+        if (vtype <: Vector) && (veltype <: OpenAPI.UnionAPIModel)
+            setfield!(o, name, map(veltype, v))
+        elseif ftype <: OpenAPI.UnionAPIModel
+            setfield!(o, name, ftype(v))
+        else
+            setfield!(o, name, convert(ftype, v))
+        end
     end
     return o
 end
