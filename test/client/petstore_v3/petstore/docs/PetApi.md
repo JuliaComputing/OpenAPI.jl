@@ -40,7 +40,7 @@ Nothing
  - **Content-Type**: application/json, application/xml
  - **Accept**: Not defined
 
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 # **delete_pet**
 > delete_pet(_api::PetApi, pet_id::Int64; api_key=nothing, _mediaType=nothing) -> Nothing, OpenAPI.Clients.ApiResponse <br/>
@@ -74,7 +74,7 @@ Nothing
  - **Content-Type**: Not defined
  - **Accept**: Not defined
 
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 # **find_pets_by_status**
 > find_pets_by_status(_api::PetApi, status::Vector{String}; _mediaType=nothing) -> Vector{Pet}, OpenAPI.Clients.ApiResponse <br/>
@@ -104,7 +104,7 @@ Name | Type | Description  | Notes
  - **Content-Type**: Not defined
  - **Accept**: application/xml, application/json
 
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 # **find_pets_by_tags**
 > find_pets_by_tags(_api::PetApi, tags::Vector{String}; _mediaType=nothing) -> Vector{Pet}, OpenAPI.Clients.ApiResponse <br/>
@@ -134,7 +134,7 @@ Name | Type | Description  | Notes
  - **Content-Type**: Not defined
  - **Accept**: application/xml, application/json
 
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 # **get_pet_by_id**
 > get_pet_by_id(_api::PetApi, pet_id::Int64; _mediaType=nothing) -> Pet, OpenAPI.Clients.ApiResponse <br/>
@@ -164,7 +164,7 @@ Name | Type | Description  | Notes
  - **Content-Type**: Not defined
  - **Accept**: application/xml, application/json
 
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 # **update_pet**
 > update_pet(_api::PetApi, pet::Pet; _mediaType=nothing) -> Nothing, OpenAPI.Clients.ApiResponse <br/>
@@ -192,7 +192,7 @@ Nothing
  - **Content-Type**: application/json, application/xml
  - **Accept**: Not defined
 
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 # **update_pet_with_form**
 > update_pet_with_form(_api::PetApi, pet_id::Int64; name=nothing, status=nothing, _mediaType=nothing) -> Nothing, OpenAPI.Clients.ApiResponse <br/>
@@ -227,7 +227,7 @@ Nothing
  - **Content-Type**: application/x-www-form-urlencoded
  - **Accept**: Not defined
 
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 # **upload_file**
 > upload_file(_api::PetApi, pet_id::Int64; additional_metadata=nothing, file=nothing, _mediaType=nothing) -> ApiResponse, OpenAPI.Clients.ApiResponse <br/>
@@ -262,5 +262,5 @@ Name | Type | Description  | Notes
  - **Content-Type**: multipart/form-data
  - **Accept**: application/json
 
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 

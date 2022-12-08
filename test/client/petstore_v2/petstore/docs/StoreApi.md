@@ -38,7 +38,7 @@ No authorization required
  - **Content-Type**: Not defined
  - **Accept**: Not defined
 
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 # **get_inventory**
 > get_inventory(_api::StoreApi; _mediaType=nothing) -> Dict{String, Int64}, OpenAPI.Clients.ApiResponse <br/>
@@ -64,7 +64,7 @@ This endpoint does not need any parameter.
  - **Content-Type**: Not defined
  - **Accept**: application/json
 
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 # **get_order_by_id**
 > get_order_by_id(_api::StoreApi, order_id::Int64; _mediaType=nothing) -> Order, OpenAPI.Clients.ApiResponse <br/>
@@ -94,7 +94,7 @@ No authorization required
  - **Content-Type**: Not defined
  - **Accept**: application/json, application/xml
 
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 # **place_order**
 > place_order(_api::StoreApi, body::Order; _mediaType=nothing) -> Order, OpenAPI.Clients.ApiResponse <br/>
@@ -122,5 +122,5 @@ No authorization required
  - **Content-Type**: application/json
  - **Accept**: application/json, application/xml
 
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 

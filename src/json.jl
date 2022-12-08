@@ -24,6 +24,7 @@ function iterate(w::JSONWrapper, state...)
 end
 
 lower(o::T) where {T<:APIModel} = JSONWrapper(o)
+lower(o::T) where {T<:UnionAPIModel} = JSONWrapper(o.value)
 
 to_json(o) = JSON.json(o)
 
@@ -32,6 +33,10 @@ from_json(::Type{T}, json::Dict{String,Any}) where {T} = from_json(T(), json)
 from_json(::Type{T}, json::Dict{String,Any}) where {T <: Dict} = convert(T, json)
 from_json(::Type{T}, j::Dict{String,Any}) where {T <: String} = to_json(j)
 from_json(::Type{Any}, j::Dict{String,Any}) = j
+
+function from_json(o::T, json::Dict{String,Any}) where {T <: UnionAPIModel}
+    return from_json(o, :value, json)
+end
 
 function from_json(o::T, json::Dict{String,Any}) where {T <: APIModel}
     jsonkeys = [Symbol(k) for k in keys(json)]
@@ -42,7 +47,7 @@ function from_json(o::T, json::Dict{String,Any}) where {T <: APIModel}
 end
 
 function from_json(o::T, name::Symbol, json::Dict{String,Any}) where {T <: APIModel}
-    ftype = property_type(T, name)
+    ftype = (T <: UnionAPIModel) ? property_type(T, name, json) : property_type(T, name)
     fval = from_json(ftype, json)
     setfield!(o, name, convert(ftype, fval))
     return o

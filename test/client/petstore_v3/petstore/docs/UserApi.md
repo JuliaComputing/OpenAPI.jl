@@ -42,7 +42,7 @@ No authorization required
  - **Content-Type**: application/json
  - **Accept**: Not defined
 
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 # **create_users_with_array_input**
 > create_users_with_array_input(_api::UserApi, user::Vector{User}; _mediaType=nothing) -> Nothing, OpenAPI.Clients.ApiResponse <br/>
@@ -70,7 +70,7 @@ No authorization required
  - **Content-Type**: application/json
  - **Accept**: Not defined
 
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 # **create_users_with_list_input**
 > create_users_with_list_input(_api::UserApi, user::Vector{User}; _mediaType=nothing) -> Nothing, OpenAPI.Clients.ApiResponse <br/>
@@ -98,7 +98,7 @@ No authorization required
  - **Content-Type**: application/json
  - **Accept**: Not defined
 
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 # **delete_user**
 > delete_user(_api::UserApi, username::String; _mediaType=nothing) -> Nothing, OpenAPI.Clients.ApiResponse <br/>
@@ -128,7 +128,7 @@ No authorization required
  - **Content-Type**: Not defined
  - **Accept**: Not defined
 
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 # **get_user_by_name**
 > get_user_by_name(_api::UserApi, username::String; _mediaType=nothing) -> User, OpenAPI.Clients.ApiResponse <br/>
@@ -156,7 +156,7 @@ No authorization required
  - **Content-Type**: Not defined
  - **Accept**: application/xml, application/json
 
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 # **login_user**
 > login_user(_api::UserApi, username::String, password::String; _mediaType=nothing) -> String, OpenAPI.Clients.ApiResponse <br/>
@@ -185,7 +185,7 @@ No authorization required
  - **Content-Type**: Not defined
  - **Accept**: application/xml, application/json
 
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 # **logout_user**
 > logout_user(_api::UserApi; _mediaType=nothing) -> Nothing, OpenAPI.Clients.ApiResponse <br/>
@@ -209,7 +209,7 @@ No authorization required
  - **Content-Type**: Not defined
  - **Accept**: Not defined
 
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 # **update_user**
 > update_user(_api::UserApi, username::String, user::User; _mediaType=nothing) -> Nothing, OpenAPI.Clients.ApiResponse <br/>
@@ -240,5 +240,5 @@ No authorization required
  - **Content-Type**: application/json
  - **Accept**: Not defined
 
-[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 

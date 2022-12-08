@@ -1,5 +1,6 @@
 # Order
 
+
 ## Properties
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
@@ -10,6 +11,7 @@ Name | Type | Description | Notes
 **status** | **String** | Order Status | [optional] [default to nothing]
 **complete** | **Bool** |  | [optional] [default to nothing]
 
-[[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
+
+[[Back to Model list]](../README.md#models) [[Back to API list]](../README.md#api-endpoints) [[Back to README]](../README.md)
 
 
