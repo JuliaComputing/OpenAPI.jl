@@ -9,7 +9,7 @@ using TimeZones
 using LibCURL
 
 import Base: convert, show, summary, getproperty, setproperty!, iterate
-import ..OpenAPI: APIModel, APIClientImpl, OpenAPIException, InvocationException, to_json, from_json, validate_property, property_type
+import ..OpenAPI: APIModel, UnionAPIModel, APIClientImpl, OpenAPIException, InvocationException, to_json, from_json, validate_property, property_type
 import ..OpenAPI: str2zoneddatetime, str2datetime, str2date
 
 # collection formats (OpenAPI v2)
@@ -507,6 +507,7 @@ end
 convert(::Type{T}, json::Dict{String,Any}) where {T<:APIModel} = from_json(T, json)
 convert(::Type{T}, v::Nothing) where {T<:APIModel} = T()
 
+show(io::IO, model::T) where {T<:UnionAPIModel} = print(io, JSON.json(model.value, 2))
 show(io::IO, model::T) where {T<:APIModel} = print(io, JSON.json(model, 2))
 summary(model::T) where {T<:APIModel} = print(io, T)
 
