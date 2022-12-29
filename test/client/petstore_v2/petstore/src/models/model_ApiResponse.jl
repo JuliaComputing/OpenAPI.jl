@@ -2,7 +2,8 @@
 # Do not modify this file directly. Modify the OpenAPI specification instead.
 
 
-@doc raw"""
+@doc raw"""ApiResponse
+
     ApiResponse(;
         code=nothing,
         type=nothing,
@@ -34,4 +35,7 @@ function check_required(o::ApiResponse)
 end
 
 function OpenAPI.validate_property(::Type{ ApiResponse }, name::Symbol, val)
+    if name === Symbol("code")
+        OpenAPI.validate_param(name, "ApiResponse", :format, val, "int32")
+    end
 end

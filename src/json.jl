@@ -61,6 +61,9 @@ function from_json(o::T, name::Symbol, v) where {T <: APIModel}
         setfield!(o, name, str2datetime(v))
     elseif Date <: ftype
         setfield!(o, name, str2date(v))
+    elseif String <: ftype && isa(v, Real)
+        # string numbers can have format specifiers that allow numbers, ensure they are converted to strings
+        setfield!(o, name, string(v))
     else
         setfield!(o, name, convert(ftype, v))
     end
@@ -83,6 +86,10 @@ function from_json(o::T, name::Symbol, v::Vector) where {T <: APIModel}
     else
         if (vtype <: Vector) && (veltype <: OpenAPI.UnionAPIModel)
             setfield!(o, name, map(veltype, v))
+        elseif (vtype <: Vector) && (veltype <: String)
+            # ensure that elements are converted to String
+            # convert is to do the translation to Union{Nothing,String} when necessary
+            setfield!(o, name, convert(ftype, map(string, v)))
         elseif ftype <: OpenAPI.UnionAPIModel
             setfield!(o, name, ftype(v))
         else

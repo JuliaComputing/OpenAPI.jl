@@ -2,7 +2,8 @@
 # Do not modify this file directly. Modify the OpenAPI specification instead.
 
 
-@doc raw"""
+@doc raw"""Order
+
     Order(;
         id=nothing,
         petId=nothing,
@@ -46,6 +47,18 @@ function check_required(o::Order)
 end
 
 function OpenAPI.validate_property(::Type{ Order }, name::Symbol, val)
+    if name === Symbol("id")
+        OpenAPI.validate_param(name, "Order", :format, val, "int64")
+    end
+    if name === Symbol("petId")
+        OpenAPI.validate_param(name, "Order", :format, val, "int64")
+    end
+    if name === Symbol("quantity")
+        OpenAPI.validate_param(name, "Order", :format, val, "int32")
+    end
+    if name === Symbol("shipDate")
+        OpenAPI.validate_param(name, "Order", :format, val, "date-time")
+    end
     if name === Symbol("status")
         OpenAPI.validate_param(name, "Order", :enum, val, ["placed", "approved", "delivered"])
     end

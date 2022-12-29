@@ -31,6 +31,32 @@ function test_longpoll_exception_check()
     @test OpenAPI.Clients.is_longpoll_timeout(CompositeException([openapiex1, as_taskfailedexception(openapiex1)])) == false
 end
 
+function OpenAPI.val_format(val::AbstractString, ::Val{:testformat})
+    return val == "testvalue"
+end
+function OpenAPI.val_format(val::Integer, ::Val{:testformat})
+    return val == 111
+end
+function OpenAPI.val_format(val::AbstractFloat, ::Val{:testformat})
+    return val == 111.111
+end
+
+function test_custom_format_validations()
+    @test OpenAPI.val_format("testvalue", "testformat")
+    @test !OpenAPI.val_format("invalidvalue", "testformat")
+    @test OpenAPI.val_format("anyvalue", "unknownformat")
+
+    @test OpenAPI.val_format(111, "testformat")
+    @test !OpenAPI.val_format(222, "testformat")
+    @test OpenAPI.val_format(111, "unknownformat")
+
+    @test OpenAPI.val_format(111.111, "testformat")
+    @test !OpenAPI.val_format(222.222, "testformat")
+    @test OpenAPI.val_format(111.111, "unknownformat")
+
+    return nothing
+end
+
 function test_validations()
     # maximum
     @test_throws OpenAPI.ValidationException OpenAPI.validate_param("test_param", "test_model", :maximum, 11, 10, true)
@@ -77,5 +103,7 @@ function test_validations()
     @test OpenAPI.validate_param("test_param", "test_model", :enum, [:a, :b, :b], [:a, :b, :c]) === nothing
     @test_throws OpenAPI.ValidationException OpenAPI.validate_param("test_param", "test_model", :enum, [:a, :b, :c, :d], [:a, :b, :c])
     
+    # custom format Validations
+    test_custom_format_validations()
     return nothing
 end
