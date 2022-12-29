@@ -22,6 +22,24 @@ end
 function val_pattern(val::AbstractString, pattern::Regex)
     return !isnothing(match(pattern, val))
 end
+val_format(val, format) = true   # accept any unhandled format
+val_format(val::Union{AbstractString,Integer,AbstractFloat}, format::AbstractString) = val_format(val, Val(Symbol(format)))
+val_format(val::AbstractString, ::Val{:date}) = str2date(val) isa Date
+val_format(val::AbstractString, ::Val{Symbol("date-time")}) = str2datetime(val) isa DateTime
+val_format(val::AbstractString, ::Val{:byte}) = try
+    base64decode(val)
+    true
+catch
+    false
+end
+val_format(val::Integer, ::Val{:int32}) = (typemin(Int32) <= val <= typemax(Int32))
+val_format(val::Integer, ::Val{:int64}) = (typemin(Int64) <= val <= typemax(Int64))
+val_format(val::AbstractFloat, ::Val{:float}) = (typemin(Float32) <= Float32(val) <= typemax(Float32))
+val_format(val::AbstractFloat, ::Val{:double}) = (typemin(Float64) <= Float64(val) <= typemax(Float64))
+
+function val_multiple_of(val::Real, multiple_of::Real)
+    return isinteger(val / multiple_of)
+end
 
 const MSG_INVALID_API_PARAM = Dict{Symbol,Function}([
     :maximum => (val,excl)->string("must be a value less than ", excl ? "or equal to " : "", val),
@@ -35,6 +53,8 @@ const MSG_INVALID_API_PARAM = Dict{Symbol,Function}([
     :minProperties => (val)->string("number of properties must be greater than or equal to ", val),
     :enum => (lst)->string("value is not from the allowed values ", lst),
     :pattern => (val)->string("value does not match required pattern"),
+    :format => (val)->string("value does not match required format"),
+    :multipleOf => (val)->string("value must be a multiple of ", val),
 ])
 
 const VAL_API_PARAM = Dict{Symbol,Function}([
@@ -49,6 +69,8 @@ const VAL_API_PARAM = Dict{Symbol,Function}([
     :minProperties => val_min_length,
     :pattern => val_pattern,
     :enum => val_enum,
+    :format => val_format,
+    :multipleOf => val_multiple_of,
 ])
 
 function validate_param(param, operation_or_model, rule, value, args...)

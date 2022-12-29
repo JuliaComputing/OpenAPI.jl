@@ -54,10 +54,48 @@ Following validations are incorporated into models:
 - minimum length: must be a string value of length greater than or equal to a specified value
 - maximum item count: must be a list value with number of items less than or equal to a specified value
 - minimum item count: must be a list value with number of items greater than or equal to a specified value
+- unique items: items must be unique
+- maximum properties count: number of properties must be less than or equal to a specified value
+- minimum properties count: number of properties must be greater than or equal to a specified value
 - pattern: must match the specified regex pattern
+- format: must match the specified format specifier (see subsection below for details)
 - enum: value must be from a list of allowed values
+- multiple of: must be a multiple of a specified value
 
 Validations are imposed in the constructor and `setproperty!` methods of models.
+
+#### Validations for format specifiers
+
+String, number and integer data types can have an optional format modifier that serves as a hint at the contents and format of the string. Validations for the following OpenAPI defined formats are built in:
+
+| Data Type | Format    | Description |
+|-----------|-----------|-------------|
+| number    | float     | Floating-point numbers. |
+| number    | double    | Floating-point numbers with double precision. |
+| integer   | int32     | Signed 32-bit integers (commonly used integer type). |
+| integer   | int64     | Signed 64-bit integers (long type). |
+| string    | date      | full-date notation as defined by RFC 3339, section 5.6, for example, 2017-07-21 |
+| string    | date-time | the date-time notation as defined by RFC 3339, section 5.6, for example, 2017-07-21T17:32:28Z |
+| string    | byte      | base64-encoded characters, for example, U3dhZ2dlciByb2Nrcw== |
+
+Validations for custom formats can be plugged in by overloading the `OpenAPI.val_format` method.
+
+E.g.:
+
+```julia
+# add a new validation named `custom` for the number type
+function OpenAPI.val_format(val::AbstractFloat, ::Val{:custom})
+    return true # do some validations and return result
+end
+# add a new validation named `custom` for the integer type
+function OpenAPI.val_format(val::Integer, ::Val{:custom})
+    return true # do some validations and return result
+end
+# add a new validation named `custom` for the string type
+function OpenAPI.val_format(val::AbstractString, ::Val{:custom})
+    return true # do some validations and return result
+end
+```
 
 ### Client APIs
 

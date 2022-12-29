@@ -1,6 +1,6 @@
 module OpenAPI
 
-using HTTP, JSON, URIs, Dates, TimeZones
+using HTTP, JSON, URIs, Dates, TimeZones, Base64
 
 import Base: getindex, keys, length, iterate
 import JSON: lower

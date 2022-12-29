@@ -2,7 +2,8 @@
 # Do not modify this file directly. Modify the OpenAPI specification instead.
 
 
-@doc raw"""A tag for a pet
+@doc raw"""Tag
+A tag for a pet
 
     Tag(;
         id=nothing,
@@ -31,4 +32,7 @@ function check_required(o::Tag)
 end
 
 function OpenAPI.validate_property(::Type{ Tag }, name::Symbol, val)
+    if name === Symbol("id")
+        OpenAPI.validate_param(name, "Tag", :format, val, "int64")
+    end
 end

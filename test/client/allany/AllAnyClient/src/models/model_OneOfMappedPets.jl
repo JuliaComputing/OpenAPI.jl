@@ -3,7 +3,8 @@
 
 
 
-@doc raw"""
+@doc raw"""OneOfMappedPets
+
     OneOfMappedPets(; value=nothing)
 """
 mutable struct OneOfMappedPets <: OpenAPI.OneOfAPIModel

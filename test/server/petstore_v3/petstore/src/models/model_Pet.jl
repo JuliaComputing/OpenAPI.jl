@@ -49,6 +49,9 @@ function check_required(o::Pet)
 end
 
 function OpenAPI.validate_property(::Type{ Pet }, name::Symbol, val)
+    if name === Symbol("id")
+        OpenAPI.validate_param(name, "Pet", :format, val, "int64")
+    end
     if name === Symbol("status")
         OpenAPI.validate_param(name, "Pet", :enum, val, ["available", "pending", "sold"])
     end
