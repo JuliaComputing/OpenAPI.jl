@@ -55,7 +55,9 @@ end
 
 function from_json(o::T, name::Symbol, v) where {T <: APIModel}
     ftype = property_type(T, name)
-    if ZonedDateTime <: ftype
+    if ftype === Any
+        setfield!(o, name, v)
+    elseif ZonedDateTime <: ftype
         setfield!(o, name, str2zoneddatetime(v))
     elseif DateTime <: ftype
         setfield!(o, name, str2datetime(v))

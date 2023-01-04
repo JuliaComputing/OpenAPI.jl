@@ -23,7 +23,7 @@ function val_pattern(val::AbstractString, pattern::Regex)
     return !isnothing(match(pattern, val))
 end
 val_format(val, format) = true   # accept any unhandled format
-val_format(val::Union{AbstractString,Integer,AbstractFloat}, format::AbstractString) = val_format(val, Val(Symbol(format)))
+val_format(val, format::AbstractString) = val_format(val, Val(Symbol(format)))
 val_format(val::AbstractString, ::Val{:date}) = str2date(val) isa Date
 val_format(val::AbstractString, ::Val{Symbol("date-time")}) = str2datetime(val) isa DateTime
 val_format(val::AbstractString, ::Val{:byte}) = try

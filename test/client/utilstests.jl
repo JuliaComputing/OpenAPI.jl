@@ -31,6 +31,23 @@ function test_longpoll_exception_check()
     @test OpenAPI.Clients.is_longpoll_timeout(CompositeException([openapiex1, as_taskfailedexception(openapiex1)])) == false
 end
 
+function test_request_interrupted_exception_check()
+    ex1 = OpenAPI.InvocationException("request was interrupted")
+    ex2 = ArgumentError("request interrupted")
+    ex3 = OpenAPI.InvocationException("not request interrupted")
+
+    @test OpenAPI.Clients.is_request_interrupted(ex1)
+    @test !OpenAPI.Clients.is_request_interrupted(ex2)
+    @test !OpenAPI.Clients.is_request_interrupted(ex3)
+
+    @test OpenAPI.Clients.is_request_interrupted(as_taskfailedexception(ex1))
+    @test !OpenAPI.Clients.is_request_interrupted(as_taskfailedexception(ex2))
+    @test !OpenAPI.Clients.is_request_interrupted(as_taskfailedexception(ex3))
+
+    @test OpenAPI.Clients.is_request_interrupted(CompositeException([ex1, ex2]))
+    @test !OpenAPI.Clients.is_request_interrupted(CompositeException([ex2, ex3]))
+end
+
 function OpenAPI.val_format(val::AbstractString, ::Val{:testformat})
     return val == "testvalue"
 end

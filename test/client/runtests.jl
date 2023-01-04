@@ -12,6 +12,7 @@ function runtests()
     @testset "Client" begin
         @testset "Utils" begin
             test_longpoll_exception_check()
+            test_request_interrupted_exception_check()
         end
         @testset "Validations" begin
             test_validations()
