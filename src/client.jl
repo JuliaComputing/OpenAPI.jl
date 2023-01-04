@@ -514,7 +514,7 @@ summary(model::T) where {T<:APIModel} = print(io, T)
 """
     is_longpoll_timeout(ex::Exception)
 
-Examine the supplied exception and returns true if the reason is timeout
+Examine the supplied exception and return true if the reason is timeout
 of a long polling request. If the exception is a nested exception of type
 CompositeException or TaskFailedException, then navigates through the nested
 exception values to examine the leaves.
@@ -525,5 +525,18 @@ is_longpoll_timeout(ex::CompositeException) = any(is_longpoll_timeout, ex.except
 function is_longpoll_timeout(ex::ApiException)
     ex.status == 200 && match(r"Operation timed out after \d+ milliseconds with \d+ bytes received", ex.reason) !== nothing
 end
+
+"""
+    is_request_interrupted(ex::Exception)
+
+Examine the supplied exception and return true if the reason is that the
+request was interrupted. If the exception is a nested exception of type
+CompositeException or TaskFailedException, then navigates through the nested
+exception values to examine the leaves.
+"""
+is_request_interrupted(ex) = false
+is_request_interrupted(ex::TaskFailedException) = is_request_interrupted(ex.task.exception)
+is_request_interrupted(ex::CompositeException) = any(is_request_interrupted, ex.exceptions)
+is_request_interrupted(ex::InvocationException) = ex.reason == "request was interrupted"
 
 end # module Clients
