@@ -200,6 +200,7 @@ Not all OpenAPI features are supported yet, e.g.:
     - native representaion of some of the string formats, e.g. uuid, url
     - read-only and write-only properties
 - authentication schemes
+- [`deepObject`](https://swagger.io/docs/specification/serialization/)s in query parameters
 
 There could be more unsupported features than what is listed above.
 
