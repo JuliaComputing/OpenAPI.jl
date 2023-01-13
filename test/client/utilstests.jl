@@ -1,6 +1,22 @@
 using OpenAPI
 using OpenAPI.Clients
 using Test
+using Dates
+using TimeZones
+
+function test_date()
+    dt_string = string(ZonedDateTime(now(), localzone()))
+    dt = OpenAPI.str2zoneddatetime(dt_string)
+    @test dt_string == string(dt)
+
+    dt_string = string(DateTime(now()))
+    dt = OpenAPI.str2datetime(dt_string)
+    @test dt_string == string(dt)
+
+    dt_string = string(Date(now()))
+    dt = OpenAPI.str2date(dt_string)
+    @test dt_string == string(dt)
+end
 
 function as_taskfailedexception(ex)
     try
@@ -74,6 +90,13 @@ function test_custom_format_validations()
     return nothing
 end
 
+function test_numeric_format_validations()
+    @test OpenAPI.val_format(typemax(Float32), ":float")
+    @test OpenAPI.val_format(typemax(Float64), ":double")
+    @test OpenAPI.val_multiple_of(10.0, 5.0)
+    @test !OpenAPI.val_multiple_of(10.0, 3.0)
+end
+
 function test_validations()
     # maximum
     @test_throws OpenAPI.ValidationException OpenAPI.validate_param("test_param", "test_model", :maximum, 11, 10, true)
@@ -122,5 +145,6 @@ function test_validations()
     
     # custom format Validations
     test_custom_format_validations()
+    test_numeric_format_validations()
     return nothing
 end
