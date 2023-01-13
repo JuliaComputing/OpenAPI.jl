@@ -22,7 +22,6 @@ function str2zoneddatetime(str::String)
         end
     end
     return ZonedDateTime(str2datetime(str), localzone())
-    throw(OpenAPIException("Unsupported ZonedDateTime format: $str"))
 end
 str2zoneddatetime(datetime::DateTime) = ZonedDateTime(datetime, localzone())
 
