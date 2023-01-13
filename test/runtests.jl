@@ -1,56 +1,62 @@
-using Test
+using Test, HTTP
 
+include("testutils.jl")
 include("client/runtests.jl")
 include("client/allany/runtests.jl")
 
 @testset "OpenAPI" begin
     @testset "Client" begin
         try
-            if get(ENV, "RUNNER_OS", "") == "Linux"
+            if run_tests_with_servers
                 run(`client/petstore_v2/start_petstore_server.sh`)
                 run(`client/petstore_v3/start_petstore_server.sh`)
-                sleep(20)
+                sleep(20) # let servers start
             end
             OpenAPIClientTests.runtests()
         finally
-            if get(ENV, "RUNNER_OS", "") == "Linux"
+            if run_tests_with_servers
                 run(`client/petstore_v2/stop_petstore_server.sh`)
                 run(`client/petstore_v3/stop_petstore_server.sh`)
             end
         end
     end
-    if get(ENV, "RUNNER_OS", "") == "Linux"
-        sleep(20)
-    end
+    run_tests_with_servers && sleep(20) # avoid port conflicts
     @testset "Server" begin
+        v2_ret = v2_out = v3_ret = v3_out = nothing
+        servers_running = true
+
         try
-            if get(ENV, "RUNNER_OS", "") == "Linux"
-                run(`server/petstore_v2/start_petstore_server.sh`)
-                run(`server/petstore_v3/start_petstore_server.sh`)
-                sleep(20)
+            if run_tests_with_servers
+                v2_ret, v2_out = run_server(joinpath(@__DIR__, "server", "petstore_v2", "petstore_server.jl"))
+                v3_ret, v3_out = run_server(joinpath(@__DIR__, "server", "petstore_v3", "petstore_server.jl"))
+                servers_running &= wait_server(8080)
+                servers_running &= wait_server(8081)
+            else
+                servers_running = false                
             end
-            OpenAPIClientTests.runtests()
+            servers_running && OpenAPIClientTests.runtests()
         finally
-            if get(ENV, "RUNNER_OS", "") == "Linux"
-                run(`server/petstore_v2/stop_petstore_server.sh`)
-                run(`server/petstore_v3/stop_petstore_server.sh`)
+            if run_tests_with_servers
+                stop_server(8080, v2_ret, v2_out)
+                stop_server(8081, v3_ret, v3_out)
             end
         end
     end
-    if get(ENV, "RUNNER_OS", "") == "Linux"
-        sleep(20)
-    end
+    run_tests_with_servers && sleep(20) # avoid port conflicts
     @testset "Union types" begin
+        ret = out = nothing
+        servers_running = true
+
         try
-            if get(ENV, "RUNNER_OS", "") == "Linux"
-                run(`server/allany/start_allany_server.sh`)
-                sleep(20)
+            if run_tests_with_servers
+                ret, out = run_server(joinpath(@__DIR__, "server", "allany", "allany_server.jl"))
+                servers_running &= wait_server(8081)
                 AllAnyTests.runtests()
+            else
+                servers_running = false
             end
         finally
-            if get(ENV, "RUNNER_OS", "") == "Linux"
-                run(`server/allany/stop_allany_server.sh`)
-            end
+            run_tests_with_servers && stop_server(8081, ret, out)
         end
     end
 end

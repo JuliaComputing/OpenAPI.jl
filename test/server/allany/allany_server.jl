@@ -49,12 +49,21 @@ function stop(::HTTP.Request)
     return HTTP.Response(200, "")
 end
 
+function ping(::HTTP.Request)
+    return HTTP.Response(200, "")
+end
+
 function run_server(port=8081)
-    router = HTTP.Router()
-    router = AllAnyServer.register(router, @__MODULE__)
-    HTTP.register!(router, "GET", "/stop", stop)
-    server[] = HTTP.serve!(router, port)
-    wait(server[])
+    try
+        router = HTTP.Router()
+        router = AllAnyServer.register(router, @__MODULE__)
+        HTTP.register!(router, "GET", "/stop", stop)
+        HTTP.register!(router, "GET", "/ping", ping)
+        server[] = HTTP.serve!(router, port)
+        wait(server[])
+    catch ex
+        @error("Server error", exception=(ex, catch_backtrace()))
+    end
 end
 
 end # module AllAnyServerImpl

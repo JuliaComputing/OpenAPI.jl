@@ -148,12 +148,21 @@ function stop(::HTTP.Request)
     return HTTP.Response(200, "")
 end
 
+function ping(::HTTP.Request)
+    return HTTP.Response(200, "")
+end
+
 function run_server(port=8080)
-    router = HTTP.Router()
-    router = PetStoreServer.register(router, @__MODULE__; path_prefix="/v2")
-    HTTP.register!(router, "GET", "/stop", stop)
-    server[] = HTTP.serve!(router, port)
-    wait(server[])
+    try
+        router = HTTP.Router()
+        router = PetStoreServer.register(router, @__MODULE__; path_prefix="/v2")
+        HTTP.register!(router, "GET", "/stop", stop)
+        HTTP.register!(router, "GET", "/ping", ping)
+        server[] = HTTP.serve!(router, port)
+        wait(server[])
+    catch ex
+        @error("Server error", exception=(ex, catch_backtrace()))
+    end
 end
 
 end # module PetStoreV2Server
