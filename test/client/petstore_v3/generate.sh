@@ -1,5 +1,5 @@
 java -jar openapi-generator-cli.jar generate \
-    -i openapi.json \
+    -i ../../specs/petstore_v3.json \
     -g julia-client \
     -o petstore \
     --additional-properties=packageName=PetStoreClient \
