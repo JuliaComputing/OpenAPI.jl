@@ -11,5 +11,6 @@ include("val.jl")
 include("json.jl")
 include("client.jl")
 include("server.jl")
+include("tools.jl")
 
 end # module

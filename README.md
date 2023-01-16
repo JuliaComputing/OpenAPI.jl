@@ -208,6 +208,28 @@ The Petstore is a common example that most OpenAPI implementations use to test a
     - Client: [docs](test/client/petstore_v3/petstore/README.md), [implementation](test/client/petstore_v3)
     - Server: [docs](test/server/petstore_v3/petstore/README.md), [implementation](test/server/petstore_v3)
 
+## Swagger UI
+
+[Swagger UI](https://swagger.io/tools/swagger-ui/) allows visualization and interaction with the API’s resources without having any of the implementation logic in place. OpenAPI.jl includes convenience methods to launch Swagger UI from Julia.
+
+Use `OpenAPI.swagger_ui` to open Swagger UI. It uses the standard `swaggerapi/swagger-ui` docker image and requires docker engine to be installed.
+
+```julia
+OpenAPI.swagger_ui(
+    spec::String;           # the OpenAPI specification to use
+    port::Int=8080,         # port to use 
+    use_sudo::Bool=false    # whether to use sudo while invoking docker
+)
+```
+
+To stop the Swagger UI container, use `OpenAPI.stop_swagger_ui`.
+
+```julia
+OpenAPI.stop_swagger_ui(;
+    use_sudo::Bool=false    # whether to use sudo while invoking docker
+)
+```
+
 ## TODO
 
 Not all OpenAPI features are supported yet, e.g.:
