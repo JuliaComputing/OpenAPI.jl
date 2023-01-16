@@ -9,7 +9,7 @@ The goal of OpenAPI is to define a standard, language-agnostic interface to REST
 
 Check out [OpenAPI-Spec](https://github.com/OAI/OpenAPI-Specification) for additional information about the OpenAPI project, including additional libraries with support for other languages and more.
 
-> Note: This package supercedes the [Swagger.jl](https://github.com/JuliaComputing/Swagger.jl) package. OpenAPI.jl and the associated generator can address both OpenAPI 2.x (Swagger) and OpenAPI 3.x specifications. Code dependent on Swagger.jl would not directly work with OpenAPI.jl, but migration should not be too difficult.
+> Note: This package supersedes the [Swagger.jl](https://github.com/JuliaComputing/Swagger.jl) package. OpenAPI.jl and the associated generator can address both OpenAPI 2.x (Swagger) and OpenAPI 3.x specifications. Code dependent on Swagger.jl would not directly work with OpenAPI.jl, but migration should not be too difficult.
 
 ## Code Generation
 
