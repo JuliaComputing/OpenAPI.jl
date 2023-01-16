@@ -15,6 +15,8 @@ Check out [OpenAPI-Spec](https://github.com/OAI/OpenAPI-Specification) for addit
 
 Use [instructions](https://openapi-generator.tech/docs/generators) provided for the Julia OpenAPI code generator plugin to generate Julia code.
 
+> Note: It requires the Julia code generator hosted in [this forked branch](https://github.com/JuliaComputing/openapi-generator/tree/juliahub/juliacodegen) of the OpenAPI code generator. The plan is to submit it for inclusion in the upstream repo soon.
+
 ## Generated Code Structure
 
 ### Models
@@ -114,7 +116,10 @@ The second variant is suitable for asynchronous calls to methods that return chu
 
 ```julia
 # example asynchronous API that streams matching Pet instances into response_stream
-findPetsByStatus(api::PetApi, response_stream::Channel, status::Vector{String}) -> (response_stream, http_response)
+findPetsByStatus(
+    api::PetApi,
+    response_stream::Channel,
+    status::Vector{String}) -> (response_stream, http_response)
 ```
 
 The HTTP response returned from the API calls, have these properties:
@@ -184,13 +189,24 @@ Optional parameters:
 - `optional_middlewares`: Register one or more optional middlewares to be applied to all requests.
 
 Optional middlewares can be one or more of:
-    - `init`: called before the request is processed
-    - `pre_validation`: called after the request is parsed but before validation
-    - `pre_invoke`: called after validation but before the handler is invoked
-    - `post_invoke`: called after the handler is invoked but before the response is sent
+- `init`: called before the request is processed
+- `pre_validation`: called after the request is parsed but before validation
+- `pre_invoke`: called after validation but before the handler is invoked
+- `post_invoke`: called after the handler is invoked but before the response is sent
 
-The order in which middlewares are invoked are:
+The order in which middlewares are invoked is:
 `init |> read |> pre_validation |> validate |> pre_invoke |> invoke |> post_invoke`
+
+## Examples
+
+The Petstore is a common example that most OpenAPI implementations use to test and demonstrate. Clients and servers generated from both version 2 and 3 specifications are included in this repo.
+
+- Petstore v2:
+    - Client: [docs](test/client/petstore_v2/petstore/README.md), [implementation](test/client/petstore_v2)
+    - Server: [docs](test/server/petstore_v2/petstore/README.md), [implementation](test/server/petstore_v2)
+- Petstore v3:
+    - Client: [docs](test/client/petstore_v3/petstore/README.md), [implementation](test/client/petstore_v3)
+    - Server: [docs](test/server/petstore_v3/petstore/README.md), [implementation](test/server/petstore_v3)
 
 ## TODO
 
@@ -205,5 +221,3 @@ Not all OpenAPI features are supported yet, e.g.:
 - [`deepObject`](https://swagger.io/docs/specification/serialization/)s in query parameters
 
 There could be more unsupported features than what is listed above.
-
-This is currently a beta version. It requires the Julia code generator hosted in [this forked branch](https://github.com/JuliaComputing/openapi-generator/tree/juliahub/juliacodegen) of the OpenAPI code generator. The plan is to submit it for inclusion in the upstream repo soon.
