@@ -3,18 +3,23 @@ using OpenAPI.Clients
 using Test
 using Dates
 using TimeZones
+using Base64
 
 function test_date()
-    dt_string = string(ZonedDateTime(now(), localzone()))
-    dt = OpenAPI.str2zoneddatetime(dt_string)
+    dt_now = now()
+    dt_string = string(ZonedDateTime(dt_now, localzone()))
+    dt = OpenAPI.str2zoneddatetime(convert(Vector{UInt8}, codeunits(dt_string)))
+    @test dt == OpenAPI.str2zoneddatetime(dt_now)
     @test dt_string == string(dt)
 
-    dt_string = string(DateTime(now()))
-    dt = OpenAPI.str2datetime(dt_string)
+    dt_string = string(dt_now)
+    dt = OpenAPI.str2datetime(convert(Vector{UInt8}, codeunits(dt_string)))
+    @test dt == OpenAPI.str2datetime(dt_now)
     @test dt_string == string(dt)
 
-    dt_string = string(Date(now()))
-    dt = OpenAPI.str2date(dt_string)
+    dt_string = string(Date(dt_now))
+    dt = OpenAPI.str2date(convert(Vector{UInt8}, codeunits(dt_string)))
+    @test dt == OpenAPI.str2date(Date(dt_now))
     @test dt_string == string(dt)
 end
 
@@ -90,11 +95,15 @@ function test_custom_format_validations()
     return nothing
 end
 
-function test_numeric_format_validations()
-    @test OpenAPI.val_format(typemax(Float32), ":float")
-    @test OpenAPI.val_format(typemax(Float64), ":double")
+function test_format_validations()
+    @test OpenAPI.val_format(typemax(Float32), "float")
+    @test OpenAPI.val_format(typemax(Float64), "double")
     @test OpenAPI.val_multiple_of(10.0, 5.0)
     @test !OpenAPI.val_multiple_of(10.0, 3.0)
+
+    b64str = String(base64encode("test string"))
+    @test OpenAPI.val_format(b64str, "byte")
+    @test !OpenAPI.val_format("not base64", "byte")
 end
 
 function test_validations()
@@ -144,7 +153,26 @@ function test_validations()
     @test_throws OpenAPI.ValidationException OpenAPI.validate_param("test_param", "test_model", :enum, [:a, :b, :c, :d], [:a, :b, :c])
     
     # custom format Validations
+    test_format_validations()
     test_custom_format_validations()
-    test_numeric_format_validations()
+
     return nothing
+end
+
+struct InvalidModel <: OpenAPI.APIModel
+    test::Any
+
+    function InvalidModel(; test=nothing)
+        return new(test)
+    end
+end
+
+function test_misc()
+    @test isa(OpenAPI.OpenAPIException("test"), Exception)
+    @test_throws Exception OpenAPI.property_type(InvalidModel(), :test)
+
+    json = Dict{String,Any}()
+    @test OpenAPI.from_json(Any, json) === json
+    @test OpenAPI.from_json(String, json) == "{}"
+    @test isa(OpenAPI.from_json(Dict{Any,Any}, json), Dict{Any,Any})
 end

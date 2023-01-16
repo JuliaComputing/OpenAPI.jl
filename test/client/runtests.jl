@@ -14,6 +14,7 @@ function runtests()
             test_longpoll_exception_check()
             test_request_interrupted_exception_check()
             test_date()
+            test_misc()
         end
         @testset "Validations" begin
             test_validations()
