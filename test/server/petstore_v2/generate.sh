@@ -1,5 +1,5 @@
 java -jar openapi-generator-cli.jar generate \
-    -i swagger.json \
+    -i ../../specs/petstore_v2.json \
     -g julia-server \
     -o petstore \
     --additional-properties=packageName=PetStoreServer \
