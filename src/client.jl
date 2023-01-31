@@ -101,11 +101,15 @@ struct Client
             get_return_type::Function=get_api_return_type,
             long_polling_timeout::Int=DEFAULT_LONGPOLL_TIMEOUT_SECS,
             timeout::Int=DEFAULT_TIMEOUT_SECS,
-            pre_request_hook::Function=noop_pre_request_hook)
-        clntoptions = Dict{Symbol,Any}(:throw=>false, :verbose=>false)
+            pre_request_hook::Function=noop_pre_request_hook,
+            verbose::Bool=false,
+        )
+        clntoptions = Dict{Symbol,Any}(:throw=>false, :verbose=>verbose)
         downloader = Downloads.Downloader()
         downloader.easy_hook = (easy, opts) -> begin
             Downloads.Curl.setopt(easy, LibCURL.CURLOPT_LOW_SPEED_TIME, long_polling_timeout)
+            # disable ALPN to support servers that enable both HTTP/2 and HTTP/1.1 on same port
+            Downloads.Curl.setopt(easy, LibCURL.CURLOPT_SSL_ENABLE_ALPN, 0)
         end
         new(root, headers, get_return_type, clntoptions, downloader, Ref{Int}(timeout), pre_request_hook, long_polling_timeout)
     end

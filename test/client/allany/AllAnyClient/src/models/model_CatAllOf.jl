@@ -32,3 +32,4 @@ end
 
 function OpenAPI.validate_property(::Type{ CatAllOf }, name::Symbol, val)
 end
+

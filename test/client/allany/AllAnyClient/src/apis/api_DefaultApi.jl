@@ -11,12 +11,12 @@ This can be used to construct the `OpenAPI.Clients.Client` instance.
 """
 basepath(::Type{ DefaultApi }) = "http://localhost"
 
-const _returntypes_echo_anyof_mapped_pets_post = Dict{Regex,Type}(
+const _returntypes_echo_anyof_mapped_pets_post_DefaultApi = Dict{Regex,Type}(
     Regex("^" * replace("200", "x"=>".") * "\$") => AnyOfMappedPets,
 )
 
 function _oacinternal_echo_anyof_mapped_pets_post(_api::DefaultApi, any_of_mapped_pets::AnyOfMappedPets; _mediaType=nothing)
-    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", _returntypes_echo_anyof_mapped_pets_post, "/echo_anyof_mapped_pets", [], any_of_mapped_pets)
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", _returntypes_echo_anyof_mapped_pets_post_DefaultApi, "/echo_anyof_mapped_pets", [], any_of_mapped_pets)
     OpenAPI.Clients.set_header_accept(_ctx, ["application/json", ])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? ["application/json", ] : [_mediaType])
     return _ctx
@@ -37,12 +37,12 @@ function echo_anyof_mapped_pets_post(_api::DefaultApi, response_stream::Channel,
     return OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-const _returntypes_echo_anyof_pets_post = Dict{Regex,Type}(
+const _returntypes_echo_anyof_pets_post_DefaultApi = Dict{Regex,Type}(
     Regex("^" * replace("200", "x"=>".") * "\$") => AnyOfPets,
 )
 
 function _oacinternal_echo_anyof_pets_post(_api::DefaultApi, any_of_pets::AnyOfPets; _mediaType=nothing)
-    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", _returntypes_echo_anyof_pets_post, "/echo_anyof_pets", [], any_of_pets)
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", _returntypes_echo_anyof_pets_post_DefaultApi, "/echo_anyof_pets", [], any_of_pets)
     OpenAPI.Clients.set_header_accept(_ctx, ["application/json", ])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? ["application/json", ] : [_mediaType])
     return _ctx
@@ -63,12 +63,12 @@ function echo_anyof_pets_post(_api::DefaultApi, response_stream::Channel, any_of
     return OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-const _returntypes_echo_oneof_mapped_pets_post = Dict{Regex,Type}(
+const _returntypes_echo_oneof_mapped_pets_post_DefaultApi = Dict{Regex,Type}(
     Regex("^" * replace("200", "x"=>".") * "\$") => OneOfMappedPets,
 )
 
 function _oacinternal_echo_oneof_mapped_pets_post(_api::DefaultApi, one_of_mapped_pets::OneOfMappedPets; _mediaType=nothing)
-    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", _returntypes_echo_oneof_mapped_pets_post, "/echo_oneof_mapped_pets", [], one_of_mapped_pets)
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", _returntypes_echo_oneof_mapped_pets_post_DefaultApi, "/echo_oneof_mapped_pets", [], one_of_mapped_pets)
     OpenAPI.Clients.set_header_accept(_ctx, ["application/json", ])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? ["application/json", ] : [_mediaType])
     return _ctx
@@ -89,12 +89,12 @@ function echo_oneof_mapped_pets_post(_api::DefaultApi, response_stream::Channel,
     return OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-const _returntypes_echo_oneof_pets_post = Dict{Regex,Type}(
+const _returntypes_echo_oneof_pets_post_DefaultApi = Dict{Regex,Type}(
     Regex("^" * replace("200", "x"=>".") * "\$") => OneOfPets,
 )
 
 function _oacinternal_echo_oneof_pets_post(_api::DefaultApi, one_of_pets::OneOfPets; _mediaType=nothing)
-    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", _returntypes_echo_oneof_pets_post, "/echo_oneof_pets", [], one_of_pets)
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", _returntypes_echo_oneof_pets_post_DefaultApi, "/echo_oneof_pets", [], one_of_pets)
     OpenAPI.Clients.set_header_accept(_ctx, ["application/json", ])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? ["application/json", ] : [_mediaType])
     return _ctx

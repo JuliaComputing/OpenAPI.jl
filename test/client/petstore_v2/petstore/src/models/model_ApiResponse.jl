@@ -39,3 +39,4 @@ function OpenAPI.validate_property(::Type{ ApiResponse }, name::Symbol, val)
         OpenAPI.validate_param(name, "ApiResponse", :format, val, "int32")
     end
 end
+
