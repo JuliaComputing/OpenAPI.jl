@@ -11,7 +11,7 @@ This can be used to construct the `OpenAPI.Clients.Client` instance.
 """
 basepath(::Type{ StoreApi }) = "https://petstore.swagger.io/v2"
 
-const _returntypes_delete_order = Dict{Regex,Type}(
+const _returntypes_delete_order_StoreApi = Dict{Regex,Type}(
     Regex("^" * replace("400", "x"=>".") * "\$") => Nothing,
     Regex("^" * replace("404", "x"=>".") * "\$") => Nothing,
 )
@@ -19,7 +19,7 @@ const _returntypes_delete_order = Dict{Regex,Type}(
 function _oacinternal_delete_order(_api::StoreApi, order_id::Int64; _mediaType=nothing)
     OpenAPI.validate_param("order_id", "delete_order", :minimum, order_id, 1, false)
 
-    _ctx = OpenAPI.Clients.Ctx(_api.client, "DELETE", _returntypes_delete_order, "/store/order/{orderId}", [])
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "DELETE", _returntypes_delete_order_StoreApi, "/store/order/{orderId}", [])
     OpenAPI.Clients.set_param(_ctx.path, "orderId", order_id)  # type Int64
     OpenAPI.Clients.set_header_accept(_ctx, [])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? [] : [_mediaType])
@@ -45,12 +45,12 @@ function delete_order(_api::StoreApi, response_stream::Channel, order_id::Int64;
     return OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-const _returntypes_get_inventory = Dict{Regex,Type}(
+const _returntypes_get_inventory_StoreApi = Dict{Regex,Type}(
     Regex("^" * replace("200", "x"=>".") * "\$") => Dict{String, Int64},
 )
 
 function _oacinternal_get_inventory(_api::StoreApi; _mediaType=nothing)
-    _ctx = OpenAPI.Clients.Ctx(_api.client, "GET", _returntypes_get_inventory, "/store/inventory", ["api_key", ])
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "GET", _returntypes_get_inventory_StoreApi, "/store/inventory", ["api_key", ])
     OpenAPI.Clients.set_header_accept(_ctx, ["application/json", ])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? [] : [_mediaType])
     return _ctx
@@ -74,7 +74,7 @@ function get_inventory(_api::StoreApi, response_stream::Channel; _mediaType=noth
     return OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-const _returntypes_get_order_by_id = Dict{Regex,Type}(
+const _returntypes_get_order_by_id_StoreApi = Dict{Regex,Type}(
     Regex("^" * replace("200", "x"=>".") * "\$") => Order,
     Regex("^" * replace("400", "x"=>".") * "\$") => Nothing,
     Regex("^" * replace("404", "x"=>".") * "\$") => Nothing,
@@ -84,7 +84,7 @@ function _oacinternal_get_order_by_id(_api::StoreApi, order_id::Int64; _mediaTyp
     OpenAPI.validate_param("order_id", "get_order_by_id", :maximum, order_id, 10, false)
     OpenAPI.validate_param("order_id", "get_order_by_id", :minimum, order_id, 1, false)
 
-    _ctx = OpenAPI.Clients.Ctx(_api.client, "GET", _returntypes_get_order_by_id, "/store/order/{orderId}", [])
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "GET", _returntypes_get_order_by_id_StoreApi, "/store/order/{orderId}", [])
     OpenAPI.Clients.set_param(_ctx.path, "orderId", order_id)  # type Int64
     OpenAPI.Clients.set_header_accept(_ctx, ["application/json", "application/xml", ])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? [] : [_mediaType])
@@ -110,13 +110,13 @@ function get_order_by_id(_api::StoreApi, response_stream::Channel, order_id::Int
     return OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-const _returntypes_place_order = Dict{Regex,Type}(
+const _returntypes_place_order_StoreApi = Dict{Regex,Type}(
     Regex("^" * replace("200", "x"=>".") * "\$") => Order,
     Regex("^" * replace("400", "x"=>".") * "\$") => Nothing,
 )
 
 function _oacinternal_place_order(_api::StoreApi, body::Order; _mediaType=nothing)
-    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", _returntypes_place_order, "/store/order", [], body)
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", _returntypes_place_order_StoreApi, "/store/order", [], body)
     OpenAPI.Clients.set_header_accept(_ctx, ["application/json", "application/xml", ])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? ["application/json", ] : [_mediaType])
     return _ctx

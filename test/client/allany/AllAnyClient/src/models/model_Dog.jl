@@ -40,3 +40,4 @@ function OpenAPI.validate_property(::Type{ Dog }, name::Symbol, val)
         OpenAPI.validate_param(name, "Dog", :enum, val, ["Dingo", "Husky", "Retriever", "Shepherd"])
     end
 end
+

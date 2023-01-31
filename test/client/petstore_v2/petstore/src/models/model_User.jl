@@ -62,3 +62,4 @@ function OpenAPI.validate_property(::Type{ User }, name::Symbol, val)
         OpenAPI.validate_param(name, "User", :format, val, "int32")
     end
 end
+

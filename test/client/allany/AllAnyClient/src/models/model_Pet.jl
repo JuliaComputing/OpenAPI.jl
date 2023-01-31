@@ -29,3 +29,4 @@ end
 
 function OpenAPI.validate_property(::Type{ Pet }, name::Symbol, val)
 end
+

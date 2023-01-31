@@ -11,12 +11,12 @@ This can be used to construct the `OpenAPI.Clients.Client` instance.
 """
 basepath(::Type{ PetApi }) = "https://petstore.swagger.io/v2"
 
-const _returntypes_add_pet = Dict{Regex,Type}(
+const _returntypes_add_pet_PetApi = Dict{Regex,Type}(
     Regex("^" * replace("405", "x"=>".") * "\$") => Nothing,
 )
 
 function _oacinternal_add_pet(_api::PetApi, body::Pet; _mediaType=nothing)
-    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", _returntypes_add_pet, "/pet", ["petstore_auth", ], body)
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", _returntypes_add_pet_PetApi, "/pet", ["petstore_auth", ], body)
     OpenAPI.Clients.set_header_accept(_ctx, [])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? ["application/json", "application/xml", ] : [_mediaType])
     return _ctx
@@ -39,13 +39,13 @@ function add_pet(_api::PetApi, response_stream::Channel, body::Pet; _mediaType=n
     return OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-const _returntypes_delete_pet = Dict{Regex,Type}(
+const _returntypes_delete_pet_PetApi = Dict{Regex,Type}(
     Regex("^" * replace("400", "x"=>".") * "\$") => Nothing,
     Regex("^" * replace("404", "x"=>".") * "\$") => Nothing,
 )
 
 function _oacinternal_delete_pet(_api::PetApi, pet_id::Int64; api_key=nothing, _mediaType=nothing)
-    _ctx = OpenAPI.Clients.Ctx(_api.client, "DELETE", _returntypes_delete_pet, "/pet/{petId}", ["petstore_auth", ])
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "DELETE", _returntypes_delete_pet_PetApi, "/pet/{petId}", ["petstore_auth", ])
     OpenAPI.Clients.set_param(_ctx.path, "petId", pet_id)  # type Int64
     OpenAPI.Clients.set_param(_ctx.header, "api_key", api_key)  # type String
     OpenAPI.Clients.set_header_accept(_ctx, [])
@@ -71,13 +71,13 @@ function delete_pet(_api::PetApi, response_stream::Channel, pet_id::Int64; api_k
     return OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-const _returntypes_find_pets_by_status = Dict{Regex,Type}(
+const _returntypes_find_pets_by_status_PetApi = Dict{Regex,Type}(
     Regex("^" * replace("200", "x"=>".") * "\$") => Vector{Pet},
     Regex("^" * replace("400", "x"=>".") * "\$") => Nothing,
 )
 
 function _oacinternal_find_pets_by_status(_api::PetApi, status::Vector{String}; _mediaType=nothing)
-    _ctx = OpenAPI.Clients.Ctx(_api.client, "GET", _returntypes_find_pets_by_status, "/pet/findByStatus", ["petstore_auth", ])
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "GET", _returntypes_find_pets_by_status_PetApi, "/pet/findByStatus", ["petstore_auth", ])
     OpenAPI.Clients.set_param(_ctx.query, "status", status)  # type Vector{String}
     OpenAPI.Clients.set_header_accept(_ctx, ["application/json", "application/xml", ])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? [] : [_mediaType])
@@ -103,13 +103,13 @@ function find_pets_by_status(_api::PetApi, response_stream::Channel, status::Vec
     return OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-const _returntypes_find_pets_by_tags = Dict{Regex,Type}(
+const _returntypes_find_pets_by_tags_PetApi = Dict{Regex,Type}(
     Regex("^" * replace("200", "x"=>".") * "\$") => Vector{Pet},
     Regex("^" * replace("400", "x"=>".") * "\$") => Nothing,
 )
 
 function _oacinternal_find_pets_by_tags(_api::PetApi, tags::Vector{String}; _mediaType=nothing)
-    _ctx = OpenAPI.Clients.Ctx(_api.client, "GET", _returntypes_find_pets_by_tags, "/pet/findByTags", ["petstore_auth", ])
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "GET", _returntypes_find_pets_by_tags_PetApi, "/pet/findByTags", ["petstore_auth", ])
     OpenAPI.Clients.set_param(_ctx.query, "tags", tags)  # type Vector{String}
     OpenAPI.Clients.set_header_accept(_ctx, ["application/json", "application/xml", ])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? [] : [_mediaType])
@@ -135,14 +135,14 @@ function find_pets_by_tags(_api::PetApi, response_stream::Channel, tags::Vector{
     return OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-const _returntypes_get_pet_by_id = Dict{Regex,Type}(
+const _returntypes_get_pet_by_id_PetApi = Dict{Regex,Type}(
     Regex("^" * replace("200", "x"=>".") * "\$") => Pet,
     Regex("^" * replace("400", "x"=>".") * "\$") => Nothing,
     Regex("^" * replace("404", "x"=>".") * "\$") => Nothing,
 )
 
 function _oacinternal_get_pet_by_id(_api::PetApi, pet_id::Int64; _mediaType=nothing)
-    _ctx = OpenAPI.Clients.Ctx(_api.client, "GET", _returntypes_get_pet_by_id, "/pet/{petId}", ["api_key", ])
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "GET", _returntypes_get_pet_by_id_PetApi, "/pet/{petId}", ["api_key", ])
     OpenAPI.Clients.set_param(_ctx.path, "petId", pet_id)  # type Int64
     OpenAPI.Clients.set_header_accept(_ctx, ["application/json", "application/xml", ])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? [] : [_mediaType])
@@ -168,14 +168,14 @@ function get_pet_by_id(_api::PetApi, response_stream::Channel, pet_id::Int64; _m
     return OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-const _returntypes_update_pet = Dict{Regex,Type}(
+const _returntypes_update_pet_PetApi = Dict{Regex,Type}(
     Regex("^" * replace("400", "x"=>".") * "\$") => Nothing,
     Regex("^" * replace("404", "x"=>".") * "\$") => Nothing,
     Regex("^" * replace("405", "x"=>".") * "\$") => Nothing,
 )
 
 function _oacinternal_update_pet(_api::PetApi, body::Pet; _mediaType=nothing)
-    _ctx = OpenAPI.Clients.Ctx(_api.client, "PUT", _returntypes_update_pet, "/pet", ["petstore_auth", ], body)
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "PUT", _returntypes_update_pet_PetApi, "/pet", ["petstore_auth", ], body)
     OpenAPI.Clients.set_header_accept(_ctx, [])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? ["application/json", "application/xml", ] : [_mediaType])
     return _ctx
@@ -198,12 +198,12 @@ function update_pet(_api::PetApi, response_stream::Channel, body::Pet; _mediaTyp
     return OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-const _returntypes_update_pet_with_form = Dict{Regex,Type}(
+const _returntypes_update_pet_with_form_PetApi = Dict{Regex,Type}(
     Regex("^" * replace("405", "x"=>".") * "\$") => Nothing,
 )
 
 function _oacinternal_update_pet_with_form(_api::PetApi, pet_id::Int64; name=nothing, status=nothing, _mediaType=nothing)
-    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", _returntypes_update_pet_with_form, "/pet/{petId}", ["petstore_auth", ])
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", _returntypes_update_pet_with_form_PetApi, "/pet/{petId}", ["petstore_auth", ])
     OpenAPI.Clients.set_param(_ctx.path, "petId", pet_id)  # type Int64
     OpenAPI.Clients.set_param(_ctx.form, "name", name)  # type String
     OpenAPI.Clients.set_param(_ctx.form, "status", status)  # type String
@@ -231,12 +231,12 @@ function update_pet_with_form(_api::PetApi, response_stream::Channel, pet_id::In
     return OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
-const _returntypes_upload_file = Dict{Regex,Type}(
+const _returntypes_upload_file_PetApi = Dict{Regex,Type}(
     Regex("^" * replace("200", "x"=>".") * "\$") => ApiResponse,
 )
 
 function _oacinternal_upload_file(_api::PetApi, pet_id::Int64; additional_metadata=nothing, file=nothing, _mediaType=nothing)
-    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", _returntypes_upload_file, "/pet/{petId}/uploadImage", ["petstore_auth", ])
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", _returntypes_upload_file_PetApi, "/pet/{petId}/uploadImage", ["petstore_auth", ])
     OpenAPI.Clients.set_param(_ctx.path, "petId", pet_id)  # type Int64
     OpenAPI.Clients.set_param(_ctx.form, "additionalMetadata", additional_metadata)  # type String
     OpenAPI.Clients.set_param(_ctx.file, "file", file)  # type String

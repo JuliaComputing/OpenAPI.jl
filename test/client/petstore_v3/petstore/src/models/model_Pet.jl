@@ -57,3 +57,4 @@ function OpenAPI.validate_property(::Type{ Pet }, name::Symbol, val)
         OpenAPI.validate_param(name, "Pet", :enum, val, ["available", "pending", "sold"])
     end
 end
+

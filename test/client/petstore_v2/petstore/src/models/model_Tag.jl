@@ -35,3 +35,4 @@ function OpenAPI.validate_property(::Type{ Tag }, name::Symbol, val)
         OpenAPI.validate_param(name, "Tag", :format, val, "int64")
     end
 end
+
