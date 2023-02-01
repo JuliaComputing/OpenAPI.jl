@@ -2,7 +2,7 @@ module OpenAPI
 
 using HTTP, JSON, URIs, Dates, TimeZones, Base64
 
-import Base: getindex, keys, length, iterate
+import Base: getindex, keys, length, iterate, hasproperty
 import JSON: lower
 
 include("commontypes.jl")

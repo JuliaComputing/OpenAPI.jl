@@ -490,6 +490,7 @@ function haspropertyat(o::T, path...) where {T<:APIModel}
     ret = hasproperty(o, p1)
     rempath = path[2:end]
     (length(rempath) == 0) && (return ret)
+    ret || (return false)
 
     val = getproperty(o, p1)
     if isa(val, Vector)
@@ -507,6 +508,8 @@ function haspropertyat(o::T, path...) where {T<:APIModel}
     (length(rempath) == 0) && (return ret)
     haspropertyat(val, rempath...)
 end
+
+Base.hasproperty(o::T, name::Symbol) where {T<:APIModel} = ((name in propertynames(o)) && (getproperty(o, name) !== nothing))
 
 convert(::Type{T}, json::Dict{String,Any}) where {T<:APIModel} = from_json(T, json)
 convert(::Type{T}, v::Nothing) where {T<:APIModel} = T()
