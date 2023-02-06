@@ -31,7 +31,7 @@ Check out [OpenAPI-Spec](https://github.com/OAI/OpenAPI-Specification) for addit
 
 Use [instructions](https://openapi-generator.tech/docs/generators) provided for the Julia OpenAPI code generator plugin to generate Julia code.
 
-> Note: It requires the master branch of [openapi-generator](https://github.com/OpenAPITools/openapi-generator) until it is included in the next release. It is also hosted in [this forked branch](https://github.com/JuliaComputing/openapi-generator/tree/juliahub/juliacodegen) until then.
+Requires version [6.3.0](https://github.com/OpenAPITools/openapi-generator/releases/tag/v6.3.0) or later of [openapi-generator](https://github.com/OpenAPITools/openapi-generator).
 
 ## Generated Code Structure
 
