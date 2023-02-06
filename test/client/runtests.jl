@@ -15,6 +15,7 @@ function runtests()
             test_request_interrupted_exception_check()
             test_date()
             test_misc()
+            test_has_property()
         end
         @testset "Validations" begin
             test_validations()

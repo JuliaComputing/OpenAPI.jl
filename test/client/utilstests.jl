@@ -159,6 +159,42 @@ function test_validations()
     return nothing
 end
 
+struct TestHasPropertyInner <: OpenAPI.APIModel
+    testval::Union{Nothing,String}
+
+    function TestHasPropertyInner(; testval=nothing)
+        return new(testval)
+    end
+end
+
+struct TestHasProperty <: OpenAPI.APIModel
+    inner::Union{Nothing,TestHasPropertyInner}
+
+    function TestHasProperty(; inner=nothing)
+        return new(inner)
+    end
+end
+
+function test_has_property()
+    teststruct = TestHasProperty()
+
+    @test !OpenAPI.Clients.haspropertyat(teststruct, :inner, :testval)
+    @test !OpenAPI.Clients.haspropertyat(teststruct, "inner", "testval")
+    @test !OpenAPI.Clients.haspropertyat(teststruct, :inner)
+
+    teststruct = TestHasProperty(; inner=TestHasPropertyInner())
+    @test !OpenAPI.Clients.haspropertyat(teststruct, :inner, :testval)
+    @test !OpenAPI.Clients.haspropertyat(teststruct, "inner", "testval")
+    @test OpenAPI.Clients.haspropertyat(teststruct, :inner)
+
+    teststruct = TestHasProperty(; inner=TestHasPropertyInner(; testval="test"))
+    @test OpenAPI.Clients.haspropertyat(teststruct, :inner, :testval)
+    @test OpenAPI.Clients.haspropertyat(teststruct, "inner", "testval")
+    @test OpenAPI.Clients.haspropertyat(teststruct, :inner)
+    @test OpenAPI.Clients.getpropertyat(teststruct, :inner, :testval) == "test"
+end
+
+
 struct InvalidModel <: OpenAPI.APIModel
     test::Any
 
