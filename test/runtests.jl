@@ -59,4 +59,23 @@ include("client/allany/runtests.jl")
             run_tests_with_servers && stop_server(8081, ret, out)
         end
     end
+    run_tests_with_servers && sleep(20) # avoid port conflicts
+    @testset "Debug and Verbose" begin
+        ret = out = nothing
+        servers_running = true
+
+        try
+            if run_tests_with_servers
+                ret, out = run_server(joinpath(@__DIR__, "server", "allany", "allany_server.jl"))
+                servers_running &= wait_server(8081)
+                if VERSION >= v"1.7"
+                    AllAnyTests.test_debug()
+                end
+            else
+                servers_running = false
+            end
+        finally
+            run_tests_with_servers && stop_server(8081, ret, out)
+        end
+    end
 end
