@@ -153,6 +153,7 @@ Client(root::String;
     timeout::Int=DEFAULT_TIMEOUT_SECS,
     long_polling_timeout::Int=DEFAULT_LONGPOLL_TIMEOUT_SECS,
     pre_request_hook::Function,
+    verbose::Union{Bool,Function}=false,
 )
 ```
 
@@ -164,10 +165,17 @@ Where:
 - `timeout`: optional timeout to apply for server methods (default `OpenAPI.Clients.DEFAULT_TIMEOUT_SECS`)
 - `long_polling_timeout`: optional timeout to apply for long polling methods (default `OpenAPI.Clients.DEFAULT_LONGPOLL_TIMEOUT_SECS`)
 - `pre_request_hook`: user provided hook to modify the request before it is sent
+- `verbose`: whether to enable verbose logging
 
 The `pre_request_hook` must provide the following two implementations:
 - `pre_request_hook(ctx::OpenAPI.Clients.Ctx) -> ctx`
 - `pre_request_hook(resource_path::AbstractString, body::Any, headers::Dict{String,String}) -> (resource_path, body, headers)`
+
+The `verbose` option can be one of:
+- `false`: the default, no verbose logging
+- `true`: enables curl verbose logging to stderr
+- a function that accepts two arguments - type and message (available on Julia version >= 1.7)
+    - a default implementation of this that uses `@info` to log the arguments is provided as `OpenAPI.Clients.default_debug_hook`
 
 In case of any errors an instance of `ApiException` is thrown. It has the following fields:
 

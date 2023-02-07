@@ -86,6 +86,11 @@ function get_api_return_type(return_types::Dict{Regex,Type}, response_code::Inte
     # - otherwise we make it throw an ApiException
     return (200 <= response_code <=206) ? Nothing : nothing # first(return_types)[2]
 end
+
+function default_debug_hook(type, message)
+    @info("OpenAPI HTTP transport", type, message)
+end
+
 struct Client
     root::String
     headers::Dict{String,String}
@@ -102,9 +107,14 @@ struct Client
             long_polling_timeout::Int=DEFAULT_LONGPOLL_TIMEOUT_SECS,
             timeout::Int=DEFAULT_TIMEOUT_SECS,
             pre_request_hook::Function=noop_pre_request_hook,
-            verbose::Bool=false,
+            verbose::Union{Bool,Function}=false,
         )
-        clntoptions = Dict{Symbol,Any}(:throw=>false, :verbose=>verbose)
+        clntoptions = Dict{Symbol,Any}(:throw=>false)
+        if isa(verbose, Bool)
+            clntoptions[:verbose] = verbose
+        elseif isa(verbose, Function)
+            clntoptions[:debug] = verbose
+        end
         downloader = Downloads.Downloader()
         downloader.easy_hook = (easy, opts) -> begin
             Downloads.Curl.setopt(easy, LibCURL.CURLOPT_LOW_SPEED_TIME, long_polling_timeout)
