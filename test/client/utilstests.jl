@@ -21,6 +21,33 @@ function test_date()
     dt = OpenAPI.str2date(convert(Vector{UInt8}, codeunits(dt_string)))
     @test dt == OpenAPI.str2date(Date(dt_now))
     @test dt_string == string(dt)
+
+    dates = ["2017-11-14", "2020-01-01"]
+    timesep = [" ", "T"]
+    times = ["11:03:53", "11:03:53.123", "11:03:53.123456", "11:03:53.123456789"]
+    timezones = ["", "+10:00", "-10:00", "Z"]
+
+    for date in dates
+        d = OpenAPI.str2date(date)
+        for sep in timesep
+            for time in times
+                t = (length(time) > 12) ? Time(SubString(time, 1, 12)) : Time(time)
+                for tz in timezones
+                    dt_string = date * sep * time * tz
+                    zdt = OpenAPI.str2zoneddatetime(convert(Vector{UInt8}, codeunits(dt_string)))
+                    dt = OpenAPI.str2datetime(convert(Vector{UInt8}, codeunits(dt_string)))
+                    @test d == Date(zdt)
+                    @test d == Date(dt)
+                    @test t == Time(zdt)
+                    @test t == Time(dt)
+                end
+            end
+        end
+    end
+
+    for tz in timezones
+        @test OpenAPI.str2date("2017-11-14"*tz) == Date(2017, 11, 14)
+    end
 end
 
 function as_taskfailedexception(ex)
