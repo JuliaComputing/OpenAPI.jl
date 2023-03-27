@@ -24,7 +24,11 @@ function add_pet_invoke(impl; post_invoke=nothing)
     function add_pet_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = impl.add_pet(req::HTTP.Request, openapi_params["Pet"];)
-        resp = OpenAPI.Servers.server_response(ret)
+        if hasmethod(OpenAPI.Servers.server_response, Tuple{HTTP.Request,Any})
+            resp = OpenAPI.Servers.server_response(req, ret)
+        else
+            resp = OpenAPI.Servers.server_response(ret)
+        end
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
 end
@@ -54,7 +58,11 @@ function delete_pet_invoke(impl; post_invoke=nothing)
     function delete_pet_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = impl.delete_pet(req::HTTP.Request, openapi_params["petId"]; api_key=get(openapi_params, "api_key", nothing),)
-        resp = OpenAPI.Servers.server_response(ret)
+        if hasmethod(OpenAPI.Servers.server_response, Tuple{HTTP.Request,Any})
+            resp = OpenAPI.Servers.server_response(req, ret)
+        else
+            resp = OpenAPI.Servers.server_response(ret)
+        end
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
 end
@@ -82,7 +90,11 @@ function find_pets_by_status_invoke(impl; post_invoke=nothing)
     function find_pets_by_status_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = impl.find_pets_by_status(req::HTTP.Request, openapi_params["status"];)
-        resp = OpenAPI.Servers.server_response(ret)
+        if hasmethod(OpenAPI.Servers.server_response, Tuple{HTTP.Request,Any})
+            resp = OpenAPI.Servers.server_response(req, ret)
+        else
+            resp = OpenAPI.Servers.server_response(ret)
+        end
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
 end
@@ -110,7 +122,11 @@ function find_pets_by_tags_invoke(impl; post_invoke=nothing)
     function find_pets_by_tags_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = impl.find_pets_by_tags(req::HTTP.Request, openapi_params["tags"];)
-        resp = OpenAPI.Servers.server_response(ret)
+        if hasmethod(OpenAPI.Servers.server_response, Tuple{HTTP.Request,Any})
+            resp = OpenAPI.Servers.server_response(req, ret)
+        else
+            resp = OpenAPI.Servers.server_response(ret)
+        end
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
 end
@@ -138,7 +154,11 @@ function get_pet_by_id_invoke(impl; post_invoke=nothing)
     function get_pet_by_id_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = impl.get_pet_by_id(req::HTTP.Request, openapi_params["petId"];)
-        resp = OpenAPI.Servers.server_response(ret)
+        if hasmethod(OpenAPI.Servers.server_response, Tuple{HTTP.Request,Any})
+            resp = OpenAPI.Servers.server_response(req, ret)
+        else
+            resp = OpenAPI.Servers.server_response(ret)
+        end
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
 end
@@ -165,7 +185,11 @@ function update_pet_invoke(impl; post_invoke=nothing)
     function update_pet_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = impl.update_pet(req::HTTP.Request, openapi_params["Pet"];)
-        resp = OpenAPI.Servers.server_response(ret)
+        if hasmethod(OpenAPI.Servers.server_response, Tuple{HTTP.Request,Any})
+            resp = OpenAPI.Servers.server_response(req, ret)
+        else
+            resp = OpenAPI.Servers.server_response(ret)
+        end
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
 end
@@ -196,7 +220,11 @@ function update_pet_with_form_invoke(impl; post_invoke=nothing)
     function update_pet_with_form_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = impl.update_pet_with_form(req::HTTP.Request, openapi_params["petId"]; name=get(openapi_params, "name", nothing), status=get(openapi_params, "status", nothing),)
-        resp = OpenAPI.Servers.server_response(ret)
+        if hasmethod(OpenAPI.Servers.server_response, Tuple{HTTP.Request,Any})
+            resp = OpenAPI.Servers.server_response(req, ret)
+        else
+            resp = OpenAPI.Servers.server_response(ret)
+        end
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
 end
@@ -227,7 +255,11 @@ function upload_file_invoke(impl; post_invoke=nothing)
     function upload_file_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = impl.upload_file(req::HTTP.Request, openapi_params["petId"]; additional_metadata=get(openapi_params, "additionalMetadata", nothing), file=get(openapi_params, "file", nothing),)
-        resp = OpenAPI.Servers.server_response(ret)
+        if hasmethod(OpenAPI.Servers.server_response, Tuple{HTTP.Request,Any})
+            resp = OpenAPI.Servers.server_response(req, ret)
+        else
+            resp = OpenAPI.Servers.server_response(ret)
+        end
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
 end

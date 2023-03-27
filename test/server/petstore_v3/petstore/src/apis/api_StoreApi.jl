@@ -25,7 +25,11 @@ function delete_order_invoke(impl; post_invoke=nothing)
     function delete_order_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = impl.delete_order(req::HTTP.Request, openapi_params["orderId"];)
-        resp = OpenAPI.Servers.server_response(ret)
+        if hasmethod(OpenAPI.Servers.server_response, Tuple{HTTP.Request,Any})
+            resp = OpenAPI.Servers.server_response(req, ret)
+        else
+            resp = OpenAPI.Servers.server_response(ret)
+        end
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
 end
@@ -51,7 +55,11 @@ function get_inventory_invoke(impl; post_invoke=nothing)
     function get_inventory_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = impl.get_inventory(req::HTTP.Request;)
-        resp = OpenAPI.Servers.server_response(ret)
+        if hasmethod(OpenAPI.Servers.server_response, Tuple{HTTP.Request,Any})
+            resp = OpenAPI.Servers.server_response(req, ret)
+        else
+            resp = OpenAPI.Servers.server_response(ret)
+        end
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
 end
@@ -82,7 +90,11 @@ function get_order_by_id_invoke(impl; post_invoke=nothing)
     function get_order_by_id_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = impl.get_order_by_id(req::HTTP.Request, openapi_params["orderId"];)
-        resp = OpenAPI.Servers.server_response(ret)
+        if hasmethod(OpenAPI.Servers.server_response, Tuple{HTTP.Request,Any})
+            resp = OpenAPI.Servers.server_response(req, ret)
+        else
+            resp = OpenAPI.Servers.server_response(ret)
+        end
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
 end
@@ -109,7 +121,11 @@ function place_order_invoke(impl; post_invoke=nothing)
     function place_order_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = impl.place_order(req::HTTP.Request, openapi_params["Order"];)
-        resp = OpenAPI.Servers.server_response(ret)
+        if hasmethod(OpenAPI.Servers.server_response, Tuple{HTTP.Request,Any})
+            resp = OpenAPI.Servers.server_response(req, ret)
+        else
+            resp = OpenAPI.Servers.server_response(ret)
+        end
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
 end

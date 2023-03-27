@@ -24,7 +24,11 @@ function echo_anyof_mapped_pets_post_invoke(impl; post_invoke=nothing)
     function echo_anyof_mapped_pets_post_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = impl.echo_anyof_mapped_pets_post(req::HTTP.Request, openapi_params["AnyOfMappedPets"];)
-        resp = OpenAPI.Servers.server_response(ret)
+        if hasmethod(OpenAPI.Servers.server_response, Tuple{HTTP.Request,Any})
+            resp = OpenAPI.Servers.server_response(req, ret)
+        else
+            resp = OpenAPI.Servers.server_response(ret)
+        end
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
 end
@@ -51,7 +55,11 @@ function echo_anyof_pets_post_invoke(impl; post_invoke=nothing)
     function echo_anyof_pets_post_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = impl.echo_anyof_pets_post(req::HTTP.Request, openapi_params["AnyOfPets"];)
-        resp = OpenAPI.Servers.server_response(ret)
+        if hasmethod(OpenAPI.Servers.server_response, Tuple{HTTP.Request,Any})
+            resp = OpenAPI.Servers.server_response(req, ret)
+        else
+            resp = OpenAPI.Servers.server_response(ret)
+        end
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
 end
@@ -78,7 +86,11 @@ function echo_oneof_mapped_pets_post_invoke(impl; post_invoke=nothing)
     function echo_oneof_mapped_pets_post_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = impl.echo_oneof_mapped_pets_post(req::HTTP.Request, openapi_params["OneOfMappedPets"];)
-        resp = OpenAPI.Servers.server_response(ret)
+        if hasmethod(OpenAPI.Servers.server_response, Tuple{HTTP.Request,Any})
+            resp = OpenAPI.Servers.server_response(req, ret)
+        else
+            resp = OpenAPI.Servers.server_response(ret)
+        end
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
 end
@@ -105,7 +117,11 @@ function echo_oneof_pets_post_invoke(impl; post_invoke=nothing)
     function echo_oneof_pets_post_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = impl.echo_oneof_pets_post(req::HTTP.Request, openapi_params["OneOfPets"];)
-        resp = OpenAPI.Servers.server_response(ret)
+        if hasmethod(OpenAPI.Servers.server_response, Tuple{HTTP.Request,Any})
+            resp = OpenAPI.Servers.server_response(req, ret)
+        else
+            resp = OpenAPI.Servers.server_response(ret)
+        end
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
 end
