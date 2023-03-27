@@ -16,6 +16,8 @@ function runtests()
             test_date()
             test_misc()
             test_has_property()
+            test_request_id_headers()
+            test_matching_accept_mime()
         end
         @testset "Validations" begin
             test_validations()

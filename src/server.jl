@@ -4,6 +4,7 @@ using JSON
 using HTTP
 
 import ..OpenAPI: APIModel, ValidationException, from_json, to_json
+import HTTP.Messages: hasheader, setheader, header
 
 function middleware(impl, read, validate, invoke;
         init=nothing,
@@ -80,9 +81,85 @@ function to_param(T, source::Dict, name::String; required::Bool=false, collectio
     end
 end
 
+function is_any_mime_accepted(mime_type::AbstractString)
+    parts = first(strip.(split(mime_type, ";")))
+    if parts == "*/*"
+        return true
+    end
+    return false
+end
+
+# json if it is of the format `.*/json[;.*]` (roughly)
+function is_json_mime_accepted(mime_type::AbstractString)
+    parts = first(strip.(split(mime_type, ";")))
+    parts = strip.(split(parts, "/"))
+    return (length(parts) == 2) && (parts[2] == "json")
+end
+
+# text if it is of the format `text/.*[;.*]` (roughly)
+function is_text_mime_accepted(mime_type::AbstractString)
+    parts = first(strip.(split(mime_type, ";")))
+    parts = strip.(split(parts, "/"))
+    return (length(parts) == 2) && (parts[1] == "text")
+end
+
 server_response(resp::HTTP.Response) = resp
 server_response(::Nothing) = server_response("")
 server_response(ret) = server_response(to_json(ret))
 server_response(resp::String) = HTTP.Response(200, resp)
+
+function server_response(req::HTTP.Request, resp::HTTP.Response)
+    if !hasheader(resp, "X-Request-Id") && hasheader(req, "X-Request-Id")
+        setheader(resp, "X-Request-Id" => header(req, "X-Request-Id"))
+    end
+    return resp
+end
+server_response(req::HTTP.Request, ::Nothing) = server_response(req, "")
+function server_response(req::HTTP.Request, ret; content_type=nothing)
+    !isnothing(content_type) && isempty(content_type) && (content_type = nothing)
+    if isnothing(content_type)
+        accepted_mime_types = strip.(split(header(req, "Accept", "*/*"), ","))
+        # try to detect a json mime type
+        if any(is_any_mime_accepted, accepted_mime_types)
+            content_type = "application/json"
+        else
+            for mime in accepted_mime_types
+                if is_json_mime_accepted(mime)
+                    content_type = mime
+                    break
+                end
+            end
+            # if no json accept type was detected, fall through to text
+        end
+    end
+
+    server_response(req, to_json(ret); content_type=content_type)
+end
+
+function server_response(req::HTTP.Request, resp::String; content_type=nothing)
+    httpresp = HTTP.Response(200, resp)
+    if !isempty(resp)
+        !isnothing(content_type) && isempty(content_type) && (content_type = nothing)
+        if isnothing(content_type)
+            accepted_mime_types = strip.(split(header(req, "Accept", "*/*"), ","))
+            # try to detect a text mime type
+            if any(is_any_mime_accepted, accepted_mime_types)
+                content_type = "text/plain"
+            else
+                for mime in accepted_mime_types
+                    if is_text_mime_accepted(mime)
+                        content_type = mime
+                        break
+                    end
+                end
+            end
+        end
+        # respond with content type if only we could detect one
+        if !isnothing(content_type)
+            HTTP.Messages.setheader(httpresp, "Content-Type" => content_type)
+        end
+    end
+    return server_response(req, httpresp)
+end
 
 end # module Servers

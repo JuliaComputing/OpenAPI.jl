@@ -4,6 +4,9 @@ using Test
 using Dates
 using TimeZones
 using Base64
+using HTTP
+
+import HTTP.Messages: hasheader, header
 
 function test_date()
     dt_now = now()
@@ -238,4 +241,110 @@ function test_misc()
     @test OpenAPI.from_json(Any, json) === json
     @test OpenAPI.from_json(String, json) == "{}"
     @test isa(OpenAPI.from_json(Dict{Any,Any}, json), Dict{Any,Any})
+end
+
+function test_request_id_headers()
+    headers = Dict(
+        "Accept" => "application/json",
+    )
+    req = HTTP.Request("GET", "/test", headers)
+    resp = OpenAPI.Servers.server_response(req, "")
+    @test !hasheader(resp, "X-Request-Id")
+
+    headers = Dict(
+        "Accept" => "application/json",
+        "X-Request-Id" => "test"
+    )
+    req = HTTP.Request("GET", "/test", headers)
+    resp = OpenAPI.Servers.server_response(req, "")
+    @test hasheader(resp, "X-Request-Id")
+end
+
+function test_matching_accept_mime()
+    # handle application/json
+    headers_list = [
+        Dict("Accept" => "application/json"),
+        Dict("Accept" => "application/json, text/plain, */*"),
+        Dict("Accept" => "text/plain, application/xml, application/json, */*; q=0.9"),
+        Dict("Accept" => "application/json, text/plain, */*; q=0.9"),
+        Dict("Accept" => "text/json, */*"), # use application/json instead of text/json if */* is accepted
+    ]
+    for headers in headers_list
+        req = HTTP.Request("GET", "/test", headers)
+
+        for resp_val in [nothing, ""]
+            resp = OpenAPI.Servers.server_response(req, resp_val)
+            @test !hasheader(resp, "Content-Type")
+        end
+
+        for resp_val in [1, [1,2,3], Dict{String,Any}("name"=>"val")]
+            resp = OpenAPI.Servers.server_response(req, resp_val)
+            @test header(resp, "Content-Type") == "application/json"
+        end
+    end
+
+    # handle other json types
+    headers_list = [
+        Dict("Accept" => "text/json"),
+        Dict("Accept" => "text/json, text/plain"),
+    ]
+    for headers in headers_list
+        req = HTTP.Request("GET", "/test", headers)
+
+        for resp_val in [1, [1,2,3], Dict{String,Any}("name"=>"val")]
+            resp = OpenAPI.Servers.server_response(req, resp_val)
+            @test header(resp, "Content-Type") == "text/json"
+        end
+    end
+
+    # handle text/plain
+    headers_list = [
+        Dict("Accept" => "text/plain"),
+        Dict("Accept" => "text/plain, application/xml; q=0.9"),
+    ]
+    for headers in headers_list
+        req = HTTP.Request("GET", "/test", headers)
+        for resp_val in ["hello", 1, [1,2,3], Dict{String,Any}("name"=>"val")]
+            resp = OpenAPI.Servers.server_response(req, resp_val)
+            @test header(resp, "Content-Type") == "text/plain"
+        end
+    end    
+
+    headers_list = [
+        Dict("Accept" => "text/plain, application/json; q=0.9"),
+    ]
+    for headers in headers_list
+        req = HTTP.Request("GET", "/test", headers)
+        for resp_val in ["hello",]
+            resp = OpenAPI.Servers.server_response(req, resp_val)
+            @test header(resp, "Content-Type") == "text/plain"
+        end
+    end    
+
+    # handle other text types
+    headers_list = [
+        Dict("Accept" => "text/csv"),
+        Dict("Accept" => "text/csv, application/binary"),
+    ]
+    for headers in headers_list
+        req = HTTP.Request("GET", "/test", headers)
+        for resp_val in ["hello,world", "1,2"]
+            resp = OpenAPI.Servers.server_response(req, resp_val)
+            @test header(resp, "Content-Type") == "text/csv"
+        end
+    end
+
+    # if accept headers do not match, respond without sending an accept header
+    # it may be possible that the implementation is already sending a response in the format we do not handle
+    headers_list = [
+        Dict("Accept" => "application/xml"),
+        Dict("Accept" => "application/xml, application/binary"),
+    ]
+    for headers in headers_list
+        req = HTTP.Request("GET", "/test", headers)
+        for resp_val in ["hello", 1, [1,2,3], Dict{String,Any}("name"=>"val")]
+            resp = OpenAPI.Servers.server_response(req, resp_val)
+            @test !hasheader(resp, "Content-Type")
+        end
+    end
 end
