@@ -103,6 +103,24 @@ function is_text_mime_accepted(mime_type::AbstractString)
     return (length(parts) == 2) && (parts[1] == "text")
 end
 
+function detect_mime(req::HTTP.Request, content_type::Union{AbstractString,Nothing}, matcher::Function, default::AbstractString)
+    !isnothing(content_type) && isempty(content_type) && (content_type = nothing)
+    if isnothing(content_type)
+        accepted_mime_types = strip.(split(header(req, "Accept", "*/*"), ","))
+        if any(is_any_mime_accepted, accepted_mime_types)
+            content_type = default
+        else
+            for mime in accepted_mime_types
+                if matcher(mime)
+                    content_type = mime
+                    break
+                end
+            end
+        end
+    end
+    return content_type
+end
+
 server_response(resp::HTTP.Response) = resp
 server_response(::Nothing) = server_response("")
 server_response(ret) = server_response(to_json(ret))
@@ -116,44 +134,15 @@ function server_response(req::HTTP.Request, resp::HTTP.Response)
 end
 server_response(req::HTTP.Request, ::Nothing) = server_response(req, "")
 function server_response(req::HTTP.Request, ret; content_type=nothing)
-    !isnothing(content_type) && isempty(content_type) && (content_type = nothing)
-    if isnothing(content_type)
-        accepted_mime_types = strip.(split(header(req, "Accept", "*/*"), ","))
-        # try to detect a json mime type
-        if any(is_any_mime_accepted, accepted_mime_types)
-            content_type = "application/json"
-        else
-            for mime in accepted_mime_types
-                if is_json_mime_accepted(mime)
-                    content_type = mime
-                    break
-                end
-            end
-            # if no json accept type was detected, fall through to text
-        end
-    end
-
+    content_type = detect_mime(req, content_type, is_json_mime_accepted, "application/json")
+    # if no json accept type was detected, fall through to text
     server_response(req, to_json(ret); content_type=content_type)
 end
 
 function server_response(req::HTTP.Request, resp::String; content_type=nothing)
     httpresp = HTTP.Response(200, resp)
     if !isempty(resp)
-        !isnothing(content_type) && isempty(content_type) && (content_type = nothing)
-        if isnothing(content_type)
-            accepted_mime_types = strip.(split(header(req, "Accept", "*/*"), ","))
-            # try to detect a text mime type
-            if any(is_any_mime_accepted, accepted_mime_types)
-                content_type = "text/plain"
-            else
-                for mime in accepted_mime_types
-                    if is_text_mime_accepted(mime)
-                        content_type = mime
-                        break
-                    end
-                end
-            end
-        end
+        content_type = detect_mime(req, content_type, is_text_mime_accepted, "text/plain")
         # respond with content type if only we could detect one
         if !isnothing(content_type)
             HTTP.Messages.setheader(httpresp, "Content-Type" => content_type)
