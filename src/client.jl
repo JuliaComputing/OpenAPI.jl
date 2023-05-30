@@ -260,7 +260,7 @@ function prep_args(ctx::Ctx)
             body = to_json(ctx.body)
         elseif ("application/x-www-form-urlencoded" == ctx.header["Content-Type"]) && isa(ctx.body, Dict)
             body = URIs.escapeuri(ctx.body)
-        elseif isa(ctx.boody, APIModel) && isempty(get(ctx.header, "Content-Type", ""))
+        elseif isa(ctx.body, APIModel) && isempty(get(ctx.header, "Content-Type", ""))
             headers["Content-Type"] = "application/json"
             body = to_json(ctx.body)
         else
@@ -335,7 +335,7 @@ function do_request(ctx::Ctx, stream::Bool=false; stream_to::Union{Channel,Nothi
     # prepare the url
     resource_path = replace(ctx.resource, "{format}"=>"json")
     for (k,v) in ctx.path
-        resource_path = replace(resource_path, "{$k}"=>v)
+        resource_path = replace(resource_path, "{$k}"=>HTTP.escapeuri(v))
     end
     # append query params if needed
     if !isempty(ctx.query)
