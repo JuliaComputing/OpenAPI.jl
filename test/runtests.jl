@@ -36,6 +36,12 @@ include("client/allany/runtests.jl")
             end
             servers_running && OpenAPIClientTests.runtests()
         finally
+            if run_tests_with_servers && !servers_running
+                # we probably had an error starting the servers
+                v2_out_str = isnothing(v2_out) ? "" : String(take!(v2_out))
+                v3_out_str = isnothing(v3_out) ? "" : String(take!(v3_out))
+                @warn("Servers not running", v2_ret=v2_ret, v2_out_str, v3_ret=v3_ret, v3_out_str)
+            end
             if run_tests_with_servers
                 stop_server(8080, v2_ret, v2_out)
                 stop_server(8081, v3_ret, v3_out)
@@ -56,6 +62,11 @@ include("client/allany/runtests.jl")
                 servers_running = false
             end
         finally
+            if run_tests_with_servers && !servers_running
+                # we probably had an error starting the servers
+                out_str = isnothing(out) ? "" : String(take!(out))
+                @warn("Servers not running", ret=ret, out_str)
+            end
             run_tests_with_servers && stop_server(8081, ret, out)
         end
     end
@@ -75,6 +86,11 @@ include("client/allany/runtests.jl")
                 servers_running = false
             end
         finally
+            if run_tests_with_servers && !servers_running
+                # we probably had an error starting the servers
+                out_str = isnothing(out) ? "" : String(take!(out))
+                @warn("Servers not running", ret=ret, out_str)
+            end
             run_tests_with_servers && stop_server(8081, ret, out)
         end
     end

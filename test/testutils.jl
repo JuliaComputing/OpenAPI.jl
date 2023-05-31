@@ -9,14 +9,16 @@ const startup_flag = `--startup-file=no`
 const run_tests_with_servers = get(ENV, "RUNNER_OS", "") == "Linux"
 
 function run_server(script, flags=``)
-    srvrscript = joinpath(dirname(@__FILE__), script)
-    srvrcmd = `$(joinpath(Sys.BINDIR, "julia")) $startup_flag $cov_flag $inline_flag $script $flags`
+    use_pkgimages = VERSION >= v"1.9" ? `--pkgimages=no` : ``
+    srvrcmd = `$(joinpath(Sys.BINDIR, "julia")) $use_pkgimages $startup_flag $cov_flag $inline_flag $script $flags`
+    srvrcmd = addenv(srvrcmd,
+        "JULIA_DEPOT_PATH"=>join(DEPOT_PATH, Sys.iswindows() ? ';' : ':'),
+        "JULIA_LOAD_PATH"=>ENV["JULIA_LOAD_PATH"],
+    )
     iob = IOBuffer()
     pipelined_cmd = pipeline(srvrcmd, stdout=iob, stderr=iob)
-    ret = withenv("JULIA_DEPOT_PATH"=>join(DEPOT_PATH, Sys.iswindows() ? ';' : ':')) do
-        @info("Launching ", script, srvrcmd, JULIA_DEPOT_PATH=ENV["JULIA_DEPOT_PATH"])
-        run(pipelined_cmd, wait=false)
-    end
+    @info("Launching ", script, srvrcmd)
+    ret = run(pipelined_cmd, wait=false)
 
     return ret, iob
 end
@@ -55,7 +57,8 @@ function stop_server(port, proc, iob)
         wait(proc)
         @info("Stopped server", port)
     catch ex
-        @warn("Error waiting for server", port, server_logs=String(take!(iob)), exception=(ex, catch_backtrace()))
+        server_logs = isnothing(iob) ? "" : String(take!(iob))
+        @warn("Error waiting for server", port, server_logs, exception=(ex, catch_backtrace()))
         return false
     end
 
