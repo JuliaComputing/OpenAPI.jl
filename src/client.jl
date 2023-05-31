@@ -335,7 +335,7 @@ function do_request(ctx::Ctx, stream::Bool=false; stream_to::Union{Channel,Nothi
     # prepare the url
     resource_path = replace(ctx.resource, "{format}"=>"json")
     for (k,v) in ctx.path
-        resource_path = replace(resource_path, "{$k}"=>HTTP.escapeuri(v))
+        resource_path = replace(resource_path, "{$k}"=>escapeuri(v))
     end
     # append query params if needed
     if !isempty(ctx.query)
