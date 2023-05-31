@@ -12,6 +12,7 @@ import OpenAPI.Clients: Client, Ctx, ApiException, DEFAULT_TIMEOUT_SECS, with_ti
 const TEST_USER = "jloac"
 const TEST_USER1 = "jloac1"
 const TEST_USER2 = "jloac2"
+const TEST_USER3 = "jl oac 3"
 const PRESET_TEST_USER = "user1"    # this is the username that works for get user requests (as documented in the test docker container API)
 
 function test_404(uri)
@@ -170,6 +171,21 @@ function test(uri)
     logout_result, http_resp = logout_user(api)
     @test http_resp.status == 200
     @test logout_result === nothing
+
+    @info("UserApi - Test with spaces in username")
+    user3 = User(; id=300, username=TEST_USER3, firstName="test3", lastName="user3", email="jloac3@example.com", password="testpass3", phone="1000000003", userStatus=0)
+    create_result, http_resp = create_user(api, user3)
+    @test http_resp.status == 200
+    @test create_result === nothing
+
+    user3.firstName = "test3 updated"
+    api_return, http_resp = update_user(api, TEST_USER3, user3)
+    @test http_resp.status == 200
+    @test api_return === nothing
+
+    api_return, http_resp = delete_user(api, TEST_USER3)
+    @test http_resp.status == 200
+    @test api_return === nothing
 
     nothing
 end
