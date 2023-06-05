@@ -9,6 +9,14 @@ const DATETIME_FORMATS = [
     Dates.DateFormat("yyyy-mm-ddTHH:MM:SS.sss"),
     Dates.DateFormat("yyyy-mm-dd HH:MM:SS.sssz"),
     Dates.DateFormat("yyyy-mm-ddTHH:MM:SS.sssz"),
+    Dates.DateFormat("yyyy-mm-dd HH:MM:SS.ss"),
+    Dates.DateFormat("yyyy-mm-ddTHH:MM:SS.ss"),
+    Dates.DateFormat("yyyy-mm-dd HH:MM:SS.ssz"),
+    Dates.DateFormat("yyyy-mm-ddTHH:MM:SS.ssz"),
+    Dates.DateFormat("yyyy-mm-dd HH:MM:SS.s"),
+    Dates.DateFormat("yyyy-mm-ddTHH:MM:SS.s"),
+    Dates.DateFormat("yyyy-mm-dd HH:MM:SS.sz"),
+    Dates.DateFormat("yyyy-mm-ddTHH:MM:SS.sz"),
 ]
 
 const rxdatetime =
