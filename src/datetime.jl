@@ -9,17 +9,26 @@ const DATETIME_FORMATS = [
     Dates.DateFormat("yyyy-mm-ddTHH:MM:SS.sss"),
     Dates.DateFormat("yyyy-mm-dd HH:MM:SS.sssz"),
     Dates.DateFormat("yyyy-mm-ddTHH:MM:SS.sssz"),
+    Dates.DateFormat("yyyy-mm-dd HH:MM:SS.ss"),
+    Dates.DateFormat("yyyy-mm-ddTHH:MM:SS.ss"),
+    Dates.DateFormat("yyyy-mm-dd HH:MM:SS.ssz"),
+    Dates.DateFormat("yyyy-mm-ddTHH:MM:SS.ssz"),
+    Dates.DateFormat("yyyy-mm-dd HH:MM:SS.s"),
+    Dates.DateFormat("yyyy-mm-ddTHH:MM:SS.s"),
+    Dates.DateFormat("yyyy-mm-dd HH:MM:SS.sz"),
+    Dates.DateFormat("yyyy-mm-ddTHH:MM:SS.sz"),
 ]
 
-const rxdatetime = r"([0-9]{4}-[0-9]{2}-[0-9]{2}[T\s][0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,3})?)[0-9]*([+\-Z][:\.0-9]*)"
+const rxdatetime =
+    r"([0-9]{4}-[0-9]{2}-[0-9]{2}[T\s][0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,3})?)[0-9]*([+\-Z][:\.0-9]*)?"
 function reduce_to_ms_precision(datetimestr::String)
     matches = match(rxdatetime, datetimestr)
     if matches === nothing
         return datetimestr
-    elseif length(matches.captures) == 2
+    elseif !isnothing(matches.captures[2])
         return matches.captures[1] * matches.captures[2]
     else
-        return matches.captures[1]
+        return String(matches.captures[1])
     end
 end
 

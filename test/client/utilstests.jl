@@ -24,16 +24,20 @@ function test_date()
 
     dates = ["2017-11-14", "2020-01-01"]
     timesep = [" ", "T"]
-    times = ["11:03:53", "11:03:53.123", "11:03:53.123456", "11:03:53.123456789"]
+    times =
+        ["11:03:53", "11:03:53.12", "11:03:53.123", "11:03:53.123456", "11:03:53.123456789"]
     timezones = ["", "+10:00", "-10:00", "Z"]
 
     for date in dates
         d = OpenAPI.str2date(date)
         for sep in timesep
             for time in times
-                t = (length(time) > 12) ? Time(SubString(time, 1, 12)) : Time(time)
+                reduced_time = length(time) > 12 ? SubString(time, 1, 12) : time
+                t = Time(reduced_time)
                 for tz in timezones
                     dt_string = date * sep * time * tz
+                    reduced_dt_string = date * sep * reduced_time * tz
+                    @test OpenAPI.reduce_to_ms_precision(dt_string) == reduced_dt_string
                     zdt = OpenAPI.str2zoneddatetime(convert(Vector{UInt8}, codeunits(dt_string)))
                     dt = OpenAPI.str2datetime(convert(Vector{UInt8}, codeunits(dt_string)))
                     @test d == Date(zdt)
