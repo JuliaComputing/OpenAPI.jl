@@ -9,7 +9,7 @@ using TimeZones
 using LibCURL
 
 import Base: convert, show, summary, getproperty, setproperty!, iterate
-import ..OpenAPI: APIModel, UnionAPIModel, APIClientImpl, OpenAPIException, InvocationException, to_json, from_json, validate_property, property_type
+import ..OpenAPI: APIModel, UnionAPIModel, OneOfAPIModel, AnyOfAPIModel, APIClientImpl, OpenAPIException, InvocationException, to_json, from_json, validate_property, property_type
 import ..OpenAPI: str2zoneddatetime, str2datetime, str2date
 
 # collection formats (OpenAPI v2)
@@ -523,6 +523,12 @@ Base.hasproperty(o::T, name::Symbol) where {T<:APIModel} = ((name in propertynam
 
 convert(::Type{T}, json::Dict{String,Any}) where {T<:APIModel} = from_json(T, json)
 convert(::Type{T}, v::Nothing) where {T<:APIModel} = T()
+convert(::Type{T}, v::T) where {T<:OneOfAPIModel} = v
+convert(::Type{T}, json::Dict{String,Any}) where {T<:OneOfAPIModel} = from_json(T, json)
+convert(::Type{T}, v) where {T<:OneOfAPIModel} = T(v)
+convert(::Type{T}, v::T) where {T<:AnyOfAPIModel} = v
+convert(::Type{T}, json::Dict{String,Any}) where {T<:AnyOfAPIModel} = from_json(T, json)
+convert(::Type{T}, v) where {T<:AnyOfAPIModel} = T(v)
 
 show(io::IO, model::T) where {T<:UnionAPIModel} = print(io, JSON.json(model.value, 2))
 show(io::IO, model::T) where {T<:APIModel} = print(io, JSON.json(model, 2))
