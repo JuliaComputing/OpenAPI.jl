@@ -13,7 +13,7 @@ function run_server(script, flags=``)
     srvrcmd = `$(joinpath(Sys.BINDIR, "julia")) $use_pkgimages $startup_flag $cov_flag $inline_flag $script $flags`
     srvrcmd = addenv(srvrcmd,
         "JULIA_DEPOT_PATH"=>join(DEPOT_PATH, Sys.iswindows() ? ';' : ':'),
-        "JULIA_LOAD_PATH"=>ENV["JULIA_LOAD_PATH"],
+        "JULIA_LOAD_PATH"=>join(LOAD_PATH, Sys.iswindows() ? ';' : ':'),
     )
     iob = IOBuffer()
     pipelined_cmd = pipeline(srvrcmd, stdout=iob, stderr=iob)
