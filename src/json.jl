@@ -79,7 +79,9 @@ function from_json(o::T, name::Symbol, v::Vector) where {T <: APIModel}
     veltype = eltype(vtype)
     (Nothing <: veltype) || filter!(x->x!==nothing, v)
 
-    if ZonedDateTime <: veltype
+    if veltype === Any
+        setfield!(o, name, convert(ftype, v))
+    elseif ZonedDateTime <: veltype
         setfield!(o, name, map(str2zoneddatetime, v))
     elseif DateTime <: veltype
         setfield!(o, name, map(str2datetime, v))
