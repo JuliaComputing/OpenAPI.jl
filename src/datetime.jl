@@ -23,13 +23,13 @@ const rxdatetime =
     r"([0-9]{4}-[0-9]{2}-[0-9]{2}[T\s][0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,3})?)[0-9]*([+\-Z][:\.0-9]*)?"
 function reduce_to_ms_precision(datetimestr::String)
     matches = match(rxdatetime, datetimestr)
-    if matches === nothing
-        return datetimestr
-    elseif !isnothing(matches.captures[2])
-        return matches.captures[1] * matches.captures[2]
-    else
-        return String(matches.captures[1])
-    end
+    isnothing(matches) && return datetimestr
+
+    c1 = matches.captures[1]
+    isnothing(c1) && return datetimestr
+
+    c2 = matches.captures[2]
+    return isnothing(c2) ? String(c1) : c1 * c2
 end
 
 str2zoneddatetime(bytes::Vector{UInt8}) = str2zoneddatetime(String(bytes))
