@@ -532,7 +532,7 @@ convert(::Type{T}, v) where {T<:AnyOfAPIModel} = T(v)
 
 show(io::IO, model::T) where {T<:UnionAPIModel} = print(io, JSON.json(model.value, 2))
 show(io::IO, model::T) where {T<:APIModel} = print(io, JSON.json(model, 2))
-summary(model::T) where {T<:APIModel} = print(io, T)
+summary(io::IO, model::T) where {T<:APIModel} = print(io, T)
 
 """
     is_longpoll_timeout(ex::Exception)
