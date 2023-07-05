@@ -323,6 +323,7 @@ Not all OpenAPI features are supported yet, e.g.:
 - some [subtler data types](https://swagger.io/docs/specification/data-models/data-types/)
     - native representaion of some of the string formats, e.g. uuid, url
     - read-only and write-only properties
+- better enum support
 - authentication schemes
 - [`deepObject`](https://swagger.io/docs/specification/serialization/)s in query parameters
 
