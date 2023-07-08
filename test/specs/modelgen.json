@@ -1,0 +1,59 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+      "title": "Model Generation Tests",
+      "description": "Model Generation Tests",
+      "version": "0.1.0"
+    },
+    "servers": [
+    ],
+    "paths": {
+        "/test": {
+            "get": {
+                "summary": "Test",
+                "operationId": "test",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TestModel"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "TestModel": {
+                "type": "object",
+                "properties": {
+                    "limited_by": {
+                        "type": "string",
+                        "default": "time",
+                        "enum": ["time", "cost", "unlimited"]
+                    },
+                    "default_date": {
+                        "type": "string",
+                        "format": "date",
+                        "default": "2011-11-11"
+                    },
+                    "default_datetime": {
+                        "type": "string",
+                        "format": "date-time",
+                        "default": "2011-11-11T11:11:11Z"
+                    },
+                    "max_val": {
+                        "type": "integer",
+                        "default": 100,
+                        "enum": [100, 200, 300]
+                    }
+                }
+            }
+        }
+    }
+}

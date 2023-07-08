@@ -1,10 +1,14 @@
 using Test, HTTP
 
 include("testutils.jl")
+include("modelgen/testmodelgen.jl")
 include("client/runtests.jl")
 include("client/allany/runtests.jl")
 
 @testset "OpenAPI" begin
+    @testset "ModelGen" begin
+        TestModelGen.runtests()
+    end
     @testset "Client" begin
         try
             if run_tests_with_servers
