@@ -52,9 +52,12 @@ Class | Method
  - [User](docs/User.md)
 
 
+<a id="authorization"></a>
 ## Authorization
 
-## api_key
+Authentication schemes defined for the API:
+<a id="api_key"></a>
+### api_key
 - **Type**: API key
 
 Example
@@ -66,7 +69,8 @@ Example
     api = MyApi(client)
     result = callApi(api, args...; api_key)
 ```
-## petstore_auth
+<a id="petstore_auth"></a>
+### petstore_auth
 - **Type**: OAuth
 - **Flow**: implicit
 - **Authorization URL**: https://petstore.swagger.io/oauth/authorize

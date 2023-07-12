@@ -25,6 +25,7 @@ Class | Method
 
 ## Models
 
+ - [ComputeType](docs/ComputeType.md)
  - [TestModel](docs/TestModel.md)
 
 

@@ -51,8 +51,16 @@
                         "type": "integer",
                         "default": 100,
                         "enum": [100, 200, 300]
+                    },
+                    "compute": {
+                        "$ref": "#/components/schemas/ComputeType"
                     }
                 }
+            },
+            "ComputeType": {
+                "type": "string",
+                "enum": ["cpu", "gpu"],
+                "description": "The compute type, either cpu or gpu"
             }
         }
     }

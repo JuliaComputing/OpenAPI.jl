@@ -47,6 +47,7 @@ Class | Method | HTTP request | Description
 
 ## Models
 
+ - [ComputeType](docs/ComputeType.md)
  - [TestModel](docs/TestModel.md)
 
 

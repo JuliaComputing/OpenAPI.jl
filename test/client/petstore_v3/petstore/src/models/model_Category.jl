@@ -36,4 +36,3 @@ function OpenAPI.validate_property(::Type{ Category }, name::Symbol, val)
         OpenAPI.validate_param(name, "Category", :format, val, "int64")
     end
 end
-
