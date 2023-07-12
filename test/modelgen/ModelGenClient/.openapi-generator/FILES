@@ -1,7 +1,9 @@
 README.md
+docs/ComputeType.md
 docs/DefaultApi.md
 docs/TestModel.md
 src/ModelGenClient.jl
 src/apis/api_DefaultApi.jl
 src/modelincludes.jl
+src/models/model_ComputeType.jl
 src/models/model_TestModel.jl

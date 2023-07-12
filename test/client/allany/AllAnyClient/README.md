@@ -31,16 +31,15 @@ Class | Method
  - [AnyOfMappedPets](docs/AnyOfMappedPets.md)
  - [AnyOfPets](docs/AnyOfPets.md)
  - [Cat](docs/Cat.md)
- - [CatAllOf](docs/CatAllOf.md)
  - [Dog](docs/Dog.md)
- - [DogAllOf](docs/DogAllOf.md)
  - [OneOfMappedPets](docs/OneOfMappedPets.md)
  - [OneOfPets](docs/OneOfPets.md)
  - [Pet](docs/Pet.md)
 
 
+<a id="authorization"></a>
 ## Authorization
- Endpoints do not require authorization.
+Endpoints do not require authorization.
 
 
 ## Author

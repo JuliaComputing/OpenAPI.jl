@@ -22,4 +22,3 @@ function OpenAPI.property_type(::Type{ AnyOfMappedPets }, name::Symbol, json::Di
     end
     throw(OpenAPI.ValidationException("Invalid discriminator value: $discriminator for AnyOfMappedPets"))
 end
-

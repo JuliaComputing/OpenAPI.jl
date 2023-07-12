@@ -64,4 +64,3 @@ function OpenAPI.validate_property(::Type{ Order }, name::Symbol, val)
         OpenAPI.validate_param(name, "Order", :enum, val, ["placed", "approved", "delivered"])
     end
 end
-
