@@ -8,6 +8,9 @@ const startup_flag = `--startup-file=no`
 # can run servers only on linux for now
 const run_tests_with_servers = get(ENV, "RUNNER_OS", "") == "Linux"
 
+# can only run a subset of tests when running on openapi-generator repo
+const openapi_generator_env = get(ENV, "OPENAPI_GENERATOR", "false") == "true"
+
 function run_server(script, flags=``)
     use_pkgimages = VERSION >= v"1.9" ? `--pkgimages=no` : ``
     srvrcmd = `$(joinpath(Sys.BINDIR, "julia")) $use_pkgimages $startup_flag $cov_flag $inline_flag $script $flags`
