@@ -37,7 +37,7 @@ function get_param(source::Dict, name::String, required::Bool)
     return val
 end
 
-function get_param(source::Vector{HTTP.Forms.Multipart}, name::String, required::Bool)::HTTP.Forms.Multipart
+function get_param(source::Vector{HTTP.Forms.Multipart}, name::String, required::Bool)
     ind = findfirst(x -> x.name == name, source)
     if required && isnothing(ind)
         throw(ValidationException("required parameter \"$name\" missing"))
