@@ -57,6 +57,7 @@ to_param_type(::Type{T}, val::T) where {T} = val
 to_param_type(::Type{T}, ::Nothing) where {T} = nothing
 to_param_type(::Type{String}, val::Vector{UInt8}) = String(copy(val))
 to_param_type(::Type{Vector{UInt8}}, val::String) = convert(Vector{UInt8}, copy(codeunits(val)))
+to_param_type(::Type{Vector{T}}, val::Vector{T}, _collection_format::Union{String,Nothing}) where {T} = val
 
 function to_param_type(::Type{T}, strval::String) where {T <: APIModel}
     from_json(T, JSON.parse(strval))

@@ -20,19 +20,19 @@ function test_stress()
     TestUserApi.test_parallel(server)
 end
 
-function petstore_tests()
+function petstore_tests(; test_file_upload=false)
     TestUserApi.test(server)
     TestStoreApi.test(server)
-    TestPetApi.test(server)
+    TestPetApi.test(server; test_file_upload=test_file_upload)
 end
 
-function runtests()
+function runtests(; test_file_upload=false)
     @testset "petstore v3" begin
         @testset "miscellaneous" begin
             test_misc()
         end
         @testset "petstore apis" begin
-            petstore_tests()
+            petstore_tests(; test_file_upload=test_file_upload)
         end
         if get(ENV, "STRESS_PETSTORE", "false") == "true"
             @testset "stress" begin

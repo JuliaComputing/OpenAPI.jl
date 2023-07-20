@@ -6,7 +6,7 @@ using OpenAPI
 using OpenAPI.Clients
 import OpenAPI.Clients: Client
 
-function test(uri)
+function test(uri; test_file_upload=false)
     @info("PetApi")
     client = Client(uri)
     api = PetApi(client)
@@ -52,6 +52,16 @@ function test(uri)
     api_return, http_resp = delete_pet(api, Int64(10))
     @test api_return === nothing
     @test http_resp.status == 200
+
+    if test_file_upload
+        @info("PetApi - upload_file")
+        api_return, http_resp = upload_file(api, 1; additional_metadata="my metadata", file=@__FILE__)
+        @test isa(api_return, ApiResponse)
+        @test api_return.code == 1
+        @test api_return.type == "pet"
+        @test api_return.message == "file uploaded"
+        @test http_resp.status == 200
+    end
 
     # does not work yet. issue: https://github.com/JuliaWeb/Requests.jl/issues/139
     #@info("PetApi - upload_file")
