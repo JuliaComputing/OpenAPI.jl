@@ -4,19 +4,20 @@ include("testutils.jl")
 include("modelgen/testmodelgen.jl")
 include("client/runtests.jl")
 include("client/allany/runtests.jl")
+include("forms/forms_client.jl")
 
 @testset "OpenAPI" begin
     @testset "ModelGen" begin
         TestModelGen.runtests()
     end
-    @testset "Client" begin
+    @testset "Petstore Client" begin
         try
             if run_tests_with_servers && !openapi_generator_env
                 run(`client/petstore_v2/start_petstore_server.sh`)
                 run(`client/petstore_v3/start_petstore_server.sh`)
                 sleep(20) # let servers start
             end
-            OpenAPIClientTests.runtests(; skip_petstore=openapi_generator_env)
+            OpenAPIClientTests.runtests(; skip_petstore=openapi_generator_env, test_file_upload=false)
         finally
             if run_tests_with_servers && !openapi_generator_env
                 run(`client/petstore_v2/stop_petstore_server.sh`)
@@ -25,7 +26,7 @@ include("client/allany/runtests.jl")
         end
     end
     run_tests_with_servers && !openapi_generator_env && sleep(20) # avoid port conflicts
-    @testset "Server" begin
+    @testset "Petstore Server" begin
         v2_ret = v2_out = v3_ret = v3_out = nothing
         servers_running = true
 
@@ -38,7 +39,7 @@ include("client/allany/runtests.jl")
             else
                 servers_running = false                
             end
-            servers_running && OpenAPIClientTests.runtests()
+            servers_running && OpenAPIClientTests.runtests(; test_file_upload=true)
         finally
             if run_tests_with_servers && !servers_running
                 # we probably had an error starting the servers
@@ -46,10 +47,32 @@ include("client/allany/runtests.jl")
                 v3_out_str = isnothing(v3_out) ? "" : String(take!(v3_out))
                 @warn("Servers not running", v2_ret=v2_ret, v2_out_str, v3_ret=v3_ret, v3_out_str)
             end
-            if run_tests_with_servers
+            if run_tests_with_servers && servers_running
                 stop_server(8080, v2_ret, v2_out)
                 stop_server(8081, v3_ret, v3_out)
             end
+        end
+    end
+    run_tests_with_servers && sleep(20) # avoid port conflicts
+    @testset "Forms and File Uploads" begin
+        ret = out = nothing
+        servers_running = true
+
+        try
+            if run_tests_with_servers
+                ret, out = run_server(joinpath(@__DIR__, "forms", "forms_server.jl"))
+                servers_running &= wait_server(8081)
+                FormsV3Client.runtests()
+            else
+                servers_running = false
+            end
+        finally
+            if run_tests_with_servers && !servers_running
+                # we probably had an error starting the servers
+                out_str = isnothing(out) ? "" : String(take!(out))
+                @warn("Servers not running", ret=ret, out_str)
+            end
+            run_tests_with_servers && servers_running && stop_server(8081, ret, out)
         end
     end
     run_tests_with_servers && sleep(20) # avoid port conflicts
@@ -95,7 +118,7 @@ include("client/allany/runtests.jl")
                 out_str = isnothing(out) ? "" : String(take!(out))
                 @warn("Servers not running", ret=ret, out_str)
             end
-            run_tests_with_servers && stop_server(8081, ret, out)
+            run_tests_with_servers && servers_running && stop_server(8081, ret, out)
         end
     end
 end
