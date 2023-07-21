@@ -9,7 +9,7 @@ using Base64
 
 const server = Ref{Any}(nothing)
 
-function post_urlencoded_form(req::HTTP.Request, form_id::Int64; additional_metadata=nothing, file=nothing,)
+function post_urlencoded_form(req::HTTP.Request, form_id::Int64, file::String; additional_metadata=nothing, )
     str_file_contents = file
     return FormsServer.TestResponse(; message="success, form_id=$form_id, metadata=$additional_metadata, file=$str_file_contents", )
 end

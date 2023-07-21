@@ -10,7 +10,7 @@ Method | HTTP request | Description
 
 
 # **post_urlencoded_form**
-> post_urlencoded_form(req::HTTP.Request, form_id::Int64; additional_metadata=nothing, file=nothing,) -> TestResponse
+> post_urlencoded_form(req::HTTP.Request, form_id::Int64, file::String; additional_metadata=nothing,) -> TestResponse
 
 posts a urlencoded form, with file contents and additional metadata, both of which are strings
 
@@ -20,13 +20,13 @@ Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **req** | **HTTP.Request** | The HTTP Request object | 
 **form_id** | **Int64**| ID of form to update | [default to nothing]
+**file** | **String**| file contents to upload, in string format | [default to nothing]
 
 ### Optional Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **additional_metadata** | **String**| Additional data to pass to server | [default to nothing]
- **file** | **String**| file contents to upload, in string format | [default to nothing]
 
 ### Return type
 
