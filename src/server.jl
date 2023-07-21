@@ -37,6 +37,18 @@ function get_param(source::Dict, name::String, required::Bool)
     return val
 end
 
+function get_param(source::Vector{HTTP.Forms.Multipart}, name::String, required::Bool)
+    ind = findfirst(x -> x.name == name, source)
+    if required && isnothing(ind)
+        throw(ValidationException("required parameter \"$name\" missing"))
+    elseif isnothing(ind)
+        return nothing
+    else
+        return source[ind]
+    end
+end
+
+
 function to_param_type(::Type{T}, strval::String) where {T <: Number}
     parse(T, strval)
 end
@@ -45,6 +57,7 @@ to_param_type(::Type{T}, val::T) where {T} = val
 to_param_type(::Type{T}, ::Nothing) where {T} = nothing
 to_param_type(::Type{String}, val::Vector{UInt8}) = String(copy(val))
 to_param_type(::Type{Vector{UInt8}}, val::String) = convert(Vector{UInt8}, copy(codeunits(val)))
+to_param_type(::Type{Vector{T}}, val::Vector{T}, _collection_format::Union{String,Nothing}) where {T} = val
 
 function to_param_type(::Type{T}, strval::String) where {T <: APIModel}
     from_json(T, JSON.parse(strval))
@@ -72,6 +85,22 @@ function to_param(T, source::Dict, name::String; required::Bool=false, collectio
     if multipart
         # param is a Multipart
         param = isfile ? param.data : String(param.data)
+    end
+    if T <: Vector
+        return to_param_type(T, param, collection_format)
+    else
+        return to_param_type(T, param)
+    end
+end
+
+function to_param(T, source::Vector{HTTP.Forms.Multipart}, name::String; required::Bool=false, collection_format::Union{String,Nothing}=",", multipart::Bool=false, isfile::Bool=false)
+    param = get_param(source, name, required)
+    if param === nothing
+        return nothing
+    end
+    if multipart
+        # param is a Multipart
+        param = isfile ? take!(param.data) : String(take!(param.data))
     end
     if T <: Vector
         return to_param_type(T, param, collection_format)

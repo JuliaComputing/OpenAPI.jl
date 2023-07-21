@@ -1,0 +1,195 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+      "title": "Form POST and File Upload Tests",
+      "description": "Tests for different types of POST operations with forms and file uploads",
+      "version": "0.1.0"
+    },
+    "servers": [
+    ],
+    "paths": {
+        "/test/{form_id}/post_urlencoded_form_data": {
+            "post": {
+                "summary": "posts a urlencoded form, with file contents and additional metadata, both of which are strings",
+                "operationId": "postUrlencodedForm",
+                "parameters": [
+                    {
+                        "name": "form_id",
+                        "in": "path",
+                        "description": "ID of form to update",
+                        "required": true,
+                        "style": "simple",
+                        "explode": false,
+                        "schema": {
+                            "type": "integer",
+                            "format": "int64"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UrlencodedForm"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "successful operation",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TestResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/test/{file_id}/upload_binary_file": {
+            "post": {
+              "summary": "uploads a binary file given its path, along with some metadata",
+              "operationId": "uploadBinaryFile",
+              "parameters": [
+                {
+                  "name": "file_id",
+                  "in": "path",
+                  "description": "ID of file to update",
+                  "required": true,
+                  "style": "simple",
+                  "explode": false,
+                  "schema": {
+                    "type": "integer",
+                    "format": "int64"
+                  }
+                }
+              ],
+              "requestBody": {
+                "content": {
+                  "multipart/form-data": {
+                    "schema": {
+                      "$ref": "#/components/schemas/BinaryFileWithMetadata"
+                    }
+                  }
+                }
+              },
+              "responses": {
+                "200": {
+                  "description": "successful operation",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "$ref": "#/components/schemas/TestResponse"
+                      }
+                    }
+                  }
+                }
+              },
+              "x-accepts": "application/json",
+              "x-contentType": "multipart/form-data"
+            }
+        },
+        "/test/{file_id}/upload_text_file": {
+            "post": {
+              "summary": "uploads text file contents along with some metadata",
+              "operationId": "uploadTextFile",
+              "parameters": [
+                {
+                  "name": "file_id",
+                  "in": "path",
+                  "description": "ID of file to update",
+                  "required": true,
+                  "style": "simple",
+                  "explode": false,
+                  "schema": {
+                    "type": "integer",
+                    "format": "int64"
+                  }
+                }
+              ],
+              "requestBody": {
+                "content": {
+                  "multipart/form-data": {
+                    "schema": {
+                      "$ref": "#/components/schemas/TextFileWithMetadata"
+                    }
+                  }
+                }
+              },
+              "responses": {
+                "200": {
+                  "description": "successful operation",
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "$ref": "#/components/schemas/TestResponse"
+                      }
+                    }
+                  }
+                }
+              },
+              "x-accepts": "application/json",
+              "x-contentType": "multipart/form-data"
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "TestResponse": {
+                "type": "object",
+                "properties": {
+                    "message": {
+                        "type": "string"
+                    }
+                }
+            },
+            "UrlencodedForm": {
+                "type": "object",
+                "properties": {
+                    "additionalMetadata": {
+                        "type": "string",
+                        "description": "Additional data to pass to server"
+                    },
+                    "file": {
+                        "type": "string",
+                        "description": "file contents to upload, in string format"
+                    }
+                },
+                "required": [
+                    "file"
+                ]
+            },
+            "BinaryFileWithMetadata": {
+                "type": "object",
+                "properties": {
+                    "additionalMetadata": {
+                        "type": "string",
+                        "description": "Additional data to pass to server"
+                    },
+                    "file": {
+                        "type": "string",
+                        "description": "file to upload, must be a string representing a valid file path",
+                        "format": "binary"
+                    }
+                }
+            },
+            "TextFileWithMetadata": {
+                "type": "object",
+                "properties": {
+                    "additionalMetadata": {
+                        "type": "string",
+                        "description": "Additional data to pass to server, a string"
+                    },
+                    "file": {
+                        "type": "string",
+                        "description": "file contents to upload in base64 encoded format",
+                        "format": "base64"
+                    }
+                }
+            }
+        }
+    }
+}

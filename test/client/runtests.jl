@@ -8,7 +8,7 @@ include("utilstests.jl")
 include("petstore_v3/runtests.jl")
 include("petstore_v2/runtests.jl")
 
-function runtests(; skip_petstore=false)
+function runtests(; skip_petstore=false, test_file_upload=false)
     @testset "Client" begin
         @testset "Utils" begin
             test_longpoll_exception_check()
@@ -25,7 +25,7 @@ function runtests(; skip_petstore=false)
                 if get(ENV, "RUNNER_OS", "") == "Linux"
                     @testset "V3" begin
                         @info("Running petstore v3 tests")
-                        PetStoreV3Tests.runtests()
+                        PetStoreV3Tests.runtests(; test_file_upload=test_file_upload)
                     end
                     @testset "V2" begin
                     @info("Running petstore v2 tests")

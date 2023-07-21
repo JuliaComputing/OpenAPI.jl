@@ -7,6 +7,7 @@ using MbedTLS
 using Dates
 using TimeZones
 using LibCURL
+using HTTP
 
 import Base: convert, show, summary, getproperty, setproperty!, iterate
 import ..OpenAPI: APIModel, UnionAPIModel, OneOfAPIModel, AnyOfAPIModel, APIClientImpl, OpenAPIException, InvocationException, to_json, from_json, validate_property, property_type
@@ -227,12 +228,40 @@ function prep_args(ctx::Ctx)
     isempty(ctx.file) && (ctx.body === nothing) && isempty(ctx.form) && !("Content-Length" in keys(ctx.header)) && (ctx.header["Content-Length"] = "0")
     headers = ctx.header
     body = nothing
-    if !isempty(ctx.form)
-        headers["Content-Type"] = "application/x-www-form-urlencoded"
-        body = URIs.escapeuri(ctx.form)
+
+    header_pairs = [convert(HTTP.Header, p) for p in headers]
+    content_type_set = HTTP.header(header_pairs, "Content-Type", nothing)
+    if !isnothing(content_type_set)
+        content_type_set = lowercase(content_type_set)
     end
 
-    if !isempty(ctx.file)
+    if !isempty(ctx.form)
+        if !isnothing(content_type_set) && content_type_set !== "multipart/form-data" && content_type_set !== "application/x-www-form-urlencoded"
+            throw(OpenAPIException("Content type already set to $content_type_set. To send form data, it must be multipart/form-data or application/x-www-form-urlencoded."))
+        end
+        if isnothing(content_type_set)
+            if !isempty(ctx.file)
+                headers["Content-Type"] = content_type_set = "multipart/form-data"
+            else
+                headers["Content-Type"] = content_type_set = "application/x-www-form-urlencoded"
+            end
+        end
+        if content_type_set == "application/x-www-form-urlencoded"
+            body = URIs.escapeuri(ctx.form)
+        else
+            # we shall process it along with file uploads where we send multipart/form-data
+        end
+    end
+
+    if !isempty(ctx.file) || (content_type_set == "multipart/form-data")
+        if !isnothing(content_type_set) && content_type_set !== "multipart/form-data"
+            throw(OpenAPIException("Content type already set to $content_type_set. To send file, it must be multipart/form-data."))
+        end
+
+        if isnothing(content_type_set)
+            headers["Content-Type"] = content_type_set = "multipart/form-data"
+        end
+
         # use a separate downloader for file uploads
         # until we have something like https://github.com/JuliaLang/Downloads.jl/pull/148
         downloader = Downloads.Downloader()
@@ -249,6 +278,12 @@ function prep_args(ctx::Ctx)
                 LibCURL.curl_mime_filedata(part, _v)
                 # TODO: make provision to call curl_mime_type in future?
             end
+            for (_k,_v) in ctx.form
+                # add multipart sections for form data as well
+                part = LibCURL.curl_mime_addpart(mime)
+                LibCURL.curl_mime_name(part, _k)
+                LibCURL.curl_mime_data(part, _v, length(_v))
+            end
             Downloads.Curl.setopt(easy, LibCURL.CURLOPT_MIMEPOST, mime)
         end
         kwargs[:downloader] = downloader
@@ -256,12 +291,12 @@ function prep_args(ctx::Ctx)
 
     if ctx.body !== nothing
         (isempty(ctx.form) && isempty(ctx.file)) || throw(OpenAPIException("Can not send both form-encoded data and a request body"))
-        if is_json_mime(get(ctx.header, "Content-Type", "application/json"))
+        if is_json_mime(something(content_type_set, "application/json"))
             body = to_json(ctx.body)
-        elseif ("application/x-www-form-urlencoded" == ctx.header["Content-Type"]) && isa(ctx.body, Dict)
+        elseif ("application/x-www-form-urlencoded" == content_type_set) && isa(ctx.body, Dict)
             body = URIs.escapeuri(ctx.body)
-        elseif isa(ctx.body, APIModel) && isempty(get(ctx.header, "Content-Type", ""))
-            headers["Content-Type"] = "application/json"
+        elseif isa(ctx.body, APIModel) && isnothing(content_type_set)
+            headers["Content-Type"] = content_type_set = "application/json"
             body = to_json(ctx.body)
         else
             body = ctx.body
