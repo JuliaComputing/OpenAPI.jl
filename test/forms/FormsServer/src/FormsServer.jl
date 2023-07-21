@@ -9,7 +9,7 @@ The following server methods must be implemented:
 
 - **post_urlencoded_form**
     - *invocation:* POST /test/{form_id}/post_urlencoded_form_data
-    - *signature:* post_urlencoded_form(req::HTTP.Request, form_id::Int64; additional_metadata=nothing, file=nothing,) -> TestResponse
+    - *signature:* post_urlencoded_form(req::HTTP.Request, form_id::Int64, file::String; additional_metadata=nothing,) -> TestResponse
 - **upload_binary_file**
     - *invocation:* POST /test/{file_id}/upload_binary_file
     - *signature:* upload_binary_file(req::HTTP.Request, file_id::Int64; additional_metadata=nothing, file=nothing,) -> TestResponse

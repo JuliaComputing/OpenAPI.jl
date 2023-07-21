@@ -20,7 +20,7 @@ function test(uri)
         print(test_file_io, file_contents)
         close(test_file_io)
 
-        api_return, http_resp = FormsClient.post_urlencoded_form(api, 1; additional_metadata="my metadata", file=file_contents)
+        api_return, http_resp = FormsClient.post_urlencoded_form(api, 1, file_contents; additional_metadata="my metadata")
         @test isa(api_return, FormsClient.TestResponse)
         @test api_return.message == "success, form_id=1, metadata=my metadata, file=file contents"
         @test http_resp.status == 200

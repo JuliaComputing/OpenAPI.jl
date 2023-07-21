@@ -10,7 +10,7 @@ function post_urlencoded_form_read(handler)
         ismultipart = false
         form_data = ismultipart ? HTTP.parse_multipart_form(req) : HTTP.queryparams(String(copy(req.body)))
         openapi_params["additionalMetadata"] = OpenAPI.Servers.to_param(String, form_data, "additionalMetadata"; multipart=ismultipart, isfile=false, )
-        openapi_params["file"] = OpenAPI.Servers.to_param(String, form_data, "file"; multipart=ismultipart, isfile=false, )
+        openapi_params["file"] = OpenAPI.Servers.to_param(String, form_data, "file"; multipart=ismultipart, isfile=false, required=true, )
         req.context[:openapi_params] = openapi_params
 
         return handler(req)
@@ -28,7 +28,7 @@ end
 function post_urlencoded_form_invoke(impl; post_invoke=nothing)
     function post_urlencoded_form_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
-        ret = impl.post_urlencoded_form(req::HTTP.Request, openapi_params["form_id"]; additional_metadata=get(openapi_params, "additionalMetadata", nothing), file=get(openapi_params, "file", nothing),)
+        ret = impl.post_urlencoded_form(req::HTTP.Request, openapi_params["form_id"], openapi_params["file"]; additional_metadata=get(openapi_params, "additionalMetadata", nothing),)
         resp = OpenAPI.Servers.server_response(ret)
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end

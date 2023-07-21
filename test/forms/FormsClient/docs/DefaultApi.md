@@ -10,8 +10,8 @@ Method | HTTP request | Description
 
 
 # **post_urlencoded_form**
-> post_urlencoded_form(_api::DefaultApi, form_id::Int64; additional_metadata=nothing, file=nothing, _mediaType=nothing) -> TestResponse, OpenAPI.Clients.ApiResponse <br/>
-> post_urlencoded_form(_api::DefaultApi, response_stream::Channel, form_id::Int64; additional_metadata=nothing, file=nothing, _mediaType=nothing) -> Channel{ TestResponse }, OpenAPI.Clients.ApiResponse
+> post_urlencoded_form(_api::DefaultApi, form_id::Int64, file::String; additional_metadata=nothing, _mediaType=nothing) -> TestResponse, OpenAPI.Clients.ApiResponse <br/>
+> post_urlencoded_form(_api::DefaultApi, response_stream::Channel, form_id::Int64, file::String; additional_metadata=nothing, _mediaType=nothing) -> Channel{ TestResponse }, OpenAPI.Clients.ApiResponse
 
 posts a urlencoded form, with file contents and additional metadata, both of which are strings
 
@@ -21,13 +21,13 @@ Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **DefaultApi** | API context | 
 **form_id** | **Int64**| ID of form to update | [default to nothing]
+**file** | **String**| file contents to upload, in string format | [default to nothing]
 
 ### Optional Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **additional_metadata** | **String**| Additional data to pass to server | [default to nothing]
- **file** | **String**| file contents to upload, in string format | [default to nothing]
 
 ### Return type
 

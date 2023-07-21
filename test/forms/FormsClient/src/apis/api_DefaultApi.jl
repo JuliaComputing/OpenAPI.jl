@@ -15,7 +15,7 @@ const _returntypes_post_urlencoded_form_DefaultApi = Dict{Regex,Type}(
     Regex("^" * replace("200", "x"=>".") * "\$") => TestResponse,
 )
 
-function _oacinternal_post_urlencoded_form(_api::DefaultApi, form_id::Int64; additional_metadata=nothing, file=nothing, _mediaType=nothing)
+function _oacinternal_post_urlencoded_form(_api::DefaultApi, form_id::Int64, file::String; additional_metadata=nothing, _mediaType=nothing)
     _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", _returntypes_post_urlencoded_form_DefaultApi, "/test/{form_id}/post_urlencoded_form_data", [])
     OpenAPI.Clients.set_param(_ctx.path, "form_id", form_id)  # type Int64
     OpenAPI.Clients.set_param(_ctx.form, "additionalMetadata", additional_metadata)  # type String
@@ -29,18 +29,18 @@ end
 
 Params:
 - form_id::Int64 (required)
+- file::String (required)
 - additional_metadata::String
-- file::String
 
 Return: TestResponse, OpenAPI.Clients.ApiResponse
 """
-function post_urlencoded_form(_api::DefaultApi, form_id::Int64; additional_metadata=nothing, file=nothing, _mediaType=nothing)
-    _ctx = _oacinternal_post_urlencoded_form(_api, form_id; additional_metadata=additional_metadata, file=file, _mediaType=_mediaType)
+function post_urlencoded_form(_api::DefaultApi, form_id::Int64, file::String; additional_metadata=nothing, _mediaType=nothing)
+    _ctx = _oacinternal_post_urlencoded_form(_api, form_id, file; additional_metadata=additional_metadata, _mediaType=_mediaType)
     return OpenAPI.Clients.exec(_ctx)
 end
 
-function post_urlencoded_form(_api::DefaultApi, response_stream::Channel, form_id::Int64; additional_metadata=nothing, file=nothing, _mediaType=nothing)
-    _ctx = _oacinternal_post_urlencoded_form(_api, form_id; additional_metadata=additional_metadata, file=file, _mediaType=_mediaType)
+function post_urlencoded_form(_api::DefaultApi, response_stream::Channel, form_id::Int64, file::String; additional_metadata=nothing, _mediaType=nothing)
+    _ctx = _oacinternal_post_urlencoded_form(_api, form_id, file; additional_metadata=additional_metadata, _mediaType=_mediaType)
     return OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
