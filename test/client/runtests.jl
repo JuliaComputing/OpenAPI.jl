@@ -7,6 +7,7 @@ using Test
 include("utilstests.jl")
 include("petstore_v3/runtests.jl")
 include("petstore_v2/runtests.jl")
+include("openapigenerator_petstore_v3/runtests.jl")
 
 function runtests(; skip_petstore=false, test_file_upload=false)
     @testset "Client" begin
@@ -35,6 +36,17 @@ function runtests(; skip_petstore=false, test_file_upload=false)
                     @info("Skipping petstore tests in non Linux environment (can not run petstore docker on OSX or Windows)")
                 end
             end
+        end
+    end
+end
+
+function run_openapigenerator_tests(; test_file_upload=false)
+    @testset "OpenAPIGeneratorPetstoreClient" begin
+        if get(ENV, "RUNNER_OS", "") == "Linux"
+            @info("Running petstore v3 tests")
+            OpenAPIGenPetStoreV3Tests.runtests(; test_file_upload=test_file_upload)
+        else
+            @info("Skipping petstore tests in non Linux environment (can not run petstore docker on OSX or Windows)")
         end
     end
 end
