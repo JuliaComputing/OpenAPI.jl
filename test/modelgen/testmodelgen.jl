@@ -11,6 +11,8 @@ module TestModelGen
         @test testmodel.default_datetime == OpenAPI.str2zoneddatetime("2011-11-11T11:11:11Z")
         @test testmodel.max_val == 100
         @test testmodel.compute in ["cpu", "gpu"]
+        @test testmodel.message == "success"
+        @test testmodel.name == "new"
     end
 
     function runtests()

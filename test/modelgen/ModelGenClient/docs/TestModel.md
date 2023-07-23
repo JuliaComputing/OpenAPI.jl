@@ -8,6 +8,8 @@ Name | Type | Description | Notes
 **default_date** | **Date** |  | [optional] [default to OpenAPI.str2date("2011-11-11")]
 **default_datetime** | **ZonedDateTime** |  | [optional] [default to OpenAPI.str2zoneddatetime("2011-11-11T11:11:11Z")]
 **max_val** | **Int64** |  | [optional] [default to 100]
+**message** | **String** |  | [optional] [default to "success"]
+**name** | **String** |  | [default to "new"]
 **compute** | [***ComputeType**](ComputeType.md) |  | [optional] [default to nothing]
 
 
