@@ -52,10 +52,21 @@
                         "default": 100,
                         "enum": [100, 200, 300]
                     },
+                    "message": {
+                        "type": "string",
+                        "default": "success"
+                    },
+                    "name": {
+                        "type": "string",
+                        "default": "new"
+                    },
                     "compute": {
                         "$ref": "#/components/schemas/ComputeType"
                     }
-                }
+                },
+                "required": [
+                    "name"
+                ]
             },
             "ComputeType": {
                 "type": "string",
