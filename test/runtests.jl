@@ -54,6 +54,30 @@ include("forms/forms_client.jl")
         end
     end
     run_tests_with_servers && sleep(20) # avoid port conflicts
+    @testset "Petstore Server (openapi-generator)" begin
+        v3_ret = v3_out = nothing
+        servers_running = true
+
+        try
+            if run_tests_with_servers
+                v3_ret, v3_out = run_server(joinpath(@__DIR__, "server", "openapigenerator_petstore_v3", "petstore_server.jl"))
+                servers_running &= wait_server(8081)
+            else
+                servers_running = false                
+            end
+            servers_running && OpenAPIClientTests.run_openapigenerator_tests(; test_file_upload=true)
+        finally
+            if run_tests_with_servers && !servers_running
+                # we probably had an error starting the servers
+                v3_out_str = isnothing(v3_out) ? "" : String(take!(v3_out))
+                @warn("Servers not running", v3_ret=v3_ret, v3_out_str)
+            end
+            if run_tests_with_servers && servers_running
+                stop_server(8081, v3_ret, v3_out)
+            end
+        end
+    end
+    run_tests_with_servers && sleep(20) # avoid port conflicts
     @testset "Forms and File Uploads" begin
         ret = out = nothing
         servers_running = true
