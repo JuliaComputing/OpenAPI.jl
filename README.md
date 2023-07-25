@@ -28,7 +28,7 @@ This Julia package contains documentation and code to create server stubs and co
 
 ## What is OpenAPI ?
 
-The OpenAPI project (previously called Swagger) works on defining a stardard to describe HTTP API's in a language agnostic document. For example consider a Pet Store service that allows customers to browse pets and the store employees to update the dabase on new pets. The full document can be found [here]()
+The OpenAPI project (previously called Swagger) works on defining a stardard to describe HTTP API's in a language agnostic document. For example consider a Pet Store service that allows customers to browse pets and the store employees to update the dabase on new pets. The full document can be found [here](https://petstore.swagger.io/)
 
 ```yaml
 paths:
@@ -69,6 +69,7 @@ paths:
 ```
 
 Defines the path `/pet/{petId}` along with a variety of attributes including references to the structure of the response. Given below is the Pet object defined in the same document.
+
 ```yaml
 Pet:
       required:
@@ -108,6 +109,8 @@ Pet:
             - pending
             - sold
 ```
+
+This document's job is to describe the structure of HTTP endpoints and that of the expected body and response structures. The ubiquity of RESTful HTTP API's utilizing `json` as their `Content-Type` has made OpenAPI specifications a great way to document and describe API's. Two entities on different tech stacks can easily share their respective API's and communicate without worrying about  
 
 ## Code Generation
 
@@ -401,6 +404,8 @@ The Petstore is a common example that most OpenAPI implementations use to test a
     - Server: [docs](test/server/petstore_v3/petstore/README.md), [implementation](test/server/petstore_v3)
 
 ## Tools
+
+A curated list of OpenAPI tools is available at [https://openapi.tools](https://openapi.tools)
 
 ### Swagger UI
 
