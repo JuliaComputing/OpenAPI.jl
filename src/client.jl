@@ -321,7 +321,7 @@ response(::Type{Nothing}, resp::Downloads.Response, body) = nothing::Nothing
 response(::Type{T}, resp::Downloads.Response, body) where {T <: Real} = response(T, body)::T
 response(::Type{T}, resp::Downloads.Response, body) where {T <: String} = response(T, body)::T
 function response(::Type{T}, resp::Downloads.Response, body) where {T}
-    ctype = header(resp, "Content-Type", "application/json")
+    ctype = header(resp, "content-type", "application/json")
     response(T, is_json_mime(ctype), body)::T
 end
 response(::Type{T}, ::Nothing, body) where {T} = response(T, true, body)
