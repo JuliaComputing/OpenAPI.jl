@@ -206,7 +206,9 @@ end
 
 set_header_content_type(ctx::Ctx, ctypes::Vector{T}) where {T} = set_header_content_type(ctx, convert(Vector{String}, ctypes))
 function set_header_content_type(ctx::Ctx, ctypes::Vector{String})
-    ctx.header["Content-Type"] = select_header_content_type(ctypes)
+    if !(ctx.method in ("GET", "HEAD"))
+        ctx.header["Content-Type"] = select_header_content_type(ctypes)
+    end
     return nothing
 end
 
