@@ -314,7 +314,7 @@ end
 
 function header(resp::Downloads.Response, name::AbstractString, defaultval::AbstractString)
     for (n,v) in resp.headers
-        (n == name) && (return v)
+        (lowercase(n) == lowercase(name)) && (return v)
     end
     return defaultval
 end
