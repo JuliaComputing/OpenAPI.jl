@@ -8,6 +8,7 @@ using Dates
 using TimeZones
 using LibCURL
 using HTTP
+using MIMEs
 
 import Base: convert, show, summary, getproperty, setproperty!, iterate
 import ..OpenAPI: APIModel, UnionAPIModel, OneOfAPIModel, AnyOfAPIModel, APIClientImpl, OpenAPIException, InvocationException, to_json, from_json, validate_property, property_type
@@ -598,5 +599,50 @@ is_request_interrupted(ex) = false
 is_request_interrupted(ex::TaskFailedException) = is_request_interrupted(ex.task.exception)
 is_request_interrupted(ex::CompositeException) = any(is_request_interrupted, ex.exceptions)
 is_request_interrupted(ex::InvocationException) = ex.reason == "request was interrupted"
+
+
+"""
+    deserialize_file(api_call::Function;
+        folder_path::String=pwd(),
+        rename_file::String="",
+        overwrite::Bool=true
+        )::Tuple{Any,ApiResponse,String}
+
+    Saves response body into a file in a temporary folder,
+    using the filename from the `Content-Disposition` header if provided.
+    - `api_call`: API function that return `(result, http_response)` Tuple.
+    - `folder_path`: file save location, default value is `pwd()``.
+    - `rename_file`: rename the file, default value is `""`.
+    - `overwrite`: overwrite file if already exist, default is `true`.
+    - return: (result, http_response, file_path).
+"""
+function deserialize_file(api_call::Function;
+    folder_path::String=pwd(),
+    rename_file::String="",
+    overwrite::Bool=true
+    )::Tuple{Any,ApiResponse,String}
+    
+    result, http_response = api_call()
+
+    content_disposition_str = OpenAPI.Clients.header(http_response.raw,"content-disposition","")
+    content_type_str = OpenAPI.Clients.header(http_response.raw,"content-type","")
+    
+    file_name = if length(rename_file) > 0
+        rename_file
+    elseif length(content_disposition_str) > 0
+        content_disposition_str
+    else 
+        "response"*extension_from_mime(MIME(content_type_str))
+    end
+
+    file_path = joinpath(mkpath(folder_path),file_name)
+
+    if !(isfile(file_path)&&!overwrite)
+        open(file_path,"w") do file_path
+            write(file_path,result)
+        end
+    end
+    return result, http_response, file_path
+end
 
 end # module Clients
