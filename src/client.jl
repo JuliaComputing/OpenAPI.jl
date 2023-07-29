@@ -613,13 +613,11 @@ is_request_interrupted(ex::InvocationException) = ex.reason == "request was inte
     - `api_call`: API function that return `(result, http_response)` Tuple.
     - `folder_path`: file save location, default value is `pwd()``.
     - `rename_file`: rename the file, default value is `""`.
-    - `overwrite`: overwrite file if already exist, default is `true`.
     - return: (result, http_response, file_path).
 """
 function deserialize_file(api_call::Function;
     folder_path::String=pwd(),
     rename_file::String="",
-    overwrite::Bool=true
     )::Tuple{Any,ApiResponse,String}
     
     result, http_response = api_call()
@@ -627,20 +625,17 @@ function deserialize_file(api_call::Function;
     content_disposition_str = OpenAPI.Clients.header(http_response.raw,"content-disposition","")
     content_type_str = OpenAPI.Clients.header(http_response.raw,"content-type","")
     
-    file_name = if length(rename_file) > 0
+    file_name = if !isempty(rename_file)
         rename_file
-    elseif length(content_disposition_str) > 0
+    elseif !isempty(content_disposition_str)
         content_disposition_str
     else 
         "response"*extension_from_mime(MIME(content_type_str))
     end
 
     file_path = joinpath(mkpath(folder_path),file_name)
-
-    if !(isfile(file_path)&&!overwrite)
-        open(file_path,"w") do file_path
-            write(file_path,result)
-        end
+    open(file_path,"w") do file
+        write(file,result)
     end
     return result, http_response, file_path
 end
