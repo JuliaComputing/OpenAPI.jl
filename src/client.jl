@@ -623,7 +623,7 @@ function deserialize_file(api_call::Function;
     result, http_response = api_call()
 
     content_disposition_str = OpenAPI.Clients.header(http_response.raw,"content-disposition","")
-    content_type_str = OpenAPI.Clients.header(http_response.raw,"content-type","")
+    content_type_str = extract_filename(OpenAPI.Clients.header(http_response.raw,"content-type",""))
     
     file_name = if !isempty(rename_file)
         rename_file
@@ -638,6 +638,12 @@ function deserialize_file(api_call::Function;
         write(file,result)
     end
     return result, http_response, file_path
+end
+
+# extract_filename from content-disposition
+function extract_filename(str::String)::String
+    m = match(r"filename=\"(.*?)\"",str)
+    return isnothing(m) ? "" : m.captures[1]
 end
 
 end # module Clients
