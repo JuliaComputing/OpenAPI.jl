@@ -602,48 +602,75 @@ is_request_interrupted(ex::InvocationException) = ex.reason == "request was inte
 
 
 """
-    deserialize_file(api_call::Function;
-        folder_path::String=pwd(),
+    storefile(api_call::Function;
+        folder::AbstractString = pwd(),
         rename_file::String="",
-        overwrite::Bool=true
         )::Tuple{Any,ApiResponse,String}
 
-    Saves response body into a file in a temporary folder,
-    using the filename from the `Content-Disposition` header if provided.
-    - `api_call`: API function that return `(result, http_response)` Tuple.
-    - `folder_path`: file save location, default value is `pwd()``.
-    - `rename_file`: rename the file, default value is `""`.
-    - return: (result, http_response, file_path).
+    Helper method that stores the result of an API call that returns file
+    contents (as binary or text string) into a file.
+
+    Convenient to use it in a do block. Returns the path where file is stored additionally.
+
+    E.g.:
+    ```
+    _result, _http_response, file = OpenAPI.Clients.storefile() do
+        # Invoke the OpenaPI method that returns file contents.
+        # This is the method that returns a tuple of (result, http_response).
+        # The result is the file contents as binary or text string.
+        fetch_file(api, "reports", "category1")
+    end
+    ```
+
+    Parameters:
+
+    - `api_call`: The OpenAPI function call that returns file contents (as binary or text string). See example in method description.
+    - `folder`: Location to store file, defaults to `pwd()`.
+    - `filename`: Use this filename, overrides any filename that may be there in the `Content-Disposition` header.
+
+    Returns: (result, http_response, file_path)
 """
-function deserialize_file(api_call::Function;
-    folder_path::String=pwd(),
-    rename_file::String="",
+function storefile(api_call::Function;
+    folder::AbstractString = pwd(),
+    filename::Union{String,Nothing} = nothing,
     )::Tuple{Any,ApiResponse,String}
     
     result, http_response = api_call()
 
-    content_disposition_str = OpenAPI.Clients.header(http_response.raw,"content-disposition","")
-    content_type_str = extract_filename(OpenAPI.Clients.header(http_response.raw,"content-type",""))
-    
-    file_name = if !isempty(rename_file)
-        rename_file
-    elseif !isempty(content_disposition_str)
-        content_disposition_str
-    else 
-        "response"*extension_from_mime(MIME(content_type_str))
+    if isnothing(filename)
+        filename = extract_filename(http_response)
     end
 
-    file_path = joinpath(mkpath(folder_path),file_name)
-    open(file_path,"w") do file
-        write(file,result)
+    mkpath(folder)
+    filepath = joinpath(folder, filename)
+
+    open(filepath, "w") do io
+        write(io, result)
     end
-    return result, http_response, file_path
+
+    return result, http_response, filepath
 end
 
-# extract_filename from content-disposition
-function extract_filename(str::String)::String
-    m = match(r"filename=\"(.*?)\"",str)
-    return isnothing(m) ? "" : m.captures[1]
+const content_disposition_re = r"filename\*?=['\"]?(?:UTF-\d['\"]*)?([^;\r\n\"']*)['\"]?;?"
+
+"""
+    extract_filename(resp::Downloads.Response)::String
+
+Extracts the filename from the `Content-Disposition` header of the HTTP response.
+If not found, then creates a filename from the `Content-Type` header.
+"""
+extract_filename(resp::ApiResponse) = extract_filename(resp.raw)
+function extract_filename(resp::Downloads.Response)::String
+    # attempt to extract filename from content-disposition header
+    content_disposition_str = header(resp, "content-disposition", "")
+    m = match(content_disposition_re, content_disposition_str)
+    if !isnothing(m) && !isempty(m.captures) && !isnothing(m.captures[1])
+        return m.captures[1]
+    end
+
+    # attempt to create a filename from content-type header
+    content_type_str = header(resp, "content-type", "")
+    return string("response", extension_from_mime(MIME(content_type_str)))
 end
 
 end # module Clients

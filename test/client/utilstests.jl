@@ -4,6 +4,7 @@ using Test
 using Dates
 using TimeZones
 using Base64
+using Downloads
 
 function test_date()
     dt_now = now()
@@ -242,4 +243,55 @@ function test_misc()
     @test OpenAPI.from_json(Any, json) === json
     @test OpenAPI.from_json(String, json) == "{}"
     @test isa(OpenAPI.from_json(Dict{Any,Any}, json), Dict{Any,Any})
+end
+
+const content_disposition_tests = [
+    (content_disposition="attachment; filename=content.txt", content_type="", filename="content.txt"),
+    (content_disposition="attachment; filename*=UTF-8''filename.txt", content_type="", filename="filename.txt"),
+    (content_disposition="attachment; filename=\"Image File\"; filename*=utf-8''UTF8ImageFile", content_type="", filename="Image File"),
+    (content_disposition="attachment; filename=\"चित्त.jpg\"", content_type="", filename="चित्त.jpg"),
+    (content_disposition="", content_type="", filename="response"),
+    (content_disposition="", content_type="image/jpg", filename="response"),
+]
+
+function test_storefile()
+    for test_data in content_disposition_tests
+        headers = [
+            "Content-Disposition" => test_data.content_disposition,
+            "Content-Type" => test_data.content_type,
+        ]
+        resp = Downloads.Response("GET", "http://test/", 200, "", headers)
+
+        @test OpenAPI.Clients.extract_filename(resp) == test_data.filename
+    end
+
+    mktempdir() do tmpdir
+        test_data = content_disposition_tests[1]
+        headers = [
+            "Content-Disposition" => test_data.content_disposition,
+            "Content-Type" => test_data.content_type,
+        ]
+        resp = OpenAPI.Clients.ApiResponse(Downloads.Response("GET", "http://test/", 200, "", headers))
+        file_contents = "test file data"
+
+        # test extraction of filename from headers
+        result, http_response, filepath = OpenAPI.Clients.storefile(; folder=tmpdir) do
+            return file_contents, resp
+        end
+
+        @test result == file_contents
+        @test http_response == resp
+        @test filepath == joinpath(tmpdir, test_data.filename)
+        @test read(filepath, String) == file_contents
+
+        # test overriding filename
+        result, http_response, filepath = OpenAPI.Clients.storefile(; folder=tmpdir, filename="overridename.txt") do
+            return file_contents, resp
+        end
+
+        @test result == file_contents
+        @test http_response == resp
+        @test filepath == joinpath(tmpdir, "overridename.txt")
+        @test read(filepath, String) == file_contents
+    end
 end
