@@ -17,6 +17,7 @@ function runtests(; skip_petstore=false, test_file_upload=false)
             test_date()
             test_misc()
             test_has_property()
+            test_storefile()
         end
         @testset "Validations" begin
             test_validations()
