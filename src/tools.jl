@@ -128,3 +128,39 @@ function swagger_editor(; port::Int=8080, use_sudo::Bool=false)
     cmd = `$docker run -d --rm -p $port:8080 $(SwaggerImage.Editor)`
     return _start_swagger(cmd, port)
 end
+
+"""
+    lint(spec; use_sudo=false)
+    lint(spec_dir, spec_file; use_sudo=false)
+
+Lint an OpenAPI spec file using Spectral.
+
+Optional arguments:
+- `use_sudo`: Whether to use `sudo` to run Docker commands. Defaults to false.
+"""
+function lint(spec::AbstractString; use_sudo::Bool=false)
+    spec = abspath(spec)
+    spec_dir = dirname(spec)
+    spec_file = basename(spec)
+    return lint(spec_dir, spec_file; use_sudo=use_sudo)
+end
+
+function lint(spec_dir::AbstractString, spec_file::AbstractString; use_sudo::Bool=false)
+    docker = docker_cmd(; use_sudo=use_sudo)
+    if isfile(joinpath(spec_dir, ".spectral.yaml"))
+        @debug("linting with existing configuration")
+        cmd = `$docker run --rm -v $spec_dir:/spec:ro -w /spec stoplight/spectral:latest lint /spec/$spec_file`
+        run(cmd)
+    else
+        # generate a default configuration file
+        @debug("linting with default configuration")
+        mktempdir() do tmpdir
+            open(joinpath(tmpdir, ".spectral.yaml"), "w") do f
+                write(f, """extends: ["spectral:oas", "spectral:asyncapi"]""")
+            end
+            cp(joinpath(spec_dir, spec_file), joinpath(tmpdir, spec_file))
+            cmd = `$docker run --rm -v $tmpdir:/spec:ro -w /spec stoplight/spectral:latest lint /spec/$spec_file`
+            run(cmd)
+        end
+    end
+end

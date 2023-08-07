@@ -314,6 +314,25 @@ OpenAPI.stop_swagger_editor(;
 )
 ```
 
+### Spectral Linter
+
+[Spectral](https://stoplight.io/open-source/spectral) is an open-source API style guide enforcer and linter. OpenAPI.jl includes a convenience method to use the  Spectral OpenAPI linter from Julia.
+
+```julia
+# specify a specification file to start with
+OpenAPI.lint(
+    spec::AbstractString;   # the OpenAPI specification to use
+    use_sudo::Bool=false    # whether to use sudo while invoking docker
+)
+
+# specify a folder and specification file name to start with
+OpenAPI.lint(
+    spec_dir::AbstractString;   # folder containing the specification file
+    spec_file::AbstractString;  # the specification file
+    use_sudo::Bool=false        # whether to use sudo while invoking docker
+)
+```
+
 ## TODO
 
 Not all OpenAPI features are supported yet, e.g.:
