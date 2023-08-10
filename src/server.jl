@@ -111,7 +111,9 @@ end
 
 server_response(resp::HTTP.Response) = resp
 server_response(::Nothing) = server_response("")
-server_response(ret) = server_response(to_json(ret))
-server_response(resp::String) = HTTP.Response(200, resp)
+server_response(ret) =
+    server_response(to_json(ret), [Pair("Content-Type", "application/json")])
+server_response(resp::AbstractString, headers=HTTP.Headers()) =
+    HTTP.Response(200, headers, body=resp)
 
 end # module Servers
