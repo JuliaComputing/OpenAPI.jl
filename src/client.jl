@@ -45,12 +45,15 @@ struct ApiException <: Exception
 end
 
 """
-Represents the raw HTTP provol response from the server.
+    ApiResponse
+
+Represents the HTTP API response from the server. This is returned as the second return value from all API calls.
+
 Properties available:
-- status: the HTTP status code
-- message: the HTTP status message
-- headers: the HTTP headers
-- raw: the raw response ( as a Downloads.Response object)
+- `status`: the HTTP status code
+- `message`: the HTTP status message
+- `headers`: the HTTP headers
+- `raw`: the raw response ( as a Downloads.Response object)
 """
 struct ApiResponse
     raw::Downloads.Response
@@ -93,6 +96,43 @@ function default_debug_hook(type, message)
     @info("OpenAPI HTTP transport", type, message)
 end
 
+"""
+    Client(root::String;
+        headers::Dict{String,String}=Dict{String,String}(),
+        get_return_type::Function=get_api_return_type,
+        long_polling_timeout::Int=DEFAULT_LONGPOLL_TIMEOUT_SECS,
+        timeout::Int=DEFAULT_TIMEOUT_SECS,
+        pre_request_hook::Function=noop_pre_request_hook,
+        verbose::Union{Bool,Function}=false,
+    )
+
+Create a new OpenAPI client context.
+
+A client context holds common information to be used across APIs. It also holds a connection to the server and uses that across API calls.
+The client context needs to be passed as the first parameter of all API calls.
+
+Parameters:
+- `root`: The root URL of the server. This is the base URL that will be used for all API calls.
+
+Keyword parameters:
+- `headers`: A dictionary of HTTP headers to be sent with all API calls.
+- `get_return_type`: A function that is called to determine the return type of an API call. This function is called with the following parameters:
+    - `return_types`: A dictionary of regular expressions and their corresponding return types. The regular expressions are matched against the HTTP status code of the response.
+    - `response_code`: The HTTP status code of the response.
+    - `response_data`: The response data as a string.
+    The function should return the return type to be used for the API call.
+- `long_polling_timeout`: The timeout in seconds for long polling requests. This is the time after which the request will be aborted if no data is received from the server.
+- `timeout`: The timeout in seconds for all other requests. This is the time after which the request will be aborted if no data is received from the server.
+- `pre_request_hook`: A function that is called before every API call. This function must provide two methods:
+    - `pre_request_hook(ctx::Ctx)`: This method is called before every API call. It is passed the context object that will be used for the API call. The function should return the context object to be used for the API call.
+    - `pre_request_hook(resource_path::AbstractString, body::Any, headers::Dict{String,String})`: This method is called before every API call. It is passed the resource path, request body and request headers that will be used for the API call. The function should return those after making any modifications to them.
+- `verbose`: Can be set either to a boolean or a function.
+    - If set to true, then the client will log all HTTP requests and responses.
+    - If set to a function, then that function will be called with the following parameters:
+        - `type`: The type of message.
+        - `message`: The message to be logged.
+
+"""
 struct Client
     root::String
     headers::Dict{String,String}
@@ -127,9 +167,32 @@ struct Client
     end
 end
 
+"""
+    set_user_agent(client::Client, ua::String)
+
+Set the User-Agent header to be sent with all API calls.
+"""
 set_user_agent(client::Client, ua::String) = set_header(client, "User-Agent", ua)
+
+"""
+    set_cookie(client::Client, ck::String)
+
+Set the Cookie header to be sent with all API calls.
+"""
 set_cookie(client::Client, ck::String) = set_header(client, "Cookie", ck)
+    
+"""
+    set_header(client::Client, name::String, value::String)
+
+Set the specified header to be sent with all API calls.
+"""
 set_header(client::Client, name::String, value::String) = (client.headers[name] = value)
+
+"""
+    set_timeout(client::Client, timeout::Int)
+
+Set the timeout in seconds for all API calls.
+"""
 set_timeout(client::Client, timeout::Int) = (client.timeout[] = timeout)
 
 function with_timeout(fn, client::Client, timeout::Integer)
@@ -515,6 +578,12 @@ function setproperty!(o::T, name::Symbol, val) where {T<:APIModel}
     end
 end
 
+"""
+    getpropertyat(o::T, path...) where {T<:APIModel}
+
+Returns the property at the specified path.
+The path can be a single property name or a chain of property names separated by dots, representing a nested property.
+"""
 function getpropertyat(o::T, path...) where {T<:APIModel}
     val = getproperty(o, Symbol(path[1]))
     rempath = path[2:end]
@@ -533,6 +602,11 @@ function getpropertyat(o::T, path...) where {T<:APIModel}
     getpropertyat(val, rempath...)
 end
 
+"""
+    haspropertyat(o::T, path...) where {T<:APIModel}
+
+Returns true if the supplied object has the property at the specified path.
+"""
 function haspropertyat(o::T, path...) where {T<:APIModel}
     p1 = Symbol(path[1])
     ret = hasproperty(o, p1)
