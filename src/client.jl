@@ -107,6 +107,7 @@ end
         timeout::Int=DEFAULT_TIMEOUT_SECS,
         pre_request_hook::Function=noop_pre_request_hook,
         escape_path_params::Union{Nothing,Bool}=nothing,
+        chunk_reader_type::Union{Nothing,Type{<:AbstractChunkReader}}=nothing,
         verbose::Union{Bool,Function}=false,
     )
 

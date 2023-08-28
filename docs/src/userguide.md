@@ -124,6 +124,8 @@ Client(root::String;
     timeout::Int=DEFAULT_TIMEOUT_SECS,
     long_polling_timeout::Int=DEFAULT_LONGPOLL_TIMEOUT_SECS,
     pre_request_hook::Function,
+    escape_path_params::Union{Nothing,Bool}=nothing,
+    chunk_reader_type::Union{Nothing,Type{<:AbstractChunkReader}}=nothing,
     verbose::Union{Bool,Function}=false,
 )
 ```
@@ -136,11 +138,15 @@ Where:
 - `timeout`: optional timeout to apply for server methods (default `OpenAPI.Clients.DEFAULT_TIMEOUT_SECS`)
 - `long_polling_timeout`: optional timeout to apply for long polling methods (default `OpenAPI.Clients.DEFAULT_LONGPOLL_TIMEOUT_SECS`)
 - `pre_request_hook`: user provided hook to modify the request before it is sent
+- `escape_path_params`: Whether the path parameters should be escaped before being used in the URL (true by default). This is useful if the path parameters contain characters that are not allowed in URLs or contain path separators themselves.
+- `chunk_reader_type`: The type of chunk reader to be used for streaming responses.
 - `verbose`: whether to enable verbose logging
 
 The `pre_request_hook` must provide the following two implementations:
 - `pre_request_hook(ctx::OpenAPI.Clients.Ctx) -> ctx`
 - `pre_request_hook(resource_path::AbstractString, body::Any, headers::Dict{String,String}) -> (resource_path, body, headers)`
+
+The `chunk_reader_type` can be one of `LineChunkReader`, `JSONChunkReader` or `RFC7464ChunkReader`. If not specified, then the type is automatically determined based on the return type of the API call. Refer to the [Streaming Responses](#Streaming-Responses) section for more details.
 
 The `verbose` option can be one of:
 - `false`: the default, no verbose logging
@@ -191,3 +197,20 @@ Optional middlewares can be one or more of:
 
 The order in which middlewares are invoked is:
 `init |> read |> pre_validation |> validate |> pre_invoke |> invoke |> post_invoke`
+
+## Streaming Responses
+
+Some OpenAPI implementations implement streaming of responses by sending more than one items in the response, each of which is of the type declared as the return type in the specification. E.g. the [Twitter OpenAPI specification](https://api.twitter.com/2/openapi.json) that keeps sending tweets in JSON like this forever:
+
+```json
+{"data":{"id":"1800000000000000000","text":"mmm i like a sandwich"},"matching_rules":[{"id":1800000000000000000,"tag":"\"sandwich\""}]}
+{"data":{"id":"1800000000000000001","text":"lets have a sandwich"},"matching_rules":[{"id":1800000000000000001,"tag":"\"sandwich\""}]}
+```
+
+OpenAPI.jl handles such responses through "chunk readers" which are engaged only with the streaming API endpoints. There can be multiple implementations of chunk readers, each of which must be of type `AbstractChunkReader`. The following are the chunk readers provided, each with a different chunk detection strategy. They are selected based on some heuristics based on the response data type.
+
+- `LineChunkReader`: Chunks delimited by newline. This is the default when the response type is detected to be not of `OpenAPI.APIModel` type.
+- `JSONChunkReader`: Each chunk is a JSON. Whitespaces between JSONs are ignored. This is the default when the response type is detected to be a `OpenAPI.APIModel`.
+- `RFC7464ChunkReader`: A reader based on [RFC 7464](https://www.rfc-editor.org/rfc/rfc7464.html). Available for use by overriding through `Client` or `Ctx`.
+
+The `OpenAPI.Clients.Client` and `OpenAPI.Clients.Ctx` constructors take an additional `chunk_reader_type` keyword parameter. This can be one of `OpenAPI.Clients.LineChunkReader`, `OpenAPI.Clients.JSONChunkReader` or `OpenAPI.Clients.RFC7464ChunkReader`. If not specified, then the type is automatically determined as described above.
