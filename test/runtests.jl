@@ -1,5 +1,6 @@
 using Test, HTTP
 
+include("chunkreader_tests.jl")
 include("testutils.jl")
 include("modelgen/testmodelgen.jl")
 include("client/runtests.jl")
@@ -9,6 +10,9 @@ include("forms/forms_client.jl")
 @testset "OpenAPI" begin
     @testset "ModelGen" begin
         TestModelGen.runtests()
+    end
+    @testset "Chunk Readers" begin
+        ChunkReaderTests.runtests()
     end
     @testset "Petstore Client" begin
         try
