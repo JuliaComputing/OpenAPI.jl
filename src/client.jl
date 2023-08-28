@@ -103,6 +103,7 @@ end
         long_polling_timeout::Int=DEFAULT_LONGPOLL_TIMEOUT_SECS,
         timeout::Int=DEFAULT_TIMEOUT_SECS,
         pre_request_hook::Function=noop_pre_request_hook,
+        escape_path_params::Union{Nothing,Bool}=nothing,
         verbose::Union{Bool,Function}=false,
     )
 
@@ -126,6 +127,7 @@ Keyword parameters:
 - `pre_request_hook`: A function that is called before every API call. This function must provide two methods:
     - `pre_request_hook(ctx::Ctx)`: This method is called before every API call. It is passed the context object that will be used for the API call. The function should return the context object to be used for the API call.
     - `pre_request_hook(resource_path::AbstractString, body::Any, headers::Dict{String,String})`: This method is called before every API call. It is passed the resource path, request body and request headers that will be used for the API call. The function should return those after making any modifications to them.
+- `escape_path_params`: Whether the path parameters should be escaped before being used in the URL. This is useful if the path parameters contain characters that are not allowed in URLs or contain path separators themselves.
 - `verbose`: Can be set either to a boolean or a function.
     - If set to true, then the client will log all HTTP requests and responses.
     - If set to a function, then that function will be called with the following parameters:
@@ -141,6 +143,7 @@ struct Client
     downloader::Downloader
     timeout::Ref{Int}
     pre_request_hook::Function  # user provided hook to modify the request before it is sent
+    escape_path_params::Union{Nothing,Bool}
     long_polling_timeout::Int
 
     function Client(root::String;
@@ -149,6 +152,7 @@ struct Client
             long_polling_timeout::Int=DEFAULT_LONGPOLL_TIMEOUT_SECS,
             timeout::Int=DEFAULT_TIMEOUT_SECS,
             pre_request_hook::Function=noop_pre_request_hook,
+            escape_path_params::Union{Nothing,Bool}=nothing,
             verbose::Union{Bool,Function}=false,
         )
         clntoptions = Dict{Symbol,Any}(:throw=>false)
@@ -163,7 +167,7 @@ struct Client
             # disable ALPN to support servers that enable both HTTP/2 and HTTP/1.1 on same port
             Downloads.Curl.setopt(easy, LibCURL.CURLOPT_SSL_ENABLE_ALPN, 0)
         end
-        new(root, headers, get_return_type, clntoptions, downloader, Ref{Int}(timeout), pre_request_hook, long_polling_timeout)
+        new(root, headers, get_return_type, clntoptions, downloader, Ref{Int}(timeout), pre_request_hook, escape_path_params, long_polling_timeout)
     end
 end
 
@@ -232,14 +236,16 @@ struct Ctx
     timeout::Int
     curl_mime_upload::Ref{Any}
     pre_request_hook::Function
+    escape_path_params::Bool
 
     function Ctx(client::Client, method::String, return_types::Dict{Regex,Type}, resource::String, auth, body=nothing;
             timeout::Int=client.timeout[],
             pre_request_hook::Function=client.pre_request_hook,
+            escape_path_params::Bool=something(client.escape_path_params, true),
         )
         resource = client.root * resource
         headers = copy(client.headers)
-        new(client, method, return_types, resource, auth, Dict{String,String}(), Dict{String,String}(), headers, Dict{String,String}(), Dict{String,String}(), body, timeout, Ref{Any}(nothing), pre_request_hook)
+        new(client, method, return_types, resource, auth, Dict{String,String}(), Dict{String,String}(), headers, Dict{String,String}(), Dict{String,String}(), body, timeout, Ref{Any}(nothing), pre_request_hook, escape_path_params)
     end
 end
 
@@ -436,7 +442,8 @@ function do_request(ctx::Ctx, stream::Bool=false; stream_to::Union{Channel,Nothi
     # prepare the url
     resource_path = replace(ctx.resource, "{format}"=>"json")
     for (k,v) in ctx.path
-        resource_path = replace(resource_path, "{$k}"=>escapeuri(v))
+        esc_v = ctx.escape_path_params ? escapeuri(v) : v
+        resource_path = replace(resource_path, "{$k}"=>esc_v)
     end
     # append query params if needed
     if !isempty(ctx.query)
