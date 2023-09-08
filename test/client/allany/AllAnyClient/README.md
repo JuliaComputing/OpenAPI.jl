@@ -20,21 +20,27 @@ Documentation is also embedded in Julia which can be used with a Julia specific 
 
 Class | Method
 ------------ | -------------
+*DefaultApi* | [**echo_anyof_base_type_post**](docs/DefaultApi.md#echo_anyof_base_type_post)<br/>**POST** /echo_anyof_base_type<br/>
 *DefaultApi* | [**echo_anyof_mapped_pets_post**](docs/DefaultApi.md#echo_anyof_mapped_pets_post)<br/>**POST** /echo_anyof_mapped_pets<br/>
 *DefaultApi* | [**echo_anyof_pets_post**](docs/DefaultApi.md#echo_anyof_pets_post)<br/>**POST** /echo_anyof_pets<br/>
+*DefaultApi* | [**echo_arrays_post**](docs/DefaultApi.md#echo_arrays_post)<br/>**POST** /echo_arrays<br/>
+*DefaultApi* | [**echo_oneof_base_type_post**](docs/DefaultApi.md#echo_oneof_base_type_post)<br/>**POST** /echo_oneof_base_type<br/>
 *DefaultApi* | [**echo_oneof_mapped_pets_post**](docs/DefaultApi.md#echo_oneof_mapped_pets_post)<br/>**POST** /echo_oneof_mapped_pets<br/>
 *DefaultApi* | [**echo_oneof_pets_post**](docs/DefaultApi.md#echo_oneof_pets_post)<br/>**POST** /echo_oneof_pets<br/>
 
 
 ## Models
 
+ - [AnyOfBaseType](docs/AnyOfBaseType.md)
  - [AnyOfMappedPets](docs/AnyOfMappedPets.md)
  - [AnyOfPets](docs/AnyOfPets.md)
  - [Cat](docs/Cat.md)
  - [Dog](docs/Dog.md)
+ - [OneOfBaseType](docs/OneOfBaseType.md)
  - [OneOfMappedPets](docs/OneOfMappedPets.md)
  - [OneOfPets](docs/OneOfPets.md)
  - [Pet](docs/Pet.md)
+ - [TypeWithAllArrayTypes](docs/TypeWithAllArrayTypes.md)
 
 
 <a id="authorization"></a>

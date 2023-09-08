@@ -27,6 +27,7 @@ function pet_equals(dog1::M.Dog, dog2::M.Dog)
     dog1.pet_type == dog2.pet_type && dog1.bark == dog2.bark && dog1.breed == dog2.breed
 end
 pet_equals(pet1::OpenAPI.UnionAPIModel, pet2::OpenAPI.UnionAPIModel) = pet_equals(pet1.value, pet2.value)
+basetype_equals(val1::OpenAPI.UnionAPIModel, val2::OpenAPI.UnionAPIModel) = val1.value == val2.value
 
 function runtests()
     @testset "allany" begin
@@ -49,6 +50,29 @@ function runtests()
         pet = M.OneOfPets(cat)
         api_return, http_resp = echo_oneof_pets_post(api, pet)
         @test pet_equals(api_return, pet)
+
+        val = M.AnyOfBaseType("hello")
+        api_return, http_resp = echo_anyof_base_type_post(api, val)
+        @test basetype_equals(api_return, val)
+
+        val = M.OneOfBaseType(100.1)
+        api_return, http_resp = echo_oneof_base_type_post(api, val)
+        @test basetype_equals(api_return, val)
+
+        arr = M.TypeWithAllArrayTypes()
+        arr.oneofbase = [M.OneOfBaseType(1), M.OneOfBaseType(2)]
+        arr.anyofbase = [M.AnyOfBaseType("hello"), M.AnyOfBaseType("world")]
+        arr.oneofpets = [M.OneOfPets(cat), M.OneOfPets(dog)]
+        arr.anyofpets = [M.AnyOfPets(cat), M.AnyOfPets(dog)]
+
+        api_return, http_resp = echo_arrays_post(api, arr)
+
+        for idx in 1:2
+            @test basetype_equals(arr.oneofbase[idx], api_return.oneofbase[idx])
+            @test basetype_equals(arr.anyofbase[idx], api_return.anyofbase[idx])
+            @test pet_equals(arr.oneofpets[idx], api_return.oneofpets[idx])
+            @test pet_equals(arr.anyofpets[idx], api_return.anyofpets[idx])
+        end
     end
 end
 

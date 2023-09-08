@@ -41,8 +41,11 @@ The following server methods must be implemented:
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
+*DefaultApi* | [**echo_anyof_base_type_post**](docs/DefaultApi.md#echo_anyof_base_type_post) | **POST** /echo_anyof_base_type | 
 *DefaultApi* | [**echo_anyof_mapped_pets_post**](docs/DefaultApi.md#echo_anyof_mapped_pets_post) | **POST** /echo_anyof_mapped_pets | 
 *DefaultApi* | [**echo_anyof_pets_post**](docs/DefaultApi.md#echo_anyof_pets_post) | **POST** /echo_anyof_pets | 
+*DefaultApi* | [**echo_arrays_post**](docs/DefaultApi.md#echo_arrays_post) | **POST** /echo_arrays | 
+*DefaultApi* | [**echo_oneof_base_type_post**](docs/DefaultApi.md#echo_oneof_base_type_post) | **POST** /echo_oneof_base_type | 
 *DefaultApi* | [**echo_oneof_mapped_pets_post**](docs/DefaultApi.md#echo_oneof_mapped_pets_post) | **POST** /echo_oneof_mapped_pets | 
 *DefaultApi* | [**echo_oneof_pets_post**](docs/DefaultApi.md#echo_oneof_pets_post) | **POST** /echo_oneof_pets | 
 
@@ -50,13 +53,16 @@ Class | Method | HTTP request | Description
 
 ## Models
 
+ - [AnyOfBaseType](docs/AnyOfBaseType.md)
  - [AnyOfMappedPets](docs/AnyOfMappedPets.md)
  - [AnyOfPets](docs/AnyOfPets.md)
  - [Cat](docs/Cat.md)
  - [Dog](docs/Dog.md)
+ - [OneOfBaseType](docs/OneOfBaseType.md)
  - [OneOfMappedPets](docs/OneOfMappedPets.md)
  - [OneOfPets](docs/OneOfPets.md)
  - [Pet](docs/Pet.md)
+ - [TypeWithAllArrayTypes](docs/TypeWithAllArrayTypes.md)
 
 
 

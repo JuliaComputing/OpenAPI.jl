@@ -7,12 +7,21 @@ Encapsulates generated server code for AllAnyServer
 
 The following server methods must be implemented:
 
+- **echo_anyof_base_type_post**
+    - *invocation:* POST /echo_anyof_base_type
+    - *signature:* echo_anyof_base_type_post(req::HTTP.Request, any_of_base_type::AnyOfBaseType;) -> AnyOfBaseType
 - **echo_anyof_mapped_pets_post**
     - *invocation:* POST /echo_anyof_mapped_pets
     - *signature:* echo_anyof_mapped_pets_post(req::HTTP.Request, any_of_mapped_pets::AnyOfMappedPets;) -> AnyOfMappedPets
 - **echo_anyof_pets_post**
     - *invocation:* POST /echo_anyof_pets
     - *signature:* echo_anyof_pets_post(req::HTTP.Request, any_of_pets::AnyOfPets;) -> AnyOfPets
+- **echo_arrays_post**
+    - *invocation:* POST /echo_arrays
+    - *signature:* echo_arrays_post(req::HTTP.Request, type_with_all_array_types::TypeWithAllArrayTypes;) -> TypeWithAllArrayTypes
+- **echo_oneof_base_type_post**
+    - *invocation:* POST /echo_oneof_base_type
+    - *signature:* echo_oneof_base_type_post(req::HTTP.Request, one_of_base_type::OneOfBaseType;) -> OneOfBaseType
 - **echo_oneof_mapped_pets_post**
     - *invocation:* POST /echo_oneof_mapped_pets
     - *signature:* echo_oneof_mapped_pets_post(req::HTTP.Request, one_of_mapped_pets::OneOfMappedPets;) -> OneOfMappedPets

@@ -11,6 +11,32 @@ This can be used to construct the `OpenAPI.Clients.Client` instance.
 """
 basepath(::Type{ DefaultApi }) = "http://localhost"
 
+const _returntypes_echo_anyof_base_type_post_DefaultApi = Dict{Regex,Type}(
+    Regex("^" * replace("200", "x"=>".") * "\$") => AnyOfBaseType,
+)
+
+function _oacinternal_echo_anyof_base_type_post(_api::DefaultApi, any_of_base_type::AnyOfBaseType; _mediaType=nothing)
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", _returntypes_echo_anyof_base_type_post_DefaultApi, "/echo_anyof_base_type", [], any_of_base_type)
+    OpenAPI.Clients.set_header_accept(_ctx, ["application/json", ])
+    OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? ["application/json", ] : [_mediaType])
+    return _ctx
+end
+
+@doc raw"""Params:
+- any_of_base_type::AnyOfBaseType (required)
+
+Return: AnyOfBaseType, OpenAPI.Clients.ApiResponse
+"""
+function echo_anyof_base_type_post(_api::DefaultApi, any_of_base_type::AnyOfBaseType; _mediaType=nothing)
+    _ctx = _oacinternal_echo_anyof_base_type_post(_api, any_of_base_type; _mediaType=_mediaType)
+    return OpenAPI.Clients.exec(_ctx)
+end
+
+function echo_anyof_base_type_post(_api::DefaultApi, response_stream::Channel, any_of_base_type::AnyOfBaseType; _mediaType=nothing)
+    _ctx = _oacinternal_echo_anyof_base_type_post(_api, any_of_base_type; _mediaType=_mediaType)
+    return OpenAPI.Clients.exec(_ctx, response_stream)
+end
+
 const _returntypes_echo_anyof_mapped_pets_post_DefaultApi = Dict{Regex,Type}(
     Regex("^" * replace("200", "x"=>".") * "\$") => AnyOfMappedPets,
 )
@@ -60,6 +86,58 @@ end
 
 function echo_anyof_pets_post(_api::DefaultApi, response_stream::Channel, any_of_pets::AnyOfPets; _mediaType=nothing)
     _ctx = _oacinternal_echo_anyof_pets_post(_api, any_of_pets; _mediaType=_mediaType)
+    return OpenAPI.Clients.exec(_ctx, response_stream)
+end
+
+const _returntypes_echo_arrays_post_DefaultApi = Dict{Regex,Type}(
+    Regex("^" * replace("200", "x"=>".") * "\$") => TypeWithAllArrayTypes,
+)
+
+function _oacinternal_echo_arrays_post(_api::DefaultApi, type_with_all_array_types::TypeWithAllArrayTypes; _mediaType=nothing)
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", _returntypes_echo_arrays_post_DefaultApi, "/echo_arrays", [], type_with_all_array_types)
+    OpenAPI.Clients.set_header_accept(_ctx, ["application/json", ])
+    OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? ["application/json", ] : [_mediaType])
+    return _ctx
+end
+
+@doc raw"""Params:
+- type_with_all_array_types::TypeWithAllArrayTypes (required)
+
+Return: TypeWithAllArrayTypes, OpenAPI.Clients.ApiResponse
+"""
+function echo_arrays_post(_api::DefaultApi, type_with_all_array_types::TypeWithAllArrayTypes; _mediaType=nothing)
+    _ctx = _oacinternal_echo_arrays_post(_api, type_with_all_array_types; _mediaType=_mediaType)
+    return OpenAPI.Clients.exec(_ctx)
+end
+
+function echo_arrays_post(_api::DefaultApi, response_stream::Channel, type_with_all_array_types::TypeWithAllArrayTypes; _mediaType=nothing)
+    _ctx = _oacinternal_echo_arrays_post(_api, type_with_all_array_types; _mediaType=_mediaType)
+    return OpenAPI.Clients.exec(_ctx, response_stream)
+end
+
+const _returntypes_echo_oneof_base_type_post_DefaultApi = Dict{Regex,Type}(
+    Regex("^" * replace("200", "x"=>".") * "\$") => OneOfBaseType,
+)
+
+function _oacinternal_echo_oneof_base_type_post(_api::DefaultApi, one_of_base_type::OneOfBaseType; _mediaType=nothing)
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", _returntypes_echo_oneof_base_type_post_DefaultApi, "/echo_oneof_base_type", [], one_of_base_type)
+    OpenAPI.Clients.set_header_accept(_ctx, ["application/json", ])
+    OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? ["application/json", ] : [_mediaType])
+    return _ctx
+end
+
+@doc raw"""Params:
+- one_of_base_type::OneOfBaseType (required)
+
+Return: OneOfBaseType, OpenAPI.Clients.ApiResponse
+"""
+function echo_oneof_base_type_post(_api::DefaultApi, one_of_base_type::OneOfBaseType; _mediaType=nothing)
+    _ctx = _oacinternal_echo_oneof_base_type_post(_api, one_of_base_type; _mediaType=_mediaType)
+    return OpenAPI.Clients.exec(_ctx)
+end
+
+function echo_oneof_base_type_post(_api::DefaultApi, response_stream::Channel, one_of_base_type::OneOfBaseType; _mediaType=nothing)
+    _ctx = _oacinternal_echo_oneof_base_type_post(_api, one_of_base_type; _mediaType=_mediaType)
     return OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
@@ -115,7 +193,10 @@ function echo_oneof_pets_post(_api::DefaultApi, response_stream::Channel, one_of
     return OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
+export echo_anyof_base_type_post
 export echo_anyof_mapped_pets_post
 export echo_anyof_pets_post
+export echo_arrays_post
+export echo_oneof_base_type_post
 export echo_oneof_mapped_pets_post
 export echo_oneof_pets_post
