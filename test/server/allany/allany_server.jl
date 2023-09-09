@@ -9,6 +9,33 @@ using .AllAnyServer
 const server = Ref{Any}(nothing)
 
 """
+echo_arrays_post
+
+*invocation:* POST /echo_arrays
+"""
+function echo_arrays_post(req::HTTP.Request, type_with_all_array_types::AllAnyServer.TypeWithAllArrayTypes;) :: AllAnyServer.TypeWithAllArrayTypes
+    return type_with_all_array_types
+end
+
+"""
+echo_anyof_base_type_post
+
+*invocation:* POST /echo_anyof_base_type
+"""
+function echo_anyof_base_type_post(req::HTTP.Request, any_of_base_type::AllAnyServer.AnyOfBaseType;) :: AllAnyServer.AnyOfBaseType
+    return any_of_base_type
+end
+
+"""
+echo_oneof_base_type_post
+
+*invocation:* POST /echo_oneof_base_type
+"""
+function echo_oneof_base_type_post(req::HTTP.Request, one_of_base_type::AllAnyServer.OneOfBaseType;) :: AllAnyServer.OneOfBaseType
+    return one_of_base_type
+end
+
+"""
 echo_anyof_mapped_pets_post
 
 *invocation:* POST /echo_anyof_mapped_pets

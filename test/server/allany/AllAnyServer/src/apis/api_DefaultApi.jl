@@ -2,6 +2,33 @@
 # Do not modify this file directly. Modify the OpenAPI specification instead.
 
 
+function echo_anyof_base_type_post_read(handler)
+    function echo_anyof_base_type_post_read_handler(req::HTTP.Request)
+        openapi_params = Dict{String,Any}()
+        openapi_params["AnyOfBaseType"] = OpenAPI.Servers.to_param_type(AnyOfBaseType, String(req.body))
+        req.context[:openapi_params] = openapi_params
+
+        return handler(req)
+    end
+end
+
+function echo_anyof_base_type_post_validate(handler)
+    function echo_anyof_base_type_post_validate_handler(req::HTTP.Request)
+        openapi_params = req.context[:openapi_params]
+        
+        return handler(req)
+    end
+end
+
+function echo_anyof_base_type_post_invoke(impl; post_invoke=nothing)
+    function echo_anyof_base_type_post_invoke_handler(req::HTTP.Request)
+        openapi_params = req.context[:openapi_params]
+        ret = impl.echo_anyof_base_type_post(req::HTTP.Request, openapi_params["AnyOfBaseType"];)
+        resp = OpenAPI.Servers.server_response(ret)
+        return (post_invoke === nothing) ? resp : post_invoke(req, resp)
+    end
+end
+
 function echo_anyof_mapped_pets_post_read(handler)
     function echo_anyof_mapped_pets_post_read_handler(req::HTTP.Request)
         openapi_params = Dict{String,Any}()
@@ -51,6 +78,60 @@ function echo_anyof_pets_post_invoke(impl; post_invoke=nothing)
     function echo_anyof_pets_post_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
         ret = impl.echo_anyof_pets_post(req::HTTP.Request, openapi_params["AnyOfPets"];)
+        resp = OpenAPI.Servers.server_response(ret)
+        return (post_invoke === nothing) ? resp : post_invoke(req, resp)
+    end
+end
+
+function echo_arrays_post_read(handler)
+    function echo_arrays_post_read_handler(req::HTTP.Request)
+        openapi_params = Dict{String,Any}()
+        openapi_params["TypeWithAllArrayTypes"] = OpenAPI.Servers.to_param_type(TypeWithAllArrayTypes, String(req.body))
+        req.context[:openapi_params] = openapi_params
+
+        return handler(req)
+    end
+end
+
+function echo_arrays_post_validate(handler)
+    function echo_arrays_post_validate_handler(req::HTTP.Request)
+        openapi_params = req.context[:openapi_params]
+        
+        return handler(req)
+    end
+end
+
+function echo_arrays_post_invoke(impl; post_invoke=nothing)
+    function echo_arrays_post_invoke_handler(req::HTTP.Request)
+        openapi_params = req.context[:openapi_params]
+        ret = impl.echo_arrays_post(req::HTTP.Request, openapi_params["TypeWithAllArrayTypes"];)    
+        resp = OpenAPI.Servers.server_response(ret)
+        return (post_invoke === nothing) ? resp : post_invoke(req, resp)
+    end
+end
+
+function echo_oneof_base_type_post_read(handler)
+    function echo_oneof_base_type_post_read_handler(req::HTTP.Request)
+        openapi_params = Dict{String,Any}()
+        openapi_params["OneOfBaseType"] = OpenAPI.Servers.to_param_type(OneOfBaseType, String(req.body))
+        req.context[:openapi_params] = openapi_params
+
+        return handler(req)
+    end
+end
+
+function echo_oneof_base_type_post_validate(handler)
+    function echo_oneof_base_type_post_validate_handler(req::HTTP.Request)
+        openapi_params = req.context[:openapi_params]
+        
+        return handler(req)
+    end
+end
+
+function echo_oneof_base_type_post_invoke(impl; post_invoke=nothing)
+    function echo_oneof_base_type_post_invoke_handler(req::HTTP.Request)
+        openapi_params = req.context[:openapi_params]
+        ret = impl.echo_oneof_base_type_post(req::HTTP.Request, openapi_params["OneOfBaseType"];)
         resp = OpenAPI.Servers.server_response(ret)
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
@@ -112,8 +193,11 @@ end
 
 
 function registerDefaultApi(router::HTTP.Router, impl; path_prefix::String="", optional_middlewares...)
+    HTTP.register!(router, "POST", path_prefix * "/echo_anyof_base_type", OpenAPI.Servers.middleware(impl, echo_anyof_base_type_post_read, echo_anyof_base_type_post_validate, echo_anyof_base_type_post_invoke; optional_middlewares...))
     HTTP.register!(router, "POST", path_prefix * "/echo_anyof_mapped_pets", OpenAPI.Servers.middleware(impl, echo_anyof_mapped_pets_post_read, echo_anyof_mapped_pets_post_validate, echo_anyof_mapped_pets_post_invoke; optional_middlewares...))
     HTTP.register!(router, "POST", path_prefix * "/echo_anyof_pets", OpenAPI.Servers.middleware(impl, echo_anyof_pets_post_read, echo_anyof_pets_post_validate, echo_anyof_pets_post_invoke; optional_middlewares...))
+    HTTP.register!(router, "POST", path_prefix * "/echo_arrays", OpenAPI.Servers.middleware(impl, echo_arrays_post_read, echo_arrays_post_validate, echo_arrays_post_invoke; optional_middlewares...))
+    HTTP.register!(router, "POST", path_prefix * "/echo_oneof_base_type", OpenAPI.Servers.middleware(impl, echo_oneof_base_type_post_read, echo_oneof_base_type_post_validate, echo_oneof_base_type_post_invoke; optional_middlewares...))
     HTTP.register!(router, "POST", path_prefix * "/echo_oneof_mapped_pets", OpenAPI.Servers.middleware(impl, echo_oneof_mapped_pets_post_read, echo_oneof_mapped_pets_post_validate, echo_oneof_mapped_pets_post_invoke; optional_middlewares...))
     HTTP.register!(router, "POST", path_prefix * "/echo_oneof_pets", OpenAPI.Servers.middleware(impl, echo_oneof_pets_post_read, echo_oneof_pets_post_validate, echo_oneof_pets_post_invoke; optional_middlewares...))
     return router

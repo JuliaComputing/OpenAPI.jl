@@ -711,6 +711,7 @@ convert(::Type{T}, v::Nothing) where {T<:APIModel} = T()
 convert(::Type{T}, v::T) where {T<:OneOfAPIModel} = v
 convert(::Type{T}, json::Dict{String,Any}) where {T<:OneOfAPIModel} = from_json(T, json)
 convert(::Type{T}, v) where {T<:OneOfAPIModel} = T(v)
+convert(::Type{T}, v::String) where {T<:OneOfAPIModel} = T(v)
 convert(::Type{T}, v::T) where {T<:AnyOfAPIModel} = v
 convert(::Type{T}, json::Dict{String,Any}) where {T<:AnyOfAPIModel} = from_json(T, json)
 convert(::Type{T}, v) where {T<:AnyOfAPIModel} = T(v)

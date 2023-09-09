@@ -67,6 +67,51 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AnyOfPets'
+  /echo_oneof_base_type:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OneOfBaseType'
+        required: true
+      responses:
+        '200':
+          description: Successful response (echoes the request body)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OneOfBaseType'
+  /echo_anyof_base_type:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnyOfBaseType'
+        required: true
+      responses:
+        '200':
+          description: Successful response (echoes the request body)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnyOfBaseType'
+  /echo_arrays:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TypeWithAllArrayTypes'
+        required: true
+      responses:
+        '200':
+          description: Successful response (echoes the request body)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TypeWithAllArrayTypes'
 components:
   schemas:
     Pet:
@@ -129,3 +174,38 @@ components:
         mapping:
           dog: '#/components/schemas/Dog'
           cat: '#/components/schemas/Cat'
+    OneOfBaseType:
+      oneOf:
+        - type: string
+        - type: number
+    AnyOfBaseType:
+      anyOf:
+        - type: string
+        - type: number
+    ArrayOfOneOfBaseType:
+      type: array
+      items:
+        $ref: '#/components/schemas/OneOfBaseType'
+    ArrayOfAnyOfBaseType:
+      type: array
+      items:
+        $ref: '#/components/schemas/AnyOfBaseType'
+    ArrayOfOneOfPets:
+      type: array
+      items:
+        $ref: '#/components/schemas/OneOfPets'
+    ArrayOfAnyOfPets:
+      type: array
+      items:
+        $ref: '#/components/schemas/AnyOfPets'
+    TypeWithAllArrayTypes:
+      type: object
+      properties:
+        oneofbase:
+          $ref: '#/components/schemas/ArrayOfOneOfBaseType'
+        anyofbase:
+          $ref: '#/components/schemas/ArrayOfAnyOfBaseType'
+        oneofpets:
+          $ref: '#/components/schemas/ArrayOfOneOfPets'
+        anyofpets:
+          $ref: '#/components/schemas/ArrayOfAnyOfPets'

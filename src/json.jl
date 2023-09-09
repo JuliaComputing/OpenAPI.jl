@@ -24,7 +24,15 @@ function iterate(w::JSONWrapper, state...)
 end
 
 lower(o::T) where {T<:APIModel} = JSONWrapper(o)
-lower(o::T) where {T<:UnionAPIModel} = typeof(o.value) <: APIModel ? JSONWrapper(o.value) : to_json(o.value)
+function lower(o::T) where {T<:UnionAPIModel}
+    if typeof(o.value) <: APIModel
+        return JSONWrapper(o.value)
+    elseif typeof(o.value) <: Union{String,Real}
+        return o.value
+    else
+        return to_json(o.value)
+    end
+end
 
 to_json(o) = JSON.json(o)
 
@@ -36,6 +44,12 @@ from_json(::Type{Any}, j::Dict{String,Any}) = j
 
 function from_json(o::T, json::Dict{String,Any}) where {T <: UnionAPIModel}
     return from_json(o, :value, json)
+end
+
+from_json(::Type{T}, val::Union{String,Real}) where {T <: UnionAPIModel} = T(val)
+function from_json(o::T, val::Union{String,Real}) where {T <: UnionAPIModel}
+    o.value = val
+    return o
 end
 
 function from_json(o::T, json::Dict{String,Any}) where {T <: APIModel}
@@ -54,7 +68,7 @@ function from_json(o::T, name::Symbol, json::Dict{String,Any}) where {T <: APIMo
 end
 
 function from_json(o::T, name::Symbol, v) where {T <: APIModel}
-    ftype = property_type(T, name)
+    ftype = (T <: UnionAPIModel) ? property_type(T, name, Dict{String,Any}()) : property_type(T, name)
     if ftype === Any
         setfield!(o, name, v)
     elseif ZonedDateTime <: ftype
@@ -89,7 +103,13 @@ function from_json(o::T, name::Symbol, v::Vector) where {T <: APIModel}
         setfield!(o, name, map(str2date, v))
     else
         if (vtype <: Vector) && (veltype <: OpenAPI.UnionAPIModel)
-            setfield!(o, name, map(veltype, v))
+            vec = veltype[]
+            for vecelem in v
+                push!(vec, from_json(veltype(), :value, vecelem))
+            end
+            setfield!(o, name, vec)
+        elseif (vtype <: Vector) && (veltype <: OpenAPI.APIModel)
+            setfield!(o, name, map(x->convert(veltype,x), v))
         elseif (vtype <: Vector) && (veltype <: String)
             # ensure that elements are converted to String
             # convert is to do the translation to Union{Nothing,String} when necessary
