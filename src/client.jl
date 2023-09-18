@@ -715,6 +715,7 @@ convert(::Type{T}, v::String) where {T<:OneOfAPIModel} = T(v)
 convert(::Type{T}, v::T) where {T<:AnyOfAPIModel} = v
 convert(::Type{T}, json::Dict{String,Any}) where {T<:AnyOfAPIModel} = from_json(T, json)
 convert(::Type{T}, v) where {T<:AnyOfAPIModel} = T(v)
+convert(::Type{T}, v::String) where {T<:AnyOfAPIModel} = T(v)
 
 show(io::IO, model::T) where {T<:UnionAPIModel} = print(io, JSON.json(model.value, 2))
 show(io::IO, model::T) where {T<:APIModel} = print(io, JSON.json(model, 2))
