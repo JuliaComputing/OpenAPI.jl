@@ -89,6 +89,12 @@ end
 function from_json(o::T, name::Symbol, v::Vector) where {T <: APIModel}
     # in Julia we can not support JSON null unless the element type is explicitly set to support it
     ftype = property_type(T, name)
+
+    if ftype === Any
+        setfield!(o, name, v)
+        return o
+    end
+
     vtype = isa(ftype, Union) ? ((ftype.a === Nothing) ? ftype.b : ftype.a) : (ftype <: Vector) ? ftype : Union{}
     veltype = eltype(vtype)
     (Nothing <: veltype) || filter!(x->x!==nothing, v)
