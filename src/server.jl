@@ -109,6 +109,10 @@ function to_param(T, source::Vector{HTTP.Forms.Multipart}, name::String; require
     end
 end
 
+function HTTP.Response(code::Integer, o::APIModel)
+    return HTTP.Response(code, [Pair("Content-Type", "application/json")], to_json(o))
+end
+
 server_response(resp::HTTP.Response) = resp
 server_response(::Nothing) = server_response("")
 server_response(ret) =
