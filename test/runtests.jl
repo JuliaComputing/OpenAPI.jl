@@ -149,4 +149,8 @@ include("forms/forms_client.jl")
             run_tests_with_servers && servers_running && stop_server(8081, ret, out)
         end
     end
+
+    @testset "Helper Methods" begin
+        AllAnyTests.test_http_resp()
+    end
 end

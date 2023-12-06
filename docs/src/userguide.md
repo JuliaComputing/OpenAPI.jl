@@ -198,6 +198,18 @@ Optional middlewares can be one or more of:
 The order in which middlewares are invoked is:
 `init |> read |> pre_validation |> validate |> pre_invoke |> invoke |> post_invoke`
 
+## Responses
+
+The server APIs can return the Julia type that is specified in the OpenAPI specification. The response is serialized as JSON and sent back to the client. The default HTTP response code used in this case is 200.
+
+To return a custom HTTP response code, the server API can return a `HTTP.Response` instance directly. The OpenAPI package provides a overridden constructor for `HTTP.Response` that takes the desired HTTP code and the Julia struct that needs to be serialized as JSON and sent back to the client. It also sets the `Content-Type` header to `application/json`.
+
+```julia
+HTTP.Response(code::Integer, o::APIModel)
+```
+
+Structured error messages can also be returned in similar fashion. Any uncaught exception thrown by the server API is caught and converted into a `HTTP.Response` instance with the HTTP code set to 500 and the exception message as the response body.
+
 ## Streaming Responses
 
 Some OpenAPI implementations implement streaming of responses by sending more than one items in the response, each of which is of the type declared as the return type in the specification. E.g. the [Twitter OpenAPI specification](https://api.twitter.com/2/openapi.json) that keeps sending tweets in JSON like this forever:

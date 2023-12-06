@@ -4,6 +4,7 @@ include(joinpath(@__DIR__, "AllAnyClient", "src", "AllAnyClient.jl"))
 using .AllAnyClient
 using Test
 using JSON
+using HTTP
 using OpenAPI
 using OpenAPI.Clients
 import OpenAPI.Clients: Client
@@ -144,6 +145,15 @@ function test_debug()
         @test data_in_json["hunts"] == true
         @test data_in_json["age"] == 5
     end
+end
+
+function test_http_resp()
+    resp = HTTP.Response(200, dog)
+
+    @test resp.status == 200
+    @test resp.headers == ["Content-Type" => "application/json"]
+    json = JSON.parse(String(copy(resp.body)))
+    @test pet_equals(OpenAPI.Clients.from_json(M.Dog, json), dog)
 end
 
 end # module AllAnyTests
