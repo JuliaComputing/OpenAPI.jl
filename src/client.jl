@@ -295,7 +295,7 @@ set_param(params::Dict{String,String}, name::String, value::Nothing; collection_
 function set_param(params::Dict{String,String}, name::String, value; collection_format=",")
     if isa(value, Dict)
         for (k, v) in value
-            params["$name.$k"] = string(v)
+            params[k] = string(v)
         end
     elseif !isa(value, Vector) || isempty(collection_format)
         params[name] = string(value)
