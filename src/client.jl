@@ -293,7 +293,13 @@ end
 
 set_param(params::Dict{String,String}, name::String, value::Nothing; collection_format=",") = nothing
 function set_param(params::Dict{String,String}, name::String, value; collection_format=",")
-    if !isa(value, Vector) || isempty(collection_format)
+    if isa(value, Dict)
+        # implements the default serialization (style=form, explode=true, location=queryparams)
+        # as mentioned in https://swagger.io/docs/specification/serialization/
+        for (k, v) in value
+            params[k] = string(v)
+        end
+    elseif !isa(value, Vector) || isempty(collection_format)
         params[name] = string(value)
     else
         dlm = get(COLL_DLM, collection_format, ",")
