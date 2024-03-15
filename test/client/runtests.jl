@@ -30,8 +30,8 @@ function runtests(; skip_petstore=false, test_file_upload=false)
                         PetStoreV3Tests.runtests(; test_file_upload=test_file_upload)
                     end
                     @testset "V2" begin
-                    @info("Running petstore v2 tests")
-                    PetStoreV2Tests.runtests()
+                        @info("Running petstore v2 tests")
+                        PetStoreV2Tests.runtests()
                     end
                 else
                     @info("Skipping petstore tests in non Linux environment (can not run petstore docker on OSX or Windows)")

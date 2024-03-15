@@ -53,6 +53,9 @@ function test(uri)
     # a closed channel is equivalent of cancellation of the call,
     # no error should be thrown, but response can be nothing if call was interrupted immediately
     @test !isopen(response_channel)
+
+    # open a new channel to use
+    response_channel = Channel{Order}(1)
     try
         resp, http_resp = get_order_by_id(api, response_channel, Int64(5))
         @test (200 <= http_resp.status <= 206)
