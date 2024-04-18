@@ -6,6 +6,7 @@ include("modelgen/testmodelgen.jl")
 include("client/runtests.jl")
 include("client/allany/runtests.jl")
 include("forms/forms_client.jl")
+include("client/timeouttest/runtests.jl")
 
 @testset "OpenAPI" begin
     @testset "ModelGen" begin
@@ -153,4 +154,28 @@ include("forms/forms_client.jl")
     @testset "Helper Methods" begin
         AllAnyTests.test_http_resp()
     end
+
+    @testset "Timeout Handling" begin
+        ret = out = nothing
+        servers_running = true
+
+        try
+            if run_tests_with_servers
+                ret, out = run_server(joinpath(@__DIR__, "server", "timeouttest", "timeouttest_server.jl"))
+                servers_running &= wait_server(8081)
+                TimeoutTests.runtests()
+            else
+                servers_running = false
+            end
+        finally
+            if run_tests_with_servers && !servers_running
+                # we probably had an error starting the servers
+                out_str = isnothing(out) ? "" : String(take!(out))
+                @warn("Servers not running", ret=ret, out_str)
+            end
+            run_tests_with_servers && stop_server(8081, ret, out)
+        end
+    end
+    run_tests_with_servers && sleep(20) # avoid port conflicts
+
 end

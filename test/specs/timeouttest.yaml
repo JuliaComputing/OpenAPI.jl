@@ -1,0 +1,30 @@
+openapi: 3.0.3
+info:
+  title: Timeout Test Service
+  version: 1.0.0
+paths:
+  /delayresponse:
+    get:
+      summary: Delay Response Endpoint
+      parameters:
+        - name: delay_seconds
+          in: query
+          description: Number of seconds to delay the response
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  delay_seconds:
+                    type: string
+      x-code-samples:
+        - lang: curl
+          source: |
+            curl -X GET "http://example.com/delayresponse?delay_seconds=5"

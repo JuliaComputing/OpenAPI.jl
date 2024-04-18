@@ -1,0 +1,8 @@
+.openapi-generator-ignore
+README.md
+docs/DefaultApi.md
+docs/DelayresponseGet200Response.md
+src/TimeoutTestServer.jl
+src/apis/api_DefaultApi.jl
+src/modelincludes.jl
+src/models/model_DelayresponseGet200Response.jl
