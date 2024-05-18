@@ -57,6 +57,9 @@ Refer to the User Guide section for mode details of the API that is generated.
 ## Tools
 
 ```@docs
+openapi_generator
+stop_openapi_generator
+generate
 swagger_ui
 stop_swagger_ui
 swagger_editor

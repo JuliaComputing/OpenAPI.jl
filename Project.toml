@@ -4,7 +4,7 @@ keywords = ["Swagger", "OpenAPI", "REST"]
 license = "MIT"
 desc = "OpenAPI server and client helper for Julia"
 authors = ["JuliaHub Inc."]
-version = "0.1.22"
+version = "0.1.23"
 
 [deps]
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
@@ -17,17 +17,19 @@ MIMEs = "6c6e2e6c-3030-632d-7369-2d6c69616d65"
 MbedTLS = "739be429-bea8-5141-9913-cc70e7f3736d"
 TimeZones = "f269a46b-ccf7-5d73-abea-4c690281aa53"
 URIs = "5c2747f8-b7ea-4ff2-ba2e-563bfd36b1d4"
+p7zip_jll = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 
 [compat]
 Downloads = "1"
 HTTP = "1"
 JSON = "0.20, 0.21"
 LibCURL = "0.6"
+MIMEs = "0.1"
 MbedTLS = "0.6.8, 0.7, 1"
 TimeZones = "1"
 URIs = "1.3"
 julia = "1.6"
-MIMEs = "0.1"
+p7zip_jll = "17"
 
 [extras]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
