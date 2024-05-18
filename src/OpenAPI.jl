@@ -1,6 +1,8 @@
 module OpenAPI
 
 using HTTP, JSON, URIs, Dates, TimeZones, Base64
+using Downloads
+using p7zip_jll
 
 import Base: getindex, keys, length, iterate, hasproperty
 import JSON: lower
