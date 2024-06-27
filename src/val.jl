@@ -79,8 +79,8 @@ function validate_param(param, operation_or_model, rule, value, args...)
 
     VAL_API_PARAM[rule](value, args...) && return
 
-    msg = string("Invalid value ($value) of parameter ", param, " for ", operation_or_model, ", ", MSG_INVALID_API_PARAM[rule](args...))
-    throw(ValidationException(msg))
+    msg = string("Invalid value ($value) of parameter ", param, ", ", MSG_INVALID_API_PARAM[rule](args...))
+    throw(ValidationException(;reason=msg, operation_or_model))
 end
 
 validate_property(::Type{T}, name::Symbol, val) where {T<:APIModel} = nothing

@@ -6,8 +6,9 @@ abstract type AnyOfAPIModel <: UnionAPIModel end
 struct OpenAPIException <: Exception
     reason::String
 end
-struct ValidationException <: Exception
+@kwdef struct ValidationException <: Exception
     reason::String
+    operation_or_model::String=nothing
 end
 struct InvocationException <: Exception
     reason::String
