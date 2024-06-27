@@ -8,8 +8,13 @@ struct OpenAPIException <: Exception
 end
 @kwdef struct ValidationException <: Exception
     reason::String
-    operation_or_model::String=nothing
+    value=nothing
+    parameter=nothing
+    rule=nothing
+    args=nothing
+    operation_or_model=nothing
 end
+ValidationException(reason) = ValidationException(;reason)
 struct InvocationException <: Exception
     reason::String
 end

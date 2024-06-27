@@ -73,14 +73,14 @@ const VAL_API_PARAM = Dict{Symbol,Function}([
     :multipleOf => val_multiple_of,
 ])
 
-function validate_param(param, operation_or_model, rule, value, args...)
+function validate_param(parameter, operation_or_model, rule, value, args...)
     # do not validate missing values
     (value === nothing) && return
 
     VAL_API_PARAM[rule](value, args...) && return
 
-    msg = string("Invalid value ($value) of parameter ", param, ", ", MSG_INVALID_API_PARAM[rule](args...))
-    throw(ValidationException(;reason=msg, operation_or_model))
+    reason = string("Invalid value ($value) of parameter ", parameter, ", ", MSG_INVALID_API_PARAM[rule](args...))
+    throw(ValidationException(;reason, operation_or_model, value, parameter, rule, args))
 end
 
 validate_property(::Type{T}, name::Symbol, val) where {T<:APIModel} = nothing
