@@ -79,7 +79,7 @@ function validate_param(parameter, operation_or_model, rule, value, args...)
 
     VAL_API_PARAM[rule](value, args...) && return
 
-    reason = string("Invalid value ($value) of parameter ", parameter, ", ", MSG_INVALID_API_PARAM[rule](args...))
+    reason = string("Invalid value ($value) of parameter ", parameter, " for ", operation_or_model, ", ", MSG_INVALID_API_PARAM[rule](args...))
     throw(ValidationException(;reason, operation_or_model, value, parameter, rule, args))
 end
 
