@@ -92,7 +92,6 @@ to_param_type(::Type{Vector{T}}, val::Vector{T}, _collection_format::Union{Strin
 to_param_type(::Type{Vector{T}}, json::Vector{Any}; stylectx=nothing) where {T} = [to_param_type(T, x; stylectx) for x in json]
 
 function to_param_type(::Type{Vector{T}}, json::Dict{String, Any}; stylectx=nothing) where {T}
-    @info ">>>" stylectx
     if !isnothing(stylectx) && is_deep_explode(stylectx)
         cvt = deep_object_to_array(json)
         if isa(cvt, Vector)
