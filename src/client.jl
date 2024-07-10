@@ -77,7 +77,7 @@ end
 
 function get_api_return_type(return_types::Dict{Regex,Type}, ::Nothing, response_data::String)
     # this is the async case, where we do not have the response code yet
-    # in such cases we look for the 200 response code 
+    # in such cases we look for the 200 response code
     return get_api_return_type(return_types, 200, response_data)
 end
 function get_api_return_type(return_types::Dict{Regex,Type}, response_code::Integer, response_data::String)
@@ -191,7 +191,7 @@ set_user_agent(client::Client, ua::String) = set_header(client, "User-Agent", ua
 Set the Cookie header to be sent with all API calls.
 """
 set_cookie(client::Client, ck::String) = set_header(client, "Cookie", ck)
-    
+
 """
     set_header(client::Client, name::String, value::String)
 
@@ -292,7 +292,12 @@ function set_header_content_type(ctx::Ctx, ctypes::Vector{String})
 end
 
 set_param(params::Dict{String,String}, name::String, value::Nothing; collection_format=",") = nothing
-function set_param(params::Dict{String,String}, name::String, value; collection_format=",")
+function set_param(params::Dict{String,String}, name::String, value; collection_format=",", style="form", is_explode=false)
+    deep_explode = style == "deepObject" && is_explode
+    if deep_explode
+        merge!(params, deep_object_serialize(Dict(name=>value)))
+        return nothing
+    end
     if isa(value, Dict)
         # implements the default serialization (style=form, explode=true, location=queryparams)
         # as mentioned in https://swagger.io/docs/specification/serialization/
@@ -789,7 +794,7 @@ function storefile(api_call::Function;
     folder::AbstractString = pwd(),
     filename::Union{String,Nothing} = nothing,
     )::Tuple{Any,ApiResponse,String}
-    
+
     result, http_response = api_call()
 
     if isnothing(filename)
@@ -826,6 +831,23 @@ function extract_filename(resp::Downloads.Response)::String
     # attempt to create a filename from content-type header
     content_type_str = header(resp, "content-type", "")
     return string("response", extension_from_mime(MIME(content_type_str)))
+end
+
+function deep_object_serialize(dict::Dict, parent_key::String = "")
+    parts = Pair[]
+    for (key, value) in dict
+        new_key = parent_key == "" ? key : "$parent_key[$key]"
+        if isa(value, Dict)
+            append!(parts, collect(deep_object_serialize(value, new_key)))
+        elseif isa(value, Vector)
+            for (i, v) in enumerate(value)
+                push!(parts, "$new_key[$(i-1)]"=>"$v")
+            end
+        else
+            push!(parts, "$new_key"=>"$value")
+        end
+    end
+    return Dict(parts)
 end
 
 end # module Clients

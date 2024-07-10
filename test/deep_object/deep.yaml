@@ -1,0 +1,62 @@
+openapi: 3.0.0
+servers:
+  - url: 'http://petstore.swagger.io/v2'
+info:
+  description: >-
+    This is a sample server Petstore server. For this sample, you can use the api key
+    `special-key` to test the authorization filters.
+  version: 1.0.0
+  title: OpenAPI Petstore
+  license:
+    name: Apache-2.0
+    url: 'https://www.apache.org/licenses/LICENSE-2.0.html'
+tags:
+  - name: pet
+    description: Everything about your Pets
+  - name: store
+    description: Access to Petstore orders
+  - name: user
+    description: Operations about user
+paths:
+  /pet/findByStatus:
+    get:
+      tags:
+        - pet
+      summary: Finds Pets by status
+      description: Multiple status values can be provided with comma separated strings
+      operationId: findPetsByStatus
+      parameters:
+        - name: status
+          in: query
+          description: Status values that need to be considered for filter
+          required: true
+          style: deepObject
+          explode: true
+          deprecated: true
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+              statuses:
+                items:
+                  type: string
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      statuses:
+                        items:
+                          type: string
+
+        '400':
+          description: Invalid status value

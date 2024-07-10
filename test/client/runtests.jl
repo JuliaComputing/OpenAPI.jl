@@ -11,6 +11,9 @@ include("openapigenerator_petstore_v3/runtests.jl")
 
 function runtests(; skip_petstore=false, test_file_upload=false)
     @testset "Client" begin
+        @testset "deepObj query param serialization" begin
+            include("client/param_serialize.jl")
+        end
         @testset "Utils" begin
             test_longpoll_exception_check()
             test_request_interrupted_exception_check()
