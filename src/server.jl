@@ -44,9 +44,9 @@ function parse_query_dict(query_dict::Dict{String, String})::Vector{Param}
     return params
 end
 
-function convert_to_dict(params::Vector{Param})::Dict{String, Any}
+function deep_dict_repr(qp::Dict)
+    params = parse_query_dict(qp)
     deserialized_dict = Dict{String, Any}()
-
     for param in params
         current = deserialized_dict
         for part in param.keylist[1:end-1]
@@ -55,10 +55,6 @@ function convert_to_dict(params::Vector{Param})::Dict{String, Any}
         current[param.keylist[end]] = param.value
     end
     return deserialized_dict
-end
-
-function deep_dict_repr(qp::Dict)
-    convert_to_dict(parse_query_dict(qp))
 end
 
 function get_param(source::Dict, name::String, required::Bool)
