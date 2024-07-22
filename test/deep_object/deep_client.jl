@@ -15,6 +15,7 @@ function runtests()
     api = DeepClient.PetApi(client)
     unsold = FindPetsByStatusStatusParameter("key", ["available", "pending"])
     resp, http_resp = find_pets_by_status(api, unsold)
+    @info resp http_resp
     res = resp.result
     @test res.name == "key"
     @test res.statuses == ["available", "pending"]

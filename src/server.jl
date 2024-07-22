@@ -117,7 +117,7 @@ function to_param_type(::Type{Vector{T}}, strval::String; stylectx=nothing) wher
     return map(x->to_param_type(T, x; stylectx), elems)
 end
 
-function to_param(T, source::Dict, name::String; required::Bool=false, collection_format::Union{String,Nothing}=",", multipart::Bool=false, isfile::Bool=false, style::String="form", is_explode::Bool=true)
+function to_param(T, source::Dict, name::String; required::Bool=false, collection_format::Union{String,Nothing}=",", multipart::Bool=false, isfile::Bool=false, style::String="form", is_explode::Bool=true, location=:query)
     deep_explode = style == "deepObject" && is_explode
     if deep_explode
         source = deep_dict_repr(source)

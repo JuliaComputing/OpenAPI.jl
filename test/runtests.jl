@@ -110,7 +110,6 @@ include("deep_object/deep_client.jl")
     @testset "DeepObject tests" begin
         ret = out = nothing
         servers_running = true
-
         try
             if run_tests_with_servers
                 ret, out = run_server(joinpath(@__DIR__, "deep_object", "deep_server.jl"))

@@ -291,7 +291,7 @@ function set_header_content_type(ctx::Ctx, ctypes::Vector{String})
     return nothing
 end
 
-set_param(params::Dict{String,String}, name::String, value::Nothing; collection_format=",") = nothing
+set_param(params::Dict{String,String}, name::String, value::Nothing; collection_format=",", style="form", location=:query, is_explode=default_param_explode(style)) = nothing
 # Choose the default collection_format based on spec.
 # Overriding it may not match the spec and there's no check.
 # But we do not prevent it to allow for wiggle room, since there are many interpretations in the wild over the loosely defined spec around this.

@@ -18,7 +18,7 @@ const _returntypes_find_pets_by_status_PetApi = Dict{Regex,Type}(
 
 function _oacinternal_find_pets_by_status(_api::PetApi, status::FindPetsByStatusStatusParameter; _mediaType=nothing)
     _ctx = OpenAPI.Clients.Ctx(_api.client, "GET", _returntypes_find_pets_by_status_PetApi, "/pet/findByStatus", [])
-    OpenAPI.Clients.set_param(_ctx.query, "status", status;style="deepObject", is_explode=true)  # type FindPetsByStatusStatusParameter
+    OpenAPI.Clients.set_param(_ctx.query, "status", status; style="deepObject", location=:query, is_explode=true)  # type FindPetsByStatusStatusParameter
     OpenAPI.Clients.set_header_accept(_ctx, ["application/json", ])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? [] : [_mediaType])
     return _ctx
