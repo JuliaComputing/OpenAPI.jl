@@ -35,6 +35,7 @@ function lower(o::T) where {T<:UnionAPIModel}
 end
 
 struct StyleCtx
+    location::Symbol
     name::String
     is_explode::Bool
 end

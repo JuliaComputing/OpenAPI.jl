@@ -292,7 +292,20 @@ function set_header_content_type(ctx::Ctx, ctypes::Vector{String})
 end
 
 set_param(params::Dict{String,String}, name::String, value::Nothing; collection_format=",") = nothing
-function set_param(params::Dict{String,String}, name::String, value; collection_format=",", style="form", is_explode=false)
+# Choose the default collection_format based on spec.
+# Overriding it may not match the spec and there's no check.
+# But we do not prevent it to allow for wiggle room, since there are many interpretations in the wild over the loosely defined spec around this.
+# TODO: `default_param_explode` needs to be improved to handle location too (query, header, cookie...)
+function default_param_explode(style::String)
+    if style == "deepObject"
+        true
+    elseif style == "form"
+        true
+    else
+        false
+    end
+end
+function set_param(params::Dict{String,String}, name::String, value; collection_format=",", style="form", location::Symbol=:query, is_explode=default_param_explode(style))
     deep_explode = style == "deepObject" && is_explode
     if deep_explode
         merge!(params, deep_object_serialize(Dict(name=>value)))
