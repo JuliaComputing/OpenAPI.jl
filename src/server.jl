@@ -50,7 +50,9 @@ function deep_dict_repr(qp::Dict)
     for param in params
         current = deserialized_dict
         for part in param.keylist[1:end-1]
-            current = get!(current, part, Dict{String, Any}())
+            current = get!(current, part) do
+                return Dict{String, Any}()
+            end
         end
         current[param.keylist[end]] = param.value
     end
