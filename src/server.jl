@@ -133,7 +133,7 @@ function to_param(T, source::Dict, name::String; required::Bool=false, collectio
         param = isfile ? param.data : String(param.data)
     end
     if deep_explode
-        return to_param_type(T, param; stylectx=StyleCtx(style, is_explode))
+        return to_param_type(T, param; stylectx=StyleCtx(location, style, is_explode))
     end
     if T <: Vector
         to_param_type(T, param, collection_format)
