@@ -22,7 +22,6 @@ function run_server(script, flags=``)
     pipelined_cmd = pipeline(srvrcmd, stdout=iob, stderr=iob)
     @info("Launching ", script, srvrcmd)
     ret = run(pipelined_cmd, wait=false)
-
     return ret, iob
 end
 

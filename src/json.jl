@@ -34,41 +34,78 @@ function lower(o::T) where {T<:UnionAPIModel}
     end
 end
 
-to_json(o) = JSON.json(o)
-
-from_json(::Type{Union{Nothing,T}}, json::Dict{String,Any}) where {T} = from_json(T, json)
-from_json(::Type{T}, json::Dict{String,Any}) where {T} = from_json(T(), json)
-from_json(::Type{T}, json::Dict{String,Any}) where {T <: Dict} = convert(T, json)
-from_json(::Type{T}, j::Dict{String,Any}) where {T <: String} = to_json(j)
-from_json(::Type{Any}, j::Dict{String,Any}) = j
-
-function from_json(o::T, json::Dict{String,Any}) where {T <: UnionAPIModel}
-    return from_json(o, :value, json)
+struct StyleCtx
+    location::Symbol
+    name::String
+    is_explode::Bool
 end
 
-from_json(::Type{T}, val::Union{String,Real}) where {T <: UnionAPIModel} = T(val)
-function from_json(o::T, val::Union{String,Real}) where {T <: UnionAPIModel}
+is_deep_explode(sctx::StyleCtx) = sctx.name == "deepObject" && sctx.is_explode
+
+function deep_object_to_array(src::Dict)
+    keys_are_int = all(key -> occursin(r"^\d+$", key), keys(src))
+    if keys_are_int
+        sorted_keys = sort(collect(keys(src)), by=x->parse(Int, x))
+        final = []
+        for key in sorted_keys
+            push!(final, src[key])
+        end
+        return final
+    else
+        src
+    end
+end
+
+to_json(o) = JSON.json(o)
+
+from_json(::Type{Union{Nothing,T}}, json::Dict{String,Any}; stylectx=nothing) where {T} = from_json(T, json; stylectx)
+from_json(::Type{T}, json::Dict{String,Any}; stylectx=nothing) where {T} = from_json(T(), json; stylectx)
+from_json(::Type{T}, json::Dict{String,Any}; stylectx=nothing) where {T <: Dict} = convert(T, json)
+from_json(::Type{T}, j::Dict{String,Any}; stylectx=nothing) where {T <: String} = to_json(j)
+from_json(::Type{Any}, j::Dict{String,Any}; stylectx=nothing) = j
+from_json(::Type{Vector{T}}, j::Vector{Any}; stylectx=nothing) where {T} = j
+
+function from_json(::Type{Vector{T}}, json::Dict{String, Any}; stylectx=nothing) where {T}
+    if !isnothing(stylectx) && is_deep_explode(stylectx)
+        cvt = deep_object_to_array(json)
+        if isa(cvt, Vector)
+            return from_json(Vector{T}, cvt; stylectx)
+        else
+            return from_json(T, json; stylectx)
+        end
+    else
+        return from_json(T, json; stylectx)
+    end
+end
+
+function from_json(o::T, json::Dict{String,Any};stylectx=nothing) where {T <: UnionAPIModel}
+    return from_json(o, :value, json;stylectx)
+end
+
+from_json(::Type{T}, val::Union{String,Real};stylectx=nothing) where {T <: UnionAPIModel} = T(val)
+function from_json(o::T, val::Union{String,Real};stylectx=nothing) where {T <: UnionAPIModel}
     o.value = val
     return o
 end
 
-function from_json(o::T, json::Dict{String,Any}) where {T <: APIModel}
+function from_json(o::T, json::Dict{String,Any};stylectx=nothing) where {T <: APIModel}
     jsonkeys = [Symbol(k) for k in keys(json)]
     for name in intersect(propertynames(o), jsonkeys)
-        from_json(o, name, json[String(name)])
+        from_json(o, name, json[String(name)];stylectx)
     end
     return o
 end
 
-function from_json(o::T, name::Symbol, json::Dict{String,Any}) where {T <: APIModel}
+function from_json(o::T, name::Symbol, json::Dict{String,Any};stylectx=nothing) where {T <: APIModel}
     ftype = (T <: UnionAPIModel) ? property_type(T, name, json) : property_type(T, name)
-    fval = from_json(ftype, json)
+    fval = from_json(ftype, json; stylectx)
     setfield!(o, name, convert(ftype, fval))
     return o
 end
 
-function from_json(o::T, name::Symbol, v) where {T <: APIModel}
+function from_json(o::T, name::Symbol, v; stylectx=nothing) where {T <: APIModel}
     ftype = (T <: UnionAPIModel) ? property_type(T, name, Dict{String,Any}()) : property_type(T, name)
+    atype = isa(ftype, Union) ? ((ftype.a === Nothing) ? ftype.b : ftype.a) : ftype
     if ftype === Any
         setfield!(o, name, v)
     elseif ZonedDateTime <: ftype
@@ -80,13 +117,15 @@ function from_json(o::T, name::Symbol, v) where {T <: APIModel}
     elseif String <: ftype && isa(v, Real)
         # string numbers can have format specifiers that allow numbers, ensure they are converted to strings
         setfield!(o, name, string(v))
+    elseif atype <: Real && isa(v, AbstractString)
+        setfield!(o, name, parse(atype, v))
     else
         setfield!(o, name, convert(ftype, v))
     end
     return o
 end
 
-function from_json(o::T, name::Symbol, v::Vector) where {T <: APIModel}
+function from_json(o::T, name::Symbol, v::Vector; stylectx=nothing) where {T <: APIModel}
     # in Julia we can not support JSON null unless the element type is explicitly set to support it
     ftype = property_type(T, name)
 
@@ -111,7 +150,7 @@ function from_json(o::T, name::Symbol, v::Vector) where {T <: APIModel}
         if (vtype <: Vector) && (veltype <: OpenAPI.UnionAPIModel)
             vec = veltype[]
             for vecelem in v
-                push!(vec, from_json(veltype(), :value, vecelem))
+                push!(vec, from_json(veltype(), :value, vecelem;stylectx))
             end
             setfield!(o, name, vec)
         elseif (vtype <: Vector) && (veltype <: OpenAPI.APIModel)
@@ -129,7 +168,7 @@ function from_json(o::T, name::Symbol, v::Vector) where {T <: APIModel}
     return o
 end
 
-function from_json(o::T, name::Symbol, ::Nothing) where {T <: APIModel}
+function from_json(o::T, name::Symbol, ::Nothing;stylectx=nothing) where {T <: APIModel}
     setfield!(o, name, nothing)
     return o
 end
