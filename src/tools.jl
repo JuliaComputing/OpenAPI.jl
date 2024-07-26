@@ -45,6 +45,7 @@ function _stop_docker(image_name::AbstractString, image_type::AbstractString; us
             return false
         end
 
+        sleep(5)
         container_id = strip(String(read(find_cmd)))
         if !isempty(container_id)
             rm_cmd = `$docker rm $container_id`
