@@ -162,6 +162,8 @@ end
 
 server_response(resp::HTTP.Response) = resp
 server_response(::Nothing) = server_response("")
+server_response(ret::Vector{UInt8}) =
+    HTTP.Response(200, ["Content-Type" => "application/octet-stream"], body=ret)
 server_response(ret) =
     server_response(to_json(ret), [Pair("Content-Type", "application/json")])
 server_response(resp::AbstractString, headers=HTTP.Headers()) =
