@@ -447,7 +447,9 @@ response(::Type{Date}, data) = str2date(data)
 response(::Type{T}, data) where {T} = convert(T, data)
 response(::Type{T}, data::Dict{String,Any}) where {T} = from_json(T, data)::T
 response(::Type{T}, data::Dict{String,Any}) where {T<:Dict} = convert(T, data)
-response(::Type{Vector{T}}, data::Vector{V}) where {T,V} = [response(T, v) for v in data]
+function response(::Type{Vector{T}}, data::Vector{V}) where {T,V}
+    T[response(T, v) for v in data]
+end
 
 struct LineChunkReader <: AbstractChunkReader
     buffered_input::Base.BufferStream
