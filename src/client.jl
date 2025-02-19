@@ -260,7 +260,7 @@ struct Ctx
     end
 end
 
-is_json_mime(mime::T) where {T <: AbstractString} = ("*/*" == mime) || occursin(r"(?i)application/json(;.*)?", mime) || occursin(r"(?i)application/(.*)-patch\+json(;.*)?", mime)
+is_json_mime(mime::T) where {T <: AbstractString} = ("*/*" == mime) || occursin(r"(?i)application/json(;.*)?", mime) || occursin(r"(?i)application/(.*)\+json(;.*)?", mime)
 
 function select_header_accept(accepts::Vector{String})
     isempty(accepts) && (return "application/json")
