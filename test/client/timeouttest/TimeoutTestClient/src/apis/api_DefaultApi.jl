@@ -19,7 +19,7 @@ function _oacinternal_delayresponse_get(_api::DefaultApi, delay_seconds::Int64; 
     OpenAPI.validate_param("delay_seconds", "delayresponse_get", :minimum, delay_seconds, 0, false)
 
     _ctx = OpenAPI.Clients.Ctx(_api.client, "GET", _returntypes_delayresponse_get_DefaultApi, "/delayresponse", [])
-    OpenAPI.Clients.set_param(_ctx.query, "delay_seconds", delay_seconds)  # type Int64
+    OpenAPI.Clients.set_param(_ctx.query, "delay_seconds", delay_seconds; style="form", is_explode=true)  # type Int64
     OpenAPI.Clients.set_header_accept(_ctx, ["application/json", ])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? [] : [_mediaType])
     return _ctx

@@ -19,8 +19,8 @@ posts a urlencoded form, with file contents and additional metadata, both of whi
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **req** | **HTTP.Request** | The HTTP Request object | 
-**form_id** | **Int64**| ID of form to update | [default to nothing]
-**file** | **String**| file contents to upload, in string format | [default to nothing]
+**form_id** | **Int64**| ID of form to update |
+**file** | **String**| file contents to upload, in string format |
 
 ### Optional Parameters
 
@@ -53,14 +53,14 @@ uploads a binary file given its path, along with some metadata
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **req** | **HTTP.Request** | The HTTP Request object | 
-**file_id** | **Int64**| ID of file to update | [default to nothing]
+**file_id** | **Int64**| ID of file to update |
 
 ### Optional Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **additional_metadata** | **String**| Additional data to pass to server | [default to nothing]
- **file** | **String****String**| file to upload, must be a string representing a valid file path | [default to nothing]
+ **file** | **Vector{UInt8}**| file to upload, must be a string representing a valid file path | 
 
 ### Return type
 
@@ -87,7 +87,7 @@ uploads text file contents along with some metadata
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **req** | **HTTP.Request** | The HTTP Request object | 
-**file_id** | **Int64**| ID of file to update | [default to nothing]
+**file_id** | **Int64**| ID of file to update |
 
 ### Optional Parameters
 

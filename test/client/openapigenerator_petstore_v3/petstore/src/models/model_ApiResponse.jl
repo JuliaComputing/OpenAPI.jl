@@ -21,22 +21,30 @@ Base.@kwdef mutable struct ApiResponse <: OpenAPI.APIModel
     type::Union{Nothing, String} = nothing
 
     function ApiResponse(message, code, type, )
-        OpenAPI.validate_property(ApiResponse, Symbol("message"), message)
-        OpenAPI.validate_property(ApiResponse, Symbol("code"), code)
-        OpenAPI.validate_property(ApiResponse, Symbol("type"), type)
-        return new(message, code, type, )
+        o = new(message, code, type, )
+        OpenAPI.validate_properties(o)
+        return o
     end
 end # type ApiResponse
 
 const _property_types_ApiResponse = Dict{Symbol,String}(Symbol("message")=>"String", Symbol("code")=>"Int64", Symbol("type")=>"String", )
 OpenAPI.property_type(::Type{ ApiResponse }, name::Symbol) = Union{Nothing,eval(Base.Meta.parse(_property_types_ApiResponse[name]))}
 
-function check_required(o::ApiResponse)
+function OpenAPI.check_required(o::ApiResponse)
     true
 end
 
+function OpenAPI.validate_properties(o::ApiResponse)
+    OpenAPI.validate_property(ApiResponse, Symbol("message"), o.message)
+    OpenAPI.validate_property(ApiResponse, Symbol("code"), o.code)
+    OpenAPI.validate_property(ApiResponse, Symbol("type"), o.type)
+end
+
 function OpenAPI.validate_property(::Type{ ApiResponse }, name::Symbol, val)
+
+
     if name === Symbol("code")
         OpenAPI.validate_param(name, "ApiResponse", :format, val, "int32")
     end
+
 end

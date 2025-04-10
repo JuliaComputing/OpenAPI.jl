@@ -27,7 +27,7 @@ This can only be done by the logged in user.
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **UserApi** | API context | 
-**body** | [**User**](User.md)| Created user object | 
+**body** | [**User**](User.md) | Created user object |
 
 ### Return type
 
@@ -55,7 +55,7 @@ Creates list of users with given input array
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **UserApi** | API context | 
-**body** | [**Vector{User}**](User.md)| List of user object | 
+**body** | [**Vector{User}**](User.md) | List of user object |
 
 ### Return type
 
@@ -83,7 +83,7 @@ Creates list of users with given input array
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **UserApi** | API context | 
-**body** | [**Vector{User}**](User.md)| List of user object | 
+**body** | [**Vector{User}**](User.md) | List of user object |
 
 ### Return type
 
@@ -113,7 +113,7 @@ This can only be done by the logged in user.
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **UserApi** | API context | 
-**username** | **String**| The name that needs to be deleted | [default to nothing]
+**username** | **String** | The name that needs to be deleted |
 
 ### Return type
 
@@ -141,7 +141,7 @@ Get user by user name
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **UserApi** | API context | 
-**username** | **String**| The name that needs to be fetched. Use user1 for testing.  | [default to nothing]
+**username** | **String** | The name that needs to be fetched. Use user1 for testing.  |
 
 ### Return type
 
@@ -169,8 +169,8 @@ Logs user into the system
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **UserApi** | API context | 
-**username** | **String**| The user name for login | [default to nothing]
-**password** | **String**| The password for login in clear text | [default to nothing]
+**username** | **String** | The user name for login |
+**password** | **String** | The password for login in clear text |
 
 ### Return type
 
@@ -224,8 +224,8 @@ This can only be done by the logged in user.
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **UserApi** | API context | 
-**username** | **String**| name that need to be updated | [default to nothing]
-**body** | [**User**](User.md)| Updated user object | 
+**username** | **String** | name that need to be updated |
+**body** | [**User**](User.md) | Updated user object |
 
 ### Return type
 

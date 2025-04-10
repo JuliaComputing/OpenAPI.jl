@@ -23,20 +23,29 @@ Base.@kwdef mutable struct TypeWithAllArrayTypes <: OpenAPI.APIModel
     anyofpets::Union{Nothing, Vector} = nothing # spec type: Union{ Nothing, Vector{AnyOfPets} }
 
     function TypeWithAllArrayTypes(oneofbase, anyofbase, oneofpets, anyofpets, )
-        OpenAPI.validate_property(TypeWithAllArrayTypes, Symbol("oneofbase"), oneofbase)
-        OpenAPI.validate_property(TypeWithAllArrayTypes, Symbol("anyofbase"), anyofbase)
-        OpenAPI.validate_property(TypeWithAllArrayTypes, Symbol("oneofpets"), oneofpets)
-        OpenAPI.validate_property(TypeWithAllArrayTypes, Symbol("anyofpets"), anyofpets)
-        return new(oneofbase, anyofbase, oneofpets, anyofpets, )
+        o = new(oneofbase, anyofbase, oneofpets, anyofpets, )
+        OpenAPI.validate_properties(o)
+        return o
     end
 end # type TypeWithAllArrayTypes
 
 const _property_types_TypeWithAllArrayTypes = Dict{Symbol,String}(Symbol("oneofbase")=>"Vector{OneOfBaseType}", Symbol("anyofbase")=>"Vector{AnyOfBaseType}", Symbol("oneofpets")=>"Vector{OneOfPets}", Symbol("anyofpets")=>"Vector{AnyOfPets}", )
 OpenAPI.property_type(::Type{ TypeWithAllArrayTypes }, name::Symbol) = Union{Nothing,eval(Base.Meta.parse(_property_types_TypeWithAllArrayTypes[name]))}
 
-function check_required(o::TypeWithAllArrayTypes)
+function OpenAPI.check_required(o::TypeWithAllArrayTypes)
     true
 end
 
+function OpenAPI.validate_properties(o::TypeWithAllArrayTypes)
+    OpenAPI.validate_property(TypeWithAllArrayTypes, Symbol("oneofbase"), o.oneofbase)
+    OpenAPI.validate_property(TypeWithAllArrayTypes, Symbol("anyofbase"), o.anyofbase)
+    OpenAPI.validate_property(TypeWithAllArrayTypes, Symbol("oneofpets"), o.oneofpets)
+    OpenAPI.validate_property(TypeWithAllArrayTypes, Symbol("anyofpets"), o.anyofpets)
+end
+
 function OpenAPI.validate_property(::Type{ TypeWithAllArrayTypes }, name::Symbol, val)
+
+
+
+
 end

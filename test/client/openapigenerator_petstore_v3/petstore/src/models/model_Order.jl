@@ -30,36 +30,48 @@ Base.@kwdef mutable struct Order <: OpenAPI.APIModel
     quantity::Union{Nothing, Int64} = nothing
 
     function Order(petId, shipDate, status, id, complete, quantity, )
-        OpenAPI.validate_property(Order, Symbol("petId"), petId)
-        OpenAPI.validate_property(Order, Symbol("shipDate"), shipDate)
-        OpenAPI.validate_property(Order, Symbol("status"), status)
-        OpenAPI.validate_property(Order, Symbol("id"), id)
-        OpenAPI.validate_property(Order, Symbol("complete"), complete)
-        OpenAPI.validate_property(Order, Symbol("quantity"), quantity)
-        return new(petId, shipDate, status, id, complete, quantity, )
+        o = new(petId, shipDate, status, id, complete, quantity, )
+        OpenAPI.validate_properties(o)
+        return o
     end
 end # type Order
 
 const _property_types_Order = Dict{Symbol,String}(Symbol("petId")=>"Int64", Symbol("shipDate")=>"ZonedDateTime", Symbol("status")=>"String", Symbol("id")=>"Int64", Symbol("complete")=>"Bool", Symbol("quantity")=>"Int64", )
 OpenAPI.property_type(::Type{ Order }, name::Symbol) = Union{Nothing,eval(Base.Meta.parse(_property_types_Order[name]))}
 
-function check_required(o::Order)
+function OpenAPI.check_required(o::Order)
     true
 end
 
+function OpenAPI.validate_properties(o::Order)
+    OpenAPI.validate_property(Order, Symbol("petId"), o.petId)
+    OpenAPI.validate_property(Order, Symbol("shipDate"), o.shipDate)
+    OpenAPI.validate_property(Order, Symbol("status"), o.status)
+    OpenAPI.validate_property(Order, Symbol("id"), o.id)
+    OpenAPI.validate_property(Order, Symbol("complete"), o.complete)
+    OpenAPI.validate_property(Order, Symbol("quantity"), o.quantity)
+end
+
 function OpenAPI.validate_property(::Type{ Order }, name::Symbol, val)
+
     if name === Symbol("petId")
         OpenAPI.validate_param(name, "Order", :format, val, "int64")
     end
+
     if name === Symbol("shipDate")
         OpenAPI.validate_param(name, "Order", :format, val, "date-time")
     end
+
     if name === Symbol("status")
         OpenAPI.validate_param(name, "Order", :enum, val, ["placed", "approved", "delivered"])
     end
+
+
     if name === Symbol("id")
         OpenAPI.validate_param(name, "Order", :format, val, "int64")
     end
+
+
     if name === Symbol("quantity")
         OpenAPI.validate_param(name, "Order", :format, val, "int32")
     end

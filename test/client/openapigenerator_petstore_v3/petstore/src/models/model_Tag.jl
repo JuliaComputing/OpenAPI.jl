@@ -18,20 +18,27 @@ Base.@kwdef mutable struct Tag <: OpenAPI.APIModel
     id::Union{Nothing, Int64} = nothing
 
     function Tag(name, id, )
-        OpenAPI.validate_property(Tag, Symbol("name"), name)
-        OpenAPI.validate_property(Tag, Symbol("id"), id)
-        return new(name, id, )
+        o = new(name, id, )
+        OpenAPI.validate_properties(o)
+        return o
     end
 end # type Tag
 
 const _property_types_Tag = Dict{Symbol,String}(Symbol("name")=>"String", Symbol("id")=>"Int64", )
 OpenAPI.property_type(::Type{ Tag }, name::Symbol) = Union{Nothing,eval(Base.Meta.parse(_property_types_Tag[name]))}
 
-function check_required(o::Tag)
+function OpenAPI.check_required(o::Tag)
     true
 end
 
+function OpenAPI.validate_properties(o::Tag)
+    OpenAPI.validate_property(Tag, Symbol("name"), o.name)
+    OpenAPI.validate_property(Tag, Symbol("id"), o.id)
+end
+
 function OpenAPI.validate_property(::Type{ Tag }, name::Symbol, val)
+
+
     if name === Symbol("id")
         OpenAPI.validate_param(name, "Tag", :format, val, "int64")
     end

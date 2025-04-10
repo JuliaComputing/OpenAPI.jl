@@ -15,7 +15,20 @@ end
 function echo_anyof_base_type_post_validate(handler)
     function echo_anyof_base_type_post_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
+        op = "echo_anyof_base_type_post"
         
+        n = "AnyOfBaseType"
+        v = get(openapi_params, n, nothing)
+        isnothing(v) && throw(OpenAPI.ValidationException(;reason="missing parameter $n", operation_or_model=op))
+        if !isnothing(v)
+            if isa(v, OpenAPI.APIModel)
+                OpenAPI.validate_properties(v)
+                if !OpenAPI.check_required(v)
+                    throw(OpenAPI.ValidationException(;reason="$n is missing required properties", operation_or_model=op))
+                end
+            end
+        end
+
         return handler(req)
     end
 end
@@ -42,7 +55,20 @@ end
 function echo_anyof_mapped_pets_post_validate(handler)
     function echo_anyof_mapped_pets_post_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
+        op = "echo_anyof_mapped_pets_post"
         
+        n = "AnyOfMappedPets"
+        v = get(openapi_params, n, nothing)
+        isnothing(v) && throw(OpenAPI.ValidationException(;reason="missing parameter $n", operation_or_model=op))
+        if !isnothing(v)
+            if isa(v, OpenAPI.APIModel)
+                OpenAPI.validate_properties(v)
+                if !OpenAPI.check_required(v)
+                    throw(OpenAPI.ValidationException(;reason="$n is missing required properties", operation_or_model=op))
+                end
+            end
+        end
+
         return handler(req)
     end
 end
@@ -69,7 +95,20 @@ end
 function echo_anyof_pets_post_validate(handler)
     function echo_anyof_pets_post_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
+        op = "echo_anyof_pets_post"
         
+        n = "AnyOfPets"
+        v = get(openapi_params, n, nothing)
+        isnothing(v) && throw(OpenAPI.ValidationException(;reason="missing parameter $n", operation_or_model=op))
+        if !isnothing(v)
+            if isa(v, OpenAPI.APIModel)
+                OpenAPI.validate_properties(v)
+                if !OpenAPI.check_required(v)
+                    throw(OpenAPI.ValidationException(;reason="$n is missing required properties", operation_or_model=op))
+                end
+            end
+        end
+
         return handler(req)
     end
 end
@@ -96,7 +135,20 @@ end
 function echo_arrays_post_validate(handler)
     function echo_arrays_post_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
+        op = "echo_arrays_post"
         
+        n = "TypeWithAllArrayTypes"
+        v = get(openapi_params, n, nothing)
+        isnothing(v) && throw(OpenAPI.ValidationException(;reason="missing parameter $n", operation_or_model=op))
+        if !isnothing(v)
+            if isa(v, OpenAPI.APIModel)
+                OpenAPI.validate_properties(v)
+                if !OpenAPI.check_required(v)
+                    throw(OpenAPI.ValidationException(;reason="$n is missing required properties", operation_or_model=op))
+                end
+            end
+        end
+
         return handler(req)
     end
 end
@@ -104,7 +156,7 @@ end
 function echo_arrays_post_invoke(impl; post_invoke=nothing)
     function echo_arrays_post_invoke_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
-        ret = impl.echo_arrays_post(req::HTTP.Request, openapi_params["TypeWithAllArrayTypes"];)    
+        ret = impl.echo_arrays_post(req::HTTP.Request, openapi_params["TypeWithAllArrayTypes"];)
         resp = OpenAPI.Servers.server_response(ret)
         return (post_invoke === nothing) ? resp : post_invoke(req, resp)
     end
@@ -123,7 +175,20 @@ end
 function echo_oneof_base_type_post_validate(handler)
     function echo_oneof_base_type_post_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
+        op = "echo_oneof_base_type_post"
         
+        n = "OneOfBaseType"
+        v = get(openapi_params, n, nothing)
+        isnothing(v) && throw(OpenAPI.ValidationException(;reason="missing parameter $n", operation_or_model=op))
+        if !isnothing(v)
+            if isa(v, OpenAPI.APIModel)
+                OpenAPI.validate_properties(v)
+                if !OpenAPI.check_required(v)
+                    throw(OpenAPI.ValidationException(;reason="$n is missing required properties", operation_or_model=op))
+                end
+            end
+        end
+
         return handler(req)
     end
 end
@@ -150,7 +215,20 @@ end
 function echo_oneof_mapped_pets_post_validate(handler)
     function echo_oneof_mapped_pets_post_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
+        op = "echo_oneof_mapped_pets_post"
         
+        n = "OneOfMappedPets"
+        v = get(openapi_params, n, nothing)
+        isnothing(v) && throw(OpenAPI.ValidationException(;reason="missing parameter $n", operation_or_model=op))
+        if !isnothing(v)
+            if isa(v, OpenAPI.APIModel)
+                OpenAPI.validate_properties(v)
+                if !OpenAPI.check_required(v)
+                    throw(OpenAPI.ValidationException(;reason="$n is missing required properties", operation_or_model=op))
+                end
+            end
+        end
+
         return handler(req)
     end
 end
@@ -177,7 +255,20 @@ end
 function echo_oneof_pets_post_validate(handler)
     function echo_oneof_pets_post_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
+        op = "echo_oneof_pets_post"
         
+        n = "OneOfPets"
+        v = get(openapi_params, n, nothing)
+        isnothing(v) && throw(OpenAPI.ValidationException(;reason="missing parameter $n", operation_or_model=op))
+        if !isnothing(v)
+            if isa(v, OpenAPI.APIModel)
+                OpenAPI.validate_properties(v)
+                if !OpenAPI.check_required(v)
+                    throw(OpenAPI.ValidationException(;reason="$n is missing required properties", operation_or_model=op))
+                end
+            end
+        end
+
         return handler(req)
     end
 end

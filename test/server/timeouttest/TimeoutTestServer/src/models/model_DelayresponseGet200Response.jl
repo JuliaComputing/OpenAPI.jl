@@ -14,17 +14,23 @@ Base.@kwdef mutable struct DelayresponseGet200Response <: OpenAPI.APIModel
     delay_seconds::Union{Nothing, String} = nothing
 
     function DelayresponseGet200Response(delay_seconds, )
-        OpenAPI.validate_property(DelayresponseGet200Response, Symbol("delay_seconds"), delay_seconds)
-        return new(delay_seconds, )
+        o = new(delay_seconds, )
+        OpenAPI.validate_properties(o)
+        return o
     end
 end # type DelayresponseGet200Response
 
 const _property_types_DelayresponseGet200Response = Dict{Symbol,String}(Symbol("delay_seconds")=>"String", )
 OpenAPI.property_type(::Type{ DelayresponseGet200Response }, name::Symbol) = Union{Nothing,eval(Base.Meta.parse(_property_types_DelayresponseGet200Response[name]))}
 
-function check_required(o::DelayresponseGet200Response)
+function OpenAPI.check_required(o::DelayresponseGet200Response)
     true
 end
 
+function OpenAPI.validate_properties(o::DelayresponseGet200Response)
+    OpenAPI.validate_property(DelayresponseGet200Response, Symbol("delay_seconds"), o.delay_seconds)
+end
+
 function OpenAPI.validate_property(::Type{ DelayresponseGet200Response }, name::Symbol, val)
+
 end

@@ -167,8 +167,8 @@ const _returntypes_login_user_UserApi = Dict{Regex,Type}(
 
 function _oacinternal_login_user(_api::UserApi, username::String, password::String; _mediaType=nothing)
     _ctx = OpenAPI.Clients.Ctx(_api.client, "GET", _returntypes_login_user_UserApi, "/user/login", [])
-    OpenAPI.Clients.set_param(_ctx.query, "username", username)  # type String
-    OpenAPI.Clients.set_param(_ctx.query, "password", password)  # type String
+    OpenAPI.Clients.set_param(_ctx.query, "username", username; style="", is_explode=false)  # type String
+    OpenAPI.Clients.set_param(_ctx.query, "password", password; style="", is_explode=false)  # type String
     OpenAPI.Clients.set_header_accept(_ctx, ["application/json", "application/xml", ])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? [] : [_mediaType])
     return _ctx

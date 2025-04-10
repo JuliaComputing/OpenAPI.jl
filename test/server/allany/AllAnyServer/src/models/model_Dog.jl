@@ -20,23 +20,32 @@ Base.@kwdef mutable struct Dog <: OpenAPI.APIModel
     breed::Union{Nothing, String} = nothing
 
     function Dog(pet_type, bark, breed, )
-        OpenAPI.validate_property(Dog, Symbol("pet_type"), pet_type)
-        OpenAPI.validate_property(Dog, Symbol("bark"), bark)
-        OpenAPI.validate_property(Dog, Symbol("breed"), breed)
-        return new(pet_type, bark, breed, )
+        o = new(pet_type, bark, breed, )
+        OpenAPI.validate_properties(o)
+        return o
     end
 end # type Dog
 
 const _property_types_Dog = Dict{Symbol,String}(Symbol("pet_type")=>"String", Symbol("bark")=>"Bool", Symbol("breed")=>"String", )
 OpenAPI.property_type(::Type{ Dog }, name::Symbol) = Union{Nothing,eval(Base.Meta.parse(_property_types_Dog[name]))}
 
-function check_required(o::Dog)
+function OpenAPI.check_required(o::Dog)
     o.pet_type === nothing && (return false)
     true
 end
 
+function OpenAPI.validate_properties(o::Dog)
+    OpenAPI.validate_property(Dog, Symbol("pet_type"), o.pet_type)
+    OpenAPI.validate_property(Dog, Symbol("bark"), o.bark)
+    OpenAPI.validate_property(Dog, Symbol("breed"), o.breed)
+end
+
 function OpenAPI.validate_property(::Type{ Dog }, name::Symbol, val)
+
+
+
     if name === Symbol("breed")
         OpenAPI.validate_param(name, "Dog", :enum, val, ["Dingo", "Husky", "Retriever", "Shepherd"])
     end
+
 end

@@ -17,7 +17,7 @@ function test(uri)
 
     @test_throws OpenAPI.ValidationException Pet(;id=10, category=cat, name="felix", photoUrls=nothing, tags=[tag1, tag2], status="invalid-status")
 
-    pet = Pet(;id=10, category=cat, name="felix", photoUrls=nothing, tags=[tag1,tag2], status="pending")
+    pet = Pet(;id=10, category=cat, name="felix", photoUrls=["http://photo/1","http://photo/2"], tags=[tag1,tag2], status="pending")
 
     @info("PetApi - add_pet")
     api_return, http_resp = add_pet(api, pet)

@@ -16,9 +16,15 @@ end
 function delete_order_validate(handler)
     function delete_order_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
+        op = "delete_order"
         
-        OpenAPI.validate_param("orderId", "delete_order", :minimum, openapi_params["orderId"], 1, false)
-        
+        n = "orderId"
+        v = get(openapi_params, n, nothing)
+        isnothing(v) && throw(OpenAPI.ValidationException(;reason="missing parameter $n", operation_or_model=op))
+        if !isnothing(v)
+            OpenAPI.validate_param(n, op, :minimum, v, 1, false)
+        end
+
         return handler(req)
     end
 end
@@ -44,7 +50,8 @@ end
 function get_inventory_validate(handler)
     function get_inventory_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
-        
+        op = "get_inventory"
+
         return handler(req)
     end
 end
@@ -72,10 +79,16 @@ end
 function get_order_by_id_validate(handler)
     function get_order_by_id_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
+        op = "get_order_by_id"
         
-        OpenAPI.validate_param("orderId", "get_order_by_id", :maximum, openapi_params["orderId"], 10, false)
-        OpenAPI.validate_param("orderId", "get_order_by_id", :minimum, openapi_params["orderId"], 1, false)
-        
+        n = "orderId"
+        v = get(openapi_params, n, nothing)
+        isnothing(v) && throw(OpenAPI.ValidationException(;reason="missing parameter $n", operation_or_model=op))
+        if !isnothing(v)
+            OpenAPI.validate_param(n, op, :maximum, v, 10, false)
+            OpenAPI.validate_param(n, op, :minimum, v, 1, false)
+        end
+
         return handler(req)
     end
 end
@@ -102,7 +115,20 @@ end
 function place_order_validate(handler)
     function place_order_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
+        op = "place_order"
         
+        n = "body"
+        v = get(openapi_params, n, nothing)
+        isnothing(v) && throw(OpenAPI.ValidationException(;reason="missing parameter $n", operation_or_model=op))
+        if !isnothing(v)
+            if isa(v, OpenAPI.APIModel)
+                OpenAPI.validate_properties(v)
+                if !OpenAPI.check_required(v)
+                    throw(OpenAPI.ValidationException(;reason="$n is missing required properties", operation_or_model=op))
+                end
+            end
+        end
+
         return handler(req)
     end
 end
