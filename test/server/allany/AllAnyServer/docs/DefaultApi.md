@@ -23,7 +23,7 @@ Method | HTTP request | Description
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **req** | **HTTP.Request** | The HTTP Request object | 
-**any_of_base_type** | [**AnyOfBaseType**](AnyOfBaseType.md)|  | 
+**any_of_base_type** | [**AnyOfBaseType**](AnyOfBaseType.md)|  |
 
 ### Return type
 
@@ -50,7 +50,7 @@ No authorization required
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **req** | **HTTP.Request** | The HTTP Request object | 
-**any_of_mapped_pets** | [**AnyOfMappedPets**](AnyOfMappedPets.md)|  | 
+**any_of_mapped_pets** | [**AnyOfMappedPets**](AnyOfMappedPets.md)|  |
 
 ### Return type
 
@@ -77,7 +77,7 @@ No authorization required
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **req** | **HTTP.Request** | The HTTP Request object | 
-**any_of_pets** | [**AnyOfPets**](AnyOfPets.md)|  | 
+**any_of_pets** | [**AnyOfPets**](AnyOfPets.md)|  |
 
 ### Return type
 
@@ -104,7 +104,7 @@ No authorization required
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **req** | **HTTP.Request** | The HTTP Request object | 
-**type_with_all_array_types** | [**TypeWithAllArrayTypes**](TypeWithAllArrayTypes.md)|  | 
+**type_with_all_array_types** | [**TypeWithAllArrayTypes**](TypeWithAllArrayTypes.md)|  |
 
 ### Return type
 
@@ -131,7 +131,7 @@ No authorization required
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **req** | **HTTP.Request** | The HTTP Request object | 
-**one_of_base_type** | [**OneOfBaseType**](OneOfBaseType.md)|  | 
+**one_of_base_type** | [**OneOfBaseType**](OneOfBaseType.md)|  |
 
 ### Return type
 
@@ -158,7 +158,7 @@ No authorization required
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **req** | **HTTP.Request** | The HTTP Request object | 
-**one_of_mapped_pets** | [**OneOfMappedPets**](OneOfMappedPets.md)|  | 
+**one_of_mapped_pets** | [**OneOfMappedPets**](OneOfMappedPets.md)|  |
 
 ### Return type
 
@@ -185,7 +185,7 @@ No authorization required
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **req** | **HTTP.Request** | The HTTP Request object | 
-**one_of_pets** | [**OneOfPets**](OneOfPets.md)|  | 
+**one_of_pets** | [**OneOfPets**](OneOfPets.md)|  |
 
 ### Return type
 

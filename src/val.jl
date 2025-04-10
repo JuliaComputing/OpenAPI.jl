@@ -84,3 +84,5 @@ function validate_param(parameter, operation_or_model, rule, value, args...)
 end
 
 validate_property(::Type{T}, name::Symbol, val) where {T<:APIModel} = nothing
+validate_properties(::T) where {T<:APIModel} = nothing
+check_required(::T) where {T<:APIModel} = true

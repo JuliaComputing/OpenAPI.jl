@@ -20,7 +20,7 @@ function test(uri)
     @test !isempty(inventory)
 
     @info("StoreApi - place_order")
-    @test_throws OpenAPI.ValidationException Order(; id=5, petId=10, quantity=2, shipDate=DateTime(2017, 03, 12), status="invalid_status", complete=false)
+    @test_throws OpenAPI.ValidationException Order(; id=5, petId=10, quantity=2, shipDate=ZonedDateTime(DateTime(2017, 03, 12), localzone()), status="invalid_status", complete=false)
     order = Order(; id=5, petId=10, quantity=2, shipDate=ZonedDateTime(DateTime(2017, 03, 12), localzone()), status="placed", complete=false)
     neworder, http_resp = place_order(api, order)
     @test http_resp.status == 200

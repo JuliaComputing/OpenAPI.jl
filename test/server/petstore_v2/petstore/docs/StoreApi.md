@@ -22,7 +22,7 @@ For valid response try integer IDs with positive integer value. Negative or non-
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **req** | **HTTP.Request** | The HTTP Request object | 
-**order_id** | **Int64**| ID of the order that needs to be deleted | [default to nothing]
+**order_id** | **Int64**| ID of the order that needs to be deleted |
 
 ### Return type
 
@@ -76,7 +76,7 @@ For valid response try integer IDs with value >= 1 and <= 10. Other values will 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **req** | **HTTP.Request** | The HTTP Request object | 
-**order_id** | **Int64**| ID of pet that needs to be fetched | [default to nothing]
+**order_id** | **Int64**| ID of pet that needs to be fetched |
 
 ### Return type
 
@@ -103,7 +103,7 @@ Place an order for a pet
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **req** | **HTTP.Request** | The HTTP Request object | 
-**body** | [**Order**](Order.md)| order placed for purchasing the pet | 
+**body** | [**Order**](Order.md)| order placed for purchasing the pet |
 
 ### Return type
 

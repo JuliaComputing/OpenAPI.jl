@@ -30,30 +30,42 @@ Base.@kwdef mutable struct Pet <: OpenAPI.APIModel
     category = nothing # spec type: Union{ Nothing, Category }
 
     function Pet(name, status, id, photoUrls, tags, category, )
-        OpenAPI.validate_property(Pet, Symbol("name"), name)
-        OpenAPI.validate_property(Pet, Symbol("status"), status)
-        OpenAPI.validate_property(Pet, Symbol("id"), id)
-        OpenAPI.validate_property(Pet, Symbol("photoUrls"), photoUrls)
-        OpenAPI.validate_property(Pet, Symbol("tags"), tags)
-        OpenAPI.validate_property(Pet, Symbol("category"), category)
-        return new(name, status, id, photoUrls, tags, category, )
+        o = new(name, status, id, photoUrls, tags, category, )
+        OpenAPI.validate_properties(o)
+        return o
     end
 end # type Pet
 
 const _property_types_Pet = Dict{Symbol,String}(Symbol("name")=>"String", Symbol("status")=>"String", Symbol("id")=>"Int64", Symbol("photoUrls")=>"Vector{String}", Symbol("tags")=>"Vector{Tag}", Symbol("category")=>"Category", )
 OpenAPI.property_type(::Type{ Pet }, name::Symbol) = Union{Nothing,eval(Base.Meta.parse(_property_types_Pet[name]))}
 
-function check_required(o::Pet)
+function OpenAPI.check_required(o::Pet)
     o.name === nothing && (return false)
     o.photoUrls === nothing && (return false)
     true
 end
 
+function OpenAPI.validate_properties(o::Pet)
+    OpenAPI.validate_property(Pet, Symbol("name"), o.name)
+    OpenAPI.validate_property(Pet, Symbol("status"), o.status)
+    OpenAPI.validate_property(Pet, Symbol("id"), o.id)
+    OpenAPI.validate_property(Pet, Symbol("photoUrls"), o.photoUrls)
+    OpenAPI.validate_property(Pet, Symbol("tags"), o.tags)
+    OpenAPI.validate_property(Pet, Symbol("category"), o.category)
+end
+
 function OpenAPI.validate_property(::Type{ Pet }, name::Symbol, val)
+
+
     if name === Symbol("status")
         OpenAPI.validate_param(name, "Pet", :enum, val, ["available", "pending", "sold"])
     end
+
+
     if name === Symbol("id")
         OpenAPI.validate_param(name, "Pet", :format, val, "int64")
     end
+
+
+
 end

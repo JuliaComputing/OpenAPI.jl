@@ -52,7 +52,7 @@ function _oacinternal_upload_binary_file(_api::DefaultApi, file_id::Int64; addit
     _ctx = OpenAPI.Clients.Ctx(_api.client, "POST", _returntypes_upload_binary_file_DefaultApi, "/test/{file_id}/upload_binary_file", [])
     OpenAPI.Clients.set_param(_ctx.path, "file_id", file_id)  # type Int64
     OpenAPI.Clients.set_param(_ctx.form, "additionalMetadata", additional_metadata)  # type String
-    OpenAPI.Clients.set_param(_ctx.file, "file", file)  # type Vector{UInt8}
+    OpenAPI.Clients.set_param(_ctx.file, "file", file)  # type String
     OpenAPI.Clients.set_header_accept(_ctx, ["application/json", ])
     OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? ["multipart/form-data", ] : [_mediaType])
     return _ctx

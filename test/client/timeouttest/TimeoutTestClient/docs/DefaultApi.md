@@ -18,7 +18,7 @@ Delay Response Endpoint
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **_api** | **DefaultApi** | API context | 
-**delay_seconds** | **Int64**| Number of seconds to delay the response | [default to nothing]
+**delay_seconds** | **Int64** | Number of seconds to delay the response |
 
 ### Return type
 

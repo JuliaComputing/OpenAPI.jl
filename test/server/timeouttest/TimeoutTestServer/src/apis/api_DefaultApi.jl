@@ -6,7 +6,7 @@ function delayresponse_get_read(handler)
     function delayresponse_get_read_handler(req::HTTP.Request)
         openapi_params = Dict{String,Any}()
         query_params = HTTP.queryparams(URIs.URI(req.target))
-        openapi_params["delay_seconds"] = OpenAPI.Servers.to_param(Int64, query_params, "delay_seconds", required=true, )
+        openapi_params["delay_seconds"] = OpenAPI.Servers.to_param(Int64, query_params, "delay_seconds", required=true, style="form", is_explode=true)
         req.context[:openapi_params] = openapi_params
 
         return handler(req)
@@ -16,9 +16,15 @@ end
 function delayresponse_get_validate(handler)
     function delayresponse_get_validate_handler(req::HTTP.Request)
         openapi_params = req.context[:openapi_params]
+        op = "delayresponse_get"
         
-        OpenAPI.validate_param("delay_seconds", "delayresponse_get", :minimum, openapi_params["delay_seconds"], 0, false)
-        
+        n = "delay_seconds"
+        v = get(openapi_params, n, nothing)
+        isnothing(v) && throw(OpenAPI.ValidationException(;reason="missing parameter $n", operation_or_model=op))
+        if !isnothing(v)
+            OpenAPI.validate_param(n, op, :minimum, v, 0, false)
+        end
+
         return handler(req)
     end
 end

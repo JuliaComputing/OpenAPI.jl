@@ -24,7 +24,7 @@ Add a new pet to the store
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **req** | **HTTP.Request** | The HTTP Request object | 
-**body** | [**Pet**](Pet.md)| Pet object that needs to be added to the store | 
+**body** | [**Pet**](Pet.md)| Pet object that needs to be added to the store |
 
 ### Return type
 
@@ -51,7 +51,7 @@ Deletes a pet
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **req** | **HTTP.Request** | The HTTP Request object | 
-**pet_id** | **Int64**| Pet id to delete | [default to nothing]
+**pet_id** | **Int64**| Pet id to delete |
 
 ### Optional Parameters
 
@@ -86,7 +86,7 @@ Multiple status values can be provided with comma separated strings
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **req** | **HTTP.Request** | The HTTP Request object | 
-**status** | [**Vector{String}**](String.md)| Status values that need to be considered for filter | [default to nothing]
+**status** | [**Vector{String}**](String.md)| Status values that need to be considered for filter |
 
 ### Return type
 
@@ -115,7 +115,7 @@ Multiple tags can be provided with comma separated strings. Use tag1, tag2, tag3
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **req** | **HTTP.Request** | The HTTP Request object | 
-**tags** | [**Vector{String}**](String.md)| Tags to filter by | [default to nothing]
+**tags** | [**Vector{String}**](String.md)| Tags to filter by |
 
 ### Return type
 
@@ -144,7 +144,7 @@ Returns a single pet
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **req** | **HTTP.Request** | The HTTP Request object | 
-**pet_id** | **Int64**| ID of pet to return | [default to nothing]
+**pet_id** | **Int64**| ID of pet to return |
 
 ### Return type
 
@@ -171,7 +171,7 @@ Update an existing pet
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **req** | **HTTP.Request** | The HTTP Request object | 
-**body** | [**Pet**](Pet.md)| Pet object that needs to be added to the store | 
+**body** | [**Pet**](Pet.md)| Pet object that needs to be added to the store |
 
 ### Return type
 
@@ -198,7 +198,7 @@ Updates a pet in the store with form data
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **req** | **HTTP.Request** | The HTTP Request object | 
-**pet_id** | **Int64**| ID of pet that needs to be updated | [default to nothing]
+**pet_id** | **Int64**| ID of pet that needs to be updated |
 
 ### Optional Parameters
 
@@ -232,14 +232,14 @@ uploads an image
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **req** | **HTTP.Request** | The HTTP Request object | 
-**pet_id** | **Int64**| ID of pet to update | [default to nothing]
+**pet_id** | **Int64**| ID of pet to update |
 
 ### Optional Parameters
 
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **additional_metadata** | **String**| Additional data to pass to server | [default to nothing]
- **file** | **String****String**| file to upload | [default to nothing]
+ **file** | **Vector{UInt8}**| file to upload | 
 
 ### Return type
 

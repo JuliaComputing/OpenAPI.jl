@@ -17,7 +17,7 @@ Delay Response Endpoint
 Name | Type | Description  | Notes
 ------------- | ------------- | ------------- | -------------
  **req** | **HTTP.Request** | The HTTP Request object | 
-**delay_seconds** | **Int64**| Number of seconds to delay the response | [default to nothing]
+**delay_seconds** | **Int64**| Number of seconds to delay the response |
 
 ### Return type
 

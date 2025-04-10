@@ -14,18 +14,24 @@ Base.@kwdef mutable struct Pet <: OpenAPI.APIModel
     pet_type::Union{Nothing, String} = nothing
 
     function Pet(pet_type, )
-        OpenAPI.validate_property(Pet, Symbol("pet_type"), pet_type)
-        return new(pet_type, )
+        o = new(pet_type, )
+        OpenAPI.validate_properties(o)
+        return o
     end
 end # type Pet
 
 const _property_types_Pet = Dict{Symbol,String}(Symbol("pet_type")=>"String", )
 OpenAPI.property_type(::Type{ Pet }, name::Symbol) = Union{Nothing,eval(Base.Meta.parse(_property_types_Pet[name]))}
 
-function check_required(o::Pet)
+function OpenAPI.check_required(o::Pet)
     o.pet_type === nothing && (return false)
     true
 end
 
+function OpenAPI.validate_properties(o::Pet)
+    OpenAPI.validate_property(Pet, Symbol("pet_type"), o.pet_type)
+end
+
 function OpenAPI.validate_property(::Type{ Pet }, name::Symbol, val)
+
 end
