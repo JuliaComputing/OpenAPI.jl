@@ -2,6 +2,7 @@ module Servers
 
 using JSON
 using HTTP
+using StructTypes
 
 import ..OpenAPI: APIModel, ValidationException, from_json, to_json, deep_object_to_array, StyleCtx, is_deep_explode
 
@@ -82,28 +83,16 @@ function to_param_type(::Type{T}, strval::String; stylectx=nothing) where {T <: 
     parse(T, strval)
 end
 
-to_param_type(::Type{T}, val::T; stylectx=nothing) where {T} = val
-to_param_type(::Type{T}, ::Nothing; stylectx=nothing) where {T} = nothing
-to_param_type(::Type{String}, val::Vector{UInt8}; stylectx=nothing) = String(copy(val))
-to_param_type(::Type{Vector{UInt8}}, val::String; stylectx=nothing) = convert(Vector{UInt8}, copy(codeunits(val)))
-to_param_type(::Type{Vector{T}}, val::Vector{T}, _collection_format::Union{String,Nothing}; stylectx=nothing) where {T} = val
-to_param_type(::Type{Vector{T}}, json::Vector{Any}; stylectx=nothing) where {T} = [to_param_type(T, x; stylectx) for x in json]
-
-function to_param_type(::Type{Vector{T}}, json::Dict{String, Any}; stylectx=nothing) where {T}
-    if !isnothing(stylectx) && is_deep_explode(stylectx)
-        cvt = deep_object_to_array(json)
-        if isa(cvt, Vector)
-            return to_param_type(Vector{T}, cvt; stylectx)
-        end
-    end
-    error("Unable to convert $json to $(Vector{T})")
-end
-
+# UPDATED: Use JSON.read for direct deserialization from a string.
 function to_param_type(::Type{T}, strval::String; stylectx=nothing) where {T <: APIModel}
-    from_json(T, JSON.parse(strval); stylectx)
+    return JSON.read(strval, T)
 end
 
-function  to_param_type(::Type{T}, json::Dict{String,Any}; stylectx=nothing) where {T <: APIModel}
+function to_param_type(::Type{T}, json::Dict{String,Any}; stylectx=nothing) where {T <: APIModel}
+    from_json(T, json; stylectx)
+end
+
+function to_param_type(::Type{T}, json::JSON.Object{String, Any}; stylectx=nothing) where {T <: APIModel}
     from_json(T, json; stylectx)
 end
 
@@ -112,9 +101,9 @@ function to_param_type(::Type{Vector{T}}, strval::String, delim::String; stylect
     return map(x->to_param_type(T, x; stylectx), elems)
 end
 
+#  Use JSON.read for direct deserialization from a string.
 function to_param_type(::Type{Vector{T}}, strval::String; stylectx=nothing) where {T}
-    elems = JSON.parse(strval)
-    return map(x->to_param_type(T, x; stylectx), elems)
+    return JSON.read(strval, Vector{T})
 end
 
 function to_param(T, source::Dict, name::String; required::Bool=false, collection_format::Union{String,Nothing}=",", multipart::Bool=false, isfile::Bool=false, style::String="form", is_explode::Bool=true, location=:query)

@@ -9,6 +9,7 @@ using TimeZones
 using LibCURL
 using HTTP
 using MIMEs
+using StructTypes
 
 import Base: convert, show, summary, getproperty, setproperty!, iterate
 import ..OpenAPI: APIModel, UnionAPIModel, OneOfAPIModel, AnyOfAPIModel, APIClientImpl, OpenAPIException, InvocationException, to_json, from_json, validate_property, property_type
@@ -424,30 +425,21 @@ function header(resp::Downloads.Response, name::AbstractString, defaultval::Abst
     return defaultval
 end
 
+
 response(::Type{Nothing}, resp::Downloads.Response, body) = nothing::Nothing
-response(::Type{T}, resp::Downloads.Response, body) where {T <: Real} = response(T, body)::T
-response(::Type{T}, resp::Downloads.Response, body) where {T <: String} = response(T, body)::T
+response(::Type{T}, resp::Downloads.Response, body) where {T <: Real} = parse(T, String(body))::T
+response(::Type{T}, resp::Downloads.Response, body) where {T <: String} = String(body)::T
 function response(::Type{T}, resp::Downloads.Response, body) where {T}
     ctype = header(resp, "Content-Type", "application/json")
-    response(T, is_json_mime(ctype), body)::T
+    if is_json_mime(ctype)
+        (length(body) == 0) && return T() # Handle empty body for model types
+        # Use JSON.read for direct deserialization
+        return JSON.read(body, T)::T
+    else
+        # Fallback for non-JSON content
+        return convert(T, body)
+    end
 end
-response(::Type{T}, ::Nothing, body) where {T} = response(T, true, body)
-function response(::Type{T}, is_json::Bool, body) where {T}
-    (length(body) == 0) && return T()
-    response(T, is_json ? JSON.parse(String(body)) : body)::T
-end
-response(::Type{String}, data::Vector{UInt8}) = String(data)
-response(::Type{T}, data::Vector{UInt8}) where {T<:Real} = parse(T, String(data))
-response(::Type{T}, data::T) where {T} = data
-
-response(::Type{ZonedDateTime}, data) = str2zoneddatetime(data)
-response(::Type{DateTime}, data) = str2datetime(data)
-response(::Type{Date}, data) = str2date(data)
-
-response(::Type{T}, data) where {T} = convert(T, data)
-response(::Type{T}, data::Dict{String,Any}) where {T} = from_json(T, data)::T
-response(::Type{T}, data::Dict{String,Any}) where {T<:Dict} = convert(T, data)
-response(::Type{Vector{T}}, data::Vector{V}) where {T,V} = T[response(T, v) for v in data]
 
 struct LineChunkReader <: AbstractChunkReader
     buffered_input::Base.BufferStream
@@ -471,23 +463,72 @@ struct JSONChunkReader <: AbstractChunkReader
     buffered_input::Base.BufferStream
 end
 
-function Base.iterate(iter::JSONChunkReader, _state=nothing)
-    if eof(iter.buffered_input)
-        return nothing
-    else
-        # read all whitespaces
-        while !eof(iter.buffered_input)
-            byte = peek(iter.buffered_input, UInt8)
-            if isspace(Char(byte))
-                read(iter.buffered_input, UInt8)
+function Base.iterate(iter::JSONChunkReader, buffer::IOBuffer=IOBuffer())
+    # This function now uses an IOBuffer as its state to hold
+    # data that has been read from the stream but not yet parsed.
+
+    while true
+        # First, try to parse the data we already have in our buffer.
+        seekstart(buffer)
+        data = read(buffer)
+
+        if !isempty(data)
+            # Skip leading whitespace in our buffer
+            # This is important if the previous chunk had trailing spaces.
+            start_pos = 1
+            while start_pos <= length(data) && isspace(Char(data[start_pos]))
+                start_pos += 1
+            end
+
+            if start_pos > length(data)
+                # Buffer only contained whitespace, clear it and read more.
+                take!(buffer)
             else
-                break
+                local lazy_val
+                local end_pos
+                try
+                    # Check if the buffer contains at least one complete JSON object.
+                    # We parse from the first non-whitespace character.
+                    lazy_val = JSON.lazy(view(data, start_pos:length(data)))
+
+                    # If successful, find where this object ends.
+                    end_pos = JSON.skip(lazy_val)
+
+                    # The bytes for the complete JSON chunk.
+                    json_chunk = data[start_pos:(start_pos + end_pos - 2)]
+
+                    # The rest of the data is carried over to the next iteration.
+                    remaining_data = data[(start_pos + end_pos - 1):end]
+                    next_buffer = IOBuffer(remaining_data)
+
+                    return (json_chunk, next_buffer)
+                catch e
+                    # An UnexpectedEOF error means our buffer contains an incomplete object.
+                    # We'll loop again to read more data from the main stream.
+                    # Any other error indicates a real JSON syntax problem.
+                    if !(e isa ArgumentError && occursin("UnexpectedEOF", e.msg))
+                        rethrow()
+                    end
+                end
             end
         end
-        eof(iter.buffered_input) && return nothing
-        valid_json = JSON.parse(iter.buffered_input)
-        bytes = convert(Vector{UInt8}, codeunits(JSON.json(valid_json)))
-        return (bytes, iter)
+
+        # If we are here, our buffer is empty or has an incomplete object.
+        # We need to read more data from the source input stream.
+        if eof(iter.buffered_input)
+            # The source stream is finished. If the buffer still contains non-whitespace
+            # data, it means the stream ended with an incomplete JSON object.
+            if bytesavailable(buffer) > 0
+                seekstart(buffer)
+                if !eof(skipchars(isspace, buffer))
+                    error("Incomplete JSON data at end of stream.")
+                end
+            end
+            return nothing # Correctly end the iteration.
+        end
+
+        # Block and read new data from the input, then loop to retry parsing.
+        write(buffer, readavailable(iter.buffered_input))
     end
 end
 

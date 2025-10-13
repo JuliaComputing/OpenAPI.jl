@@ -1,32 +1,24 @@
-# JSONWrapper for OpenAPI models handles
-# - null fields
-# - field names that are Julia keywords
-struct JSONWrapper{T<:APIModel} <: AbstractDict{Symbol, Any}
-    wrapped::T
-    flds::Tuple
-end
+# Declare how StructTypes should handle APIModels
+StructTypes.StructType(::Type{<:APIModel}) = StructTypes.Struct()
 
-JSONWrapper(o::T) where {T<:APIModel} = JSONWrapper(o, filter(n->hasproperty(o,n) && (getproperty(o,n) !== nothing), propertynames(o)))
+# This single line replaces the entire JSONWrapper implementation.
+# It tells JSON.jl to automatically omit fields whose values are `nothing`.
+StructTypes.omitempties(::Type{<:APIModel}) = true
 
-getindex(w::JSONWrapper, s::Symbol) = getproperty(w.wrapped, s)
-keys(w::JSONWrapper) = w.flds
-length(w::JSONWrapper) = length(w.flds)
+# This hook tells JSON.read to use our custom `from_json` logic
+# for constructing APIModel types. This preserves our handling of dates,
+# discriminated unions, and other special cases.
+StructTypes.construct(::Type{T}, dict::Dict) where {T <: APIModel} = from_json(T, dict)
 
-function iterate(w::JSONWrapper, state...)
-    result = iterate(w.flds, state...)
-    if result === nothing
-        return result
-    else
-        name,nextstate = result
-        val = getproperty(w.wrapped, name)
-        return (name=>val, nextstate)
-    end
-end
 
-lower(o::T) where {T<:APIModel} = JSONWrapper(o)
+# The `lower` method for UnionAPIModel is still useful because it allows us to
+# serialize the inner .value of a oneOf/anyOf type, not the wrapper itself.
+# JSON.jl v1.0 still respects `lower`.
+
 function lower(o::T) where {T<:UnionAPIModel}
     if typeof(o.value) <: APIModel
-        return JSONWrapper(o.value)
+        # Use JSON.lower on the wrapped value to apply its own rules
+        return JSON.lower(o.value)
     elseif typeof(o.value) <: Union{String,Real}
         return o.value
     else
@@ -59,10 +51,20 @@ end
 to_json(o) = JSON.json(o)
 
 from_json(::Type{Union{Nothing,T}}, json::Dict{String,Any}; stylectx=nothing) where {T} = from_json(T, json; stylectx)
+from_json(::Type{Union{Nothing,T}}, json::JSON.Object{String, Any}; stylectx=nothing) where {T} = from_json(T, json; stylectx)
+
 from_json(::Type{T}, json::Dict{String,Any}; stylectx=nothing) where {T} = from_json(T(), json; stylectx)
+from_json(::Type{T}, json::JSON.Object{String, Any}; stylectx=nothing) where {T} = from_json(T(), json; stylectx)
+
 from_json(::Type{T}, json::Dict{String,Any}; stylectx=nothing) where {T <: Dict} = convert(T, json)
+from_json(::Type{T}, json::JSON.Object{String, Any}; stylectx=nothing) where {T <: Dict} = convert(T, json)
+
 from_json(::Type{T}, j::Dict{String,Any}; stylectx=nothing) where {T <: String} = to_json(j)
+from_json(::Type{T}, j::JSON.Object{String, Any}; stylectx=nothing) where {T <: String} = to_json(j)
+
 from_json(::Type{Any}, j::Dict{String,Any}; stylectx=nothing) = j
+from_json(::Type{Any}, j::JSON.Object{String, Any}; stylectx=nothing) = j
+
 from_json(::Type{Vector{T}}, j::Vector{Any}; stylectx=nothing) where {T} = j
 
 function from_json(::Type{Vector{T}}, json::Dict{String, Any}; stylectx=nothing) where {T}
@@ -78,7 +80,24 @@ function from_json(::Type{Vector{T}}, json::Dict{String, Any}; stylectx=nothing)
     end
 end
 
+function from_json(::Type{Vector{T}}, json::JSON.Object{String, Any}; stylectx=nothing) where {T}
+    if !isnothing(stylectx) && is_deep_explode(stylectx)
+        cvt = deep_object_to_array(json)
+        if isa(cvt, Vector)
+            return from_json(Vector{T}, cvt; stylectx)
+        else
+            return from_json(T, json; stylectx)
+        end
+    else
+        return from_json(T, json; stylectx)
+    end
+end
+
 function from_json(o::T, json::Dict{String,Any};stylectx=nothing) where {T <: UnionAPIModel}
+    return from_json(o, :value, json;stylectx)
+end
+
+function from_json(o::T, json::JSON.Object{String, Any};stylectx=nothing) where {T <: UnionAPIModel}
     return from_json(o, :value, json;stylectx)
 end
 
@@ -96,7 +115,22 @@ function from_json(o::T, json::Dict{String,Any};stylectx=nothing) where {T <: AP
     return o
 end
 
+function from_json(o::T, json::JSON.Object{String, Any};stylectx=nothing) where {T <: APIModel}
+    jsonkeys = [Symbol(k) for k in collect(keys(json))]
+    for name in intersect(propertynames(o), jsonkeys)
+        from_json(o, name, json[String(name)];stylectx)
+    end
+    return o
+end
+
 function from_json(o::T, name::Symbol, json::Dict{String,Any};stylectx=nothing) where {T <: APIModel}
+    ftype = (T <: UnionAPIModel) ? property_type(T, name, json) : property_type(T, name)
+    fval = from_json(ftype, json; stylectx)
+    setfield!(o, name, convert(ftype, fval))
+    return o
+end
+
+function from_json(o::T, name::Symbol, json::JSON.Object{String, Any};stylectx=nothing) where {T <: APIModel}
     ftype = (T <: UnionAPIModel) ? property_type(T, name, json) : property_type(T, name)
     fval = from_json(ftype, json; stylectx)
     setfield!(o, name, convert(ftype, fval))
