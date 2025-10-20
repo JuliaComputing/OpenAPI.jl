@@ -427,14 +427,14 @@ end
 
 
 response(::Type{Nothing}, resp::Downloads.Response, body) = nothing::Nothing
-response(::Type{T}, resp::Downloads.Response, body) where {T <: Real} = parse(T, String(body))::T
+response(::Type{T}, resp::Downloads.Response, body) where {T <: Real} = Base.parse(T, String(body))::T
 response(::Type{T}, resp::Downloads.Response, body) where {T <: String} = String(body)::T
 function response(::Type{T}, resp::Downloads.Response, body) where {T}
     ctype = header(resp, "Content-Type", "application/json")
     if is_json_mime(ctype)
         (length(body) == 0) && return T() # Handle empty body for model types
         # Use JSON.read for direct deserialization
-        return JSON.read(body, T)::T
+        return JSON.parse(body, T)::T
     else
         # Fallback for non-JSON content
         return convert(T, body)
