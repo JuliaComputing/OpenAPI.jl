@@ -10,9 +10,9 @@ using Base64
 
 const server = "http://127.0.0.1:8081"
 
-function test(uri)
-    @info("FormsClient.DefaultApi")
-    client = Client(uri)
+function test(uri, httplib::Symbol)
+    @info("FormsClient.DefaultApi ($httplib backend)")
+    client = Client(uri; httplib=httplib)
     api = FormsClient.DefaultApi(client)
 
     mktemp() do test_file_path, test_file_io
@@ -39,9 +39,9 @@ function test(uri)
     return nothing
 end
 
-function runtests()
+function runtests(httplib::Symbol)
     @testset "Forms and File Uploads" begin
-        test(server)
+        test(server, httplib)
     end
 end
 

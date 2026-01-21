@@ -127,6 +127,7 @@ Client(root::String;
     escape_path_params::Union{Nothing,Bool}=nothing,
     chunk_reader_type::Union{Nothing,Type{<:AbstractChunkReader}}=nothing,
     verbose::Union{Bool,Function}=false,
+    httplib::Symbol=OpenAPI.HTTPLib.Downloads,
 )
 ```
 
@@ -140,7 +141,8 @@ Where:
 - `pre_request_hook`: user provided hook to modify the request before it is sent
 - `escape_path_params`: Whether the path parameters should be escaped before being used in the URL (true by default). This is useful if the path parameters contain characters that are not allowed in URLs or contain path separators themselves.
 - `chunk_reader_type`: The type of chunk reader to be used for streaming responses.
-- `verbose`: whether to enable verbose logging
+- `verbose`: whether to enable verbose logging (behavior depends on chosen HTTP backend)
+- `httplib`: The HTTP client library to use for making requests. Can be `OpenAPI.HTTPLib.Downloads` (default) for Downloads.jl or `OpenAPI.HTTPLib.HTTP` for HTTP.jl.
 
 The `pre_request_hook` must provide the following two implementations:
 - `pre_request_hook(ctx::OpenAPI.Clients.Ctx) -> ctx`
@@ -150,9 +152,10 @@ The `chunk_reader_type` can be one of `LineChunkReader`, `JSONChunkReader` or `R
 
 The `verbose` option can be one of:
 - `false`: the default, no verbose logging
-- `true`: enables curl verbose logging to stderr
-- a function that accepts two arguments - type and message (available on Julia version >= 1.7)
+- `true`: enables verbose logging to stderr
+- a function that accepts two arguments - type and message **(only supported with Downloads.jl backend; available on Julia version >= 1.7)**
     - a default implementation of this that uses `@info` to log the arguments is provided as `OpenAPI.Clients.default_debug_hook`
+    - **Note:** This option is not supported when using the HTTP.jl backend. With HTTP.jl, use `verbose=true` for boolean verbose logging only.
 
 In case of any errors an instance of `ApiException` is thrown. It has the following fields:
 

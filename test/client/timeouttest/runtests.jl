@@ -35,10 +35,25 @@ function test_timeout_operation(client, timeout_secs, delay_secs)
     end
 end
 
-function runtests()
-    @testset "timeout_tests" begin
-        @info("TimeoutTest")
-        client = Client(server)
+function test_longpoll_timeout_operation(client, timeout_secs, delay_secs)
+    @info("timeout $timeout_secs secs, delay $delay_secs secs")
+    with_timeout(client, timeout_secs) do client
+        try
+            channel = Channel{Any}(10)
+            api = M.DefaultApi(client)
+            api_return, http_resp = longpollstream_get(api, channel, delay_secs)
+            take!(channel)
+            error("Timeout not thrown")
+        catch ex
+            @test OpenAPI.Clients.is_longpoll_timeout(ex)
+        end
+    end
+end
+
+function runtests(httplib::Symbol)
+    @testset "timeout_tests ($httplib backend)" begin
+        @info("TimeoutTest ($httplib backend)")
+        client = Client(server; httplib=httplib)
 
         test_normal_operation(client, 10)
 
@@ -52,6 +67,11 @@ function runtests()
 
         # also test a long delay in general (default libcurl timeout is 0)
         test_normal_operation(client, 160)
+    end
+    @testset "longpoll_timeout_tests ($httplib backend)" begin
+        @info("TimeoutTest ($httplib backend)")
+        client = Client(server; httplib=httplib)
+        test_longpoll_timeout_operation(client, 20, 60)
     end
 end
     

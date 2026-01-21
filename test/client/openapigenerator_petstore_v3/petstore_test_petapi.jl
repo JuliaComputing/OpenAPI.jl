@@ -6,9 +6,9 @@ using OpenAPI
 using OpenAPI.Clients
 import OpenAPI.Clients: Client
 
-function test(uri; test_file_upload=false)
+function test(uri, httplib; test_file_upload=false)
     @info("PetApi")
-    client = Client(uri)
+    client = Client(uri; httplib=httplib)
     api = PetApi(client)
 
     tag1 = Tag(;id=10, name="juliacat")

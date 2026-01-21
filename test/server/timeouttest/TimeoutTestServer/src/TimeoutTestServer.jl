@@ -10,6 +10,9 @@ The following server methods must be implemented:
 - **delayresponse_get**
     - *invocation:* GET /delayresponse
     - *signature:* delayresponse_get(req::HTTP.Request, delay_seconds::Int64;) -> DelayresponseGet200Response
+- **longpollstream_get**
+    - *invocation:* GET /longpollstream
+    - *signature:* longpollstream_get(req::HTTP.Request, delay_seconds::Int64;) -> DelayresponseGet200Response
 """
 module TimeoutTestServer
 

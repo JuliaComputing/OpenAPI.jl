@@ -8,9 +8,9 @@ using OpenAPI
 using OpenAPI.Clients
 import OpenAPI.Clients: Client
 
-function test(uri)
-    @info("StoreApi")
-    client = Client(uri)
+function test(uri, httplib::Symbol)
+    @info("StoreApi ($httplib backend)")
+    client = Client(uri; httplib=httplib)
     api = StoreApi(client)
 
     @info("StoreApi - get_inventory")

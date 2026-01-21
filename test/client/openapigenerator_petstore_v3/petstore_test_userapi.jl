@@ -32,7 +32,7 @@ function test_404(uri)
         @error("ApiException not thrown")
     catch ex
         @test isa(ex, ApiException)
-        @test startswith(ex.reason, "Could not resolve host")
+        @test startswith(ex.reason, "Could not resolve host") || startswith(ex.reason, "DNSError")
     end    
 end
 
@@ -120,9 +120,9 @@ function test_parallel(uri)
     nothing
 end
 
-function test(uri)
+function test(uri, httplib::Symbol)
     @info("UserApi")
-    client = Client(uri)
+    client = Client(uri; httplib=httplib)
     api = UserApi(client)
 
     @info("UserApi - login_user")

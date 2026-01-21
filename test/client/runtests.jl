@@ -9,7 +9,7 @@ include("petstore_v3/runtests.jl")
 include("petstore_v2/runtests.jl")
 include("openapigenerator_petstore_v3/runtests.jl")
 
-function runtests(; skip_petstore=false, test_file_upload=false)
+function runtests(httplib::Symbol; skip_petstore=false, test_file_upload=false)
     @testset "Client" begin
         @testset "deepObj query param serialization" begin
             include("client/param_serialize.jl")
@@ -30,11 +30,11 @@ function runtests(; skip_petstore=false, test_file_upload=false)
                 if get(ENV, "RUNNER_OS", "") == "Linux"
                     @testset "V3" begin
                         @info("Running petstore v3 tests")
-                        PetStoreV3Tests.runtests(; test_file_upload=test_file_upload)
+                        PetStoreV3Tests.runtests(httplib; test_file_upload=test_file_upload)
                     end
                     @testset "V2" begin
                         @info("Running petstore v2 tests")
-                        PetStoreV2Tests.runtests()
+                        PetStoreV2Tests.runtests(httplib)
                     end
                 else
                     @info("Skipping petstore tests in non Linux environment (can not run petstore docker on OSX or Windows)")
@@ -44,11 +44,11 @@ function runtests(; skip_petstore=false, test_file_upload=false)
     end
 end
 
-function run_openapigenerator_tests(; test_file_upload=false)
+function run_openapigenerator_tests(httplib::Symbol; test_file_upload=false)
     @testset "OpenAPIGeneratorPetstoreClient" begin
         if get(ENV, "RUNNER_OS", "") == "Linux"
-            @info("Running petstore v3 tests")
-            OpenAPIGenPetStoreV3Tests.runtests(; test_file_upload=test_file_upload)
+            @info("Running petstore v3 tests ($httplib backend)")
+            OpenAPIGenPetStoreV3Tests.runtests(httplib; test_file_upload=test_file_upload)
         else
             @info("Skipping petstore tests in non Linux environment (can not run petstore docker on OSX or Windows)")
         end

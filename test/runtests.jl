@@ -1,5 +1,7 @@
 using Test, HTTP
 
+import OpenAPI
+
 include("chunkreader_tests.jl")
 include("testutils.jl")
 include("modelgen/testmodelgen.jl")
@@ -24,7 +26,9 @@ include("deep_object/deep_client.jl")
                 run(`bash client/petstore_v3/start_petstore_server.sh`)
                 sleep(20) # let servers start
             end
-            OpenAPIClientTests.runtests(; skip_petstore=openapi_generator_env, test_file_upload=false)
+            for httplib in values(OpenAPI.Clients.HTTPLib)
+                OpenAPIClientTests.runtests(httplib; skip_petstore=openapi_generator_env, test_file_upload=false)
+            end
         finally
             if run_tests_with_servers && !openapi_generator_env
                 run(`bash client/petstore_v2/stop_petstore_server.sh`)
@@ -46,7 +50,9 @@ include("deep_object/deep_client.jl")
             else
                 servers_running = false
             end
-            servers_running && OpenAPIClientTests.runtests(; test_file_upload=true)
+            for httplib in values(OpenAPI.Clients.HTTPLib)
+                servers_running && OpenAPIClientTests.runtests(httplib; test_file_upload=true)
+            end
         finally
             if run_tests_with_servers && !servers_running
                 # we probably had an error starting the servers
@@ -72,7 +78,9 @@ include("deep_object/deep_client.jl")
             else
                 servers_running = false
             end
-            servers_running && OpenAPIClientTests.run_openapigenerator_tests(; test_file_upload=true)
+            for httplib in values(OpenAPI.Clients.HTTPLib)
+                servers_running && OpenAPIClientTests.run_openapigenerator_tests(httplib; test_file_upload=true)
+            end
         finally
             if run_tests_with_servers && !servers_running
                 # we probably had an error starting the servers
@@ -93,7 +101,9 @@ include("deep_object/deep_client.jl")
             if run_tests_with_servers
                 ret, out = run_server(joinpath(@__DIR__, "forms", "forms_server.jl"))
                 servers_running &= wait_server(8081)
-                FormsV3Client.runtests()
+                for httplib in values(OpenAPI.Clients.HTTPLib)
+                    FormsV3Client.runtests(httplib)
+                end
             else
                 servers_running = false
             end
@@ -114,7 +124,9 @@ include("deep_object/deep_client.jl")
             if run_tests_with_servers
                 ret, out = run_server(joinpath(@__DIR__, "deep_object", "deep_server.jl"))
                 servers_running &= wait_server(8081)
-                DeepClientTest.runtests()
+                for httplib in values(OpenAPI.Clients.HTTPLib)
+                    DeepClientTest.runtests(httplib)
+                end
             else
                 servers_running = false
             end
@@ -136,7 +148,9 @@ include("deep_object/deep_client.jl")
             if run_tests_with_servers
                 ret, out = run_server(joinpath(@__DIR__, "server", "allany", "allany_server.jl"))
                 servers_running &= wait_server(8081)
-                AllAnyTests.runtests()
+                for httplib in values(OpenAPI.Clients.HTTPLib)
+                    AllAnyTests.runtests(httplib)
+                end
             else
                 servers_running = false
             end
@@ -159,7 +173,9 @@ include("deep_object/deep_client.jl")
                 ret, out = run_server(joinpath(@__DIR__, "server", "allany", "allany_server.jl"))
                 servers_running &= wait_server(8081)
                 if VERSION >= v"1.7"
-                    AllAnyTests.test_debug()
+                    for httplib in values(OpenAPI.Clients.HTTPLib)
+                        AllAnyTests.test_debug(httplib)
+                    end
                 end
             else
                 servers_running = false
@@ -186,7 +202,9 @@ include("deep_object/deep_client.jl")
             if run_tests_with_servers
                 ret, out = run_server(joinpath(@__DIR__, "server", "timeouttest", "timeouttest_server.jl"))
                 servers_running &= wait_server(8081)
-                TimeoutTests.runtests()
+                for httplib in values(OpenAPI.Clients.HTTPLib)
+                    TimeoutTests.runtests(httplib)
+                end
             else
                 servers_running = false
             end

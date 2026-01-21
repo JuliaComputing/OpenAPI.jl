@@ -42,4 +42,36 @@ function delayresponse_get(_api::DefaultApi, response_stream::Channel, delay_sec
     return OpenAPI.Clients.exec(_ctx, response_stream)
 end
 
+const _returntypes_longpollstream_get_DefaultApi = Dict{Regex,Type}(
+    Regex("^" * replace("200", "x"=>".") * "\$") => DelayresponseGet200Response,
+)
+
+function _oacinternal_longpollstream_get(_api::DefaultApi, delay_seconds::Int64; _mediaType=nothing)
+    OpenAPI.validate_param("delay_seconds", "longpollstream_get", :minimum, delay_seconds, 0, false)
+
+    _ctx = OpenAPI.Clients.Ctx(_api.client, "GET", _returntypes_longpollstream_get_DefaultApi, "/longpollstream", [])
+    OpenAPI.Clients.set_param(_ctx.query, "delay_seconds", delay_seconds; style="form", is_explode=true)  # type Int64
+    OpenAPI.Clients.set_header_accept(_ctx, ["application/json", ])
+    OpenAPI.Clients.set_header_content_type(_ctx, (_mediaType === nothing) ? [] : [_mediaType])
+    return _ctx
+end
+
+@doc raw"""Long polled streaming endpoint
+
+Params:
+- delay_seconds::Int64 (required)
+
+Return: DelayresponseGet200Response, OpenAPI.Clients.ApiResponse
+"""
+function longpollstream_get(_api::DefaultApi, delay_seconds::Int64; _mediaType=nothing)
+    _ctx = _oacinternal_longpollstream_get(_api, delay_seconds; _mediaType=_mediaType)
+    return OpenAPI.Clients.exec(_ctx)
+end
+
+function longpollstream_get(_api::DefaultApi, response_stream::Channel, delay_seconds::Int64; _mediaType=nothing)
+    _ctx = _oacinternal_longpollstream_get(_api, delay_seconds; _mediaType=_mediaType)
+    return OpenAPI.Clients.exec(_ctx, response_stream)
+end
+
 export delayresponse_get
+export longpollstream_get
