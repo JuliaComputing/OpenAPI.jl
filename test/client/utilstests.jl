@@ -5,6 +5,7 @@ using Dates
 using TimeZones
 using Base64
 using Downloads
+using HTTP
 
 function test_date()
     dt_now = now()
@@ -66,22 +67,38 @@ end
 
 function test_longpoll_exception_check()
     resp = OpenAPI.Clients.Downloads.Response("http", "http://localhost", 200, "no error", [])
-    reqerr1 = OpenAPI.Clients.Downloads.RequestError("http://localhost", 500, "not timeout error", resp)
-    reqerr2 = OpenAPI.Clients.Downloads.RequestError("http://localhost", 200, "Operation timed out after 300 milliseconds with 0 bytes received", resp) # timeout error
+
+    not_longpoll_timeouts = [
+        OpenAPI.Clients.Downloads.RequestError("http://localhost", 500, "not timeout error", resp),
+        OpenAPI.Clients.HTTPRequestError(HTTP.TimeoutError(20), 20, nothing),
+        OpenAPI.Clients.HTTPRequestError(HTTP.TimeoutError(20), nothing),
+        OpenAPI.Clients.HTTPRequestError(HTTP.ConnectError("http://localhost", "dns error")),
+    ]
+
+    longpoll_timeouts = [
+        OpenAPI.Clients.Downloads.RequestError("http://localhost", 200, "Operation timed out after 300 milliseconds with 0 bytes received", resp), # timeout error
+        OpenAPI.Clients.HTTPRequestError(HTTP.TimeoutError(20), 20, HTTP.Response(200, "hello")),
+    ]
 
     @test OpenAPI.Clients.is_longpoll_timeout("not an exception") == false
 
-    openapiex1 = OpenAPI.Clients.ApiException(reqerr1)
-    @test OpenAPI.Clients.is_longpoll_timeout(openapiex1) == false
-    @test OpenAPI.Clients.is_longpoll_timeout(as_taskfailedexception(openapiex1)) == false
+    for reqerr in not_longpoll_timeouts
+        openapiex = OpenAPI.Clients.ApiException(reqerr)
+        @test OpenAPI.Clients.is_longpoll_timeout(openapiex) == false
+        @test OpenAPI.Clients.is_longpoll_timeout(as_taskfailedexception(openapiex)) == false
+    end
 
-    openapiex2 = OpenAPI.Clients.ApiException(reqerr2)
-    @test OpenAPI.Clients.is_longpoll_timeout(openapiex2)
-    @test OpenAPI.Clients.is_longpoll_timeout(as_taskfailedexception(openapiex2))
+    for reqerr in longpoll_timeouts
+        openapiex = OpenAPI.Clients.ApiException(reqerr)
+        @test OpenAPI.Clients.is_longpoll_timeout(openapiex)
+        @test OpenAPI.Clients.is_longpoll_timeout(as_taskfailedexception(openapiex))
+    end
 
-    @test OpenAPI.Clients.is_longpoll_timeout(CompositeException([openapiex1, openapiex2]))
-    @test OpenAPI.Clients.is_longpoll_timeout(CompositeException([openapiex1, as_taskfailedexception(openapiex2)]))
-    @test OpenAPI.Clients.is_longpoll_timeout(CompositeException([openapiex1, as_taskfailedexception(openapiex1)])) == false
+    notlp = OpenAPI.Clients.ApiException(first(not_longpoll_timeouts))
+    lp = OpenAPI.Clients.ApiException(first(longpoll_timeouts))
+    @test OpenAPI.Clients.is_longpoll_timeout(CompositeException([notlp, lp]))
+    @test OpenAPI.Clients.is_longpoll_timeout(CompositeException([notlp, as_taskfailedexception(lp)]))
+    @test OpenAPI.Clients.is_longpoll_timeout(CompositeException([notlp, as_taskfailedexception(notlp)])) == false
 end
 
 function test_request_interrupted_exception_check()
@@ -249,49 +266,74 @@ const content_disposition_tests = [
     (content_disposition="attachment; filename=content.txt", content_type="", filename="content.txt"),
     (content_disposition="attachment; filename*=UTF-8''filename.txt", content_type="", filename="filename.txt"),
     (content_disposition="attachment; filename=\"Image File\"; filename*=utf-8''UTF8ImageFile", content_type="", filename="Image File"),
-    (content_disposition="attachment; filename=\"चित्त.jpg\"", content_type="", filename="चित्त.jpg"),
     (content_disposition="", content_type="", filename="response"),
     (content_disposition="", content_type="image/jpg", filename="response"),
 ]
 
+const non_ascii_content_disposition_tests = [
+    (content_disposition="attachment; filename=\"चित्त.jpg\"", content_type="", filename="चित्त.jpg"),
+]
+
 function test_storefile()
+    # TODO: Checks for HTTP.jl backend
     for test_data in content_disposition_tests
         headers = [
             "Content-Disposition" => test_data.content_disposition,
             "Content-Type" => test_data.content_type,
         ]
-        resp = Downloads.Response("GET", "http://test/", 200, "", headers)
+        responses = [
+            Downloads.Response("GET", "http://test/", 200, "", headers),
+            HTTP.Response(200, headers, "")
+        ]
 
+        for resp in responses
+            @test OpenAPI.Clients.extract_filename(resp) == test_data.filename
+        end
+    end
+
+    for test_data in non_ascii_content_disposition_tests
+        headers = [
+            "Content-Disposition" => test_data.content_disposition,
+            "Content-Type" => test_data.content_type,
+        ]
+        resp = Downloads.Response("GET", "http://test/", 200, "", headers)
         @test OpenAPI.Clients.extract_filename(resp) == test_data.filename
     end
 
     mktempdir() do tmpdir
         test_data = content_disposition_tests[1]
+        file_contents = "test file data"
+
         headers = [
             "Content-Disposition" => test_data.content_disposition,
             "Content-Type" => test_data.content_type,
         ]
-        resp = OpenAPI.Clients.ApiResponse(Downloads.Response("GET", "http://test/", 200, "", headers))
-        file_contents = "test file data"
 
-        # test extraction of filename from headers
-        result, http_response, filepath = OpenAPI.Clients.storefile(; folder=tmpdir) do
-            return file_contents, resp
+        responses = [
+            OpenAPI.Clients.ApiResponse(Downloads.Response("GET", "http://test/", 200, "", headers)),
+        ]
+
+        for resp in responses
+
+            # test extraction of filename from headers
+            result, http_response, filepath = OpenAPI.Clients.storefile(; folder=tmpdir) do
+                return file_contents, resp
+            end
+
+            @test result == file_contents
+            @test http_response == resp
+            @test filepath == joinpath(tmpdir, test_data.filename)
+            @test read(filepath, String) == file_contents
+
+            # test overriding filename
+            result, http_response, filepath = OpenAPI.Clients.storefile(; folder=tmpdir, filename="overridename.txt") do
+                return file_contents, resp
+            end
+
+            @test result == file_contents
+            @test http_response == resp
+            @test filepath == joinpath(tmpdir, "overridename.txt")
+            @test read(filepath, String) == file_contents
         end
-
-        @test result == file_contents
-        @test http_response == resp
-        @test filepath == joinpath(tmpdir, test_data.filename)
-        @test read(filepath, String) == file_contents
-
-        # test overriding filename
-        result, http_response, filepath = OpenAPI.Clients.storefile(; folder=tmpdir, filename="overridename.txt") do
-            return file_contents, resp
-        end
-
-        @test result == file_contents
-        @test http_response == resp
-        @test filepath == joinpath(tmpdir, "overridename.txt")
-        @test read(filepath, String) == file_contents
     end
 end

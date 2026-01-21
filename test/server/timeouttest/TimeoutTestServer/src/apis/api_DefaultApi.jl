@@ -38,8 +38,45 @@ function delayresponse_get_invoke(impl; post_invoke=nothing)
     end
 end
 
+function longpollstream_get_read(handler)
+    function longpollstream_get_read_handler(req::HTTP.Request)
+        openapi_params = Dict{String,Any}()
+        query_params = HTTP.queryparams(URIs.URI(req.target))
+        openapi_params["delay_seconds"] = OpenAPI.Servers.to_param(Int64, query_params, "delay_seconds", required=true, style="form", is_explode=true)
+        req.context[:openapi_params] = openapi_params
+
+        return handler(req)
+    end
+end
+
+function longpollstream_get_validate(handler)
+    function longpollstream_get_validate_handler(req::HTTP.Request)
+        openapi_params = req.context[:openapi_params]
+        op = "longpollstream_get"
+        
+        n = "delay_seconds"
+        v = get(openapi_params, n, nothing)
+        isnothing(v) && throw(OpenAPI.ValidationException(;reason="missing parameter $n", operation_or_model=op))
+        if !isnothing(v)
+            OpenAPI.validate_param(n, op, :minimum, v, 0, false)
+        end
+
+        return handler(req)
+    end
+end
+
+function longpollstream_get_invoke(impl; post_invoke=nothing)
+    function longpollstream_get_invoke_handler(req::HTTP.Request)
+        openapi_params = req.context[:openapi_params]
+        ret = impl.longpollstream_get(req::HTTP.Request, openapi_params["delay_seconds"];)
+        resp = OpenAPI.Servers.server_response(ret)
+        return (post_invoke === nothing) ? resp : post_invoke(req, resp)
+    end
+end
+
 
 function registerDefaultApi(router::HTTP.Router, impl; path_prefix::String="", optional_middlewares...)
     HTTP.register!(router, "GET", path_prefix * "/delayresponse", OpenAPI.Servers.middleware(impl, delayresponse_get_read, delayresponse_get_validate, delayresponse_get_invoke; optional_middlewares...))
+    HTTP.register!(router, "GET", path_prefix * "/longpollstream", OpenAPI.Servers.middleware(impl, longpollstream_get_read, longpollstream_get_validate, longpollstream_get_invoke; optional_middlewares...))
     return router
 end

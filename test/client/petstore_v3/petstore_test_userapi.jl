@@ -15,16 +15,16 @@ const TEST_USER2 = "jloac2"
 const TEST_USER3 = "jl oac 3"
 const PRESET_TEST_USER = "user1"    # this is the username that works for get user requests (as documented in the test docker container API)
 
-function test_404(uri)
-    @info("Error handling")
-    client = Client(uri*"/invalid")
+function test_404(uri, httplib::Symbol)
+    @info("Error handling ($httplib backend)")
+    client = Client(uri*"/invalid"; httplib=httplib)
     api = UserApi(client)
 
     api_return, http_resp = login_user(api, TEST_USER, "testpassword")
     @test api_return === nothing
     @test http_resp.status == 404
 
-    client = Client("http://_invalid/")
+    client = Client("http://_invalid/"; httplib=httplib)
     api = UserApi(client)
 
     try
@@ -32,7 +32,7 @@ function test_404(uri)
         @error("ApiException not thrown")
     catch ex
         @test isa(ex, ApiException)
-        @test startswith(ex.reason, "Could not resolve host")
+        @test startswith(ex.reason, "Could not resolve host") || startswith(ex.reason, "DNSError")
     end    
 end
 
@@ -78,9 +78,9 @@ function test_login_user_hook(resource_path::AbstractString, body::Any, headers:
     (resource_path, body, headers)
 end
 
-function test_userhook(uri)
-    @info("User hook")
-    client = Client(uri; pre_request_hook=test_login_user_hook)
+function test_userhook(uri, httplib::Symbol)
+    @info("User hook ($httplib backend)")
+    client = Client(uri; pre_request_hook=test_login_user_hook, httplib=httplib)
     api = UserApi(client)
 
     login_result, http_resp = login_user(api, TEST_USER, "wrongpassword")
@@ -89,9 +89,9 @@ function test_userhook(uri)
     @test startswith(login_result, "logged in user session:")
 end
 
-function test_parallel(uri)
-    @info("Parallel usage")
-    client = Client(uri)
+function test_parallel(uri, httplib::Symbol)
+    @info("Parallel usage ($httplib backend)")
+    client = Client(uri; httplib=httplib)
     api = UserApi(client)
 
     for gcidx in 1:100
@@ -120,8 +120,8 @@ function test_parallel(uri)
     nothing
 end
 
-function test(uri)
-    @info("UserApi")
+function test(uri, httplib::Symbol)
+    @info("UserApi ($httplib backend)")
     client = Client(uri)
     api = UserApi(client)
 

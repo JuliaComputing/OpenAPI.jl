@@ -10,11 +10,11 @@ include("petstore_test_storeapi.jl")
 
 const server = "http://127.0.0.1:8081/v3"
 
-function runtests(; test_file_upload=false)
+function runtests(httplib::Symbol; test_file_upload=false)
     @testset "petstore v3" begin
-        TestUserApi.test(server)
-        TestStoreApi.test(server)
-        TestPetApi.test(server; test_file_upload=test_file_upload)
+        TestUserApi.test(server, httplib)
+        TestStoreApi.test(server, httplib)
+        TestPetApi.test(server, httplib; test_file_upload=test_file_upload)
     end
 end
 end # module OpenAPIGenPetStoreV3Tests

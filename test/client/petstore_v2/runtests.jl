@@ -10,33 +10,33 @@ include("petstore_test_storeapi.jl")
 
 const server = "http://127.0.0.1:8080/v2"
 
-function test_misc()
-    TestUserApi.test_404(server)
-    TestUserApi.test_userhook(server)
+function test_misc(httplib::Symbol)
+    TestUserApi.test_404(server, httplib)
+    TestUserApi.test_userhook(server, httplib)
     TestUserApi.test_set_methods()
 end
 
-function test_stress()
-    TestUserApi.test_parallel(server)
+function test_stress(httplib::Symbol)
+    TestUserApi.test_parallel(server, httplib)
 end
 
-function petstore_tests()
-    TestUserApi.test(server)
-    TestStoreApi.test(server)
-    TestPetApi.test(server)
+function petstore_tests(httplib::Symbol)
+    TestUserApi.test(server, httplib)
+    TestStoreApi.test(server, httplib)
+    TestPetApi.test(server, httplib)
 end
 
-function runtests()
+function runtests(httplib::Symbol)
     @testset "petstore v2" begin
         @testset "miscellaneous" begin
-            test_misc()
+            test_misc(httplib)
         end
         @testset "petstore apis" begin
-            petstore_tests()
+            petstore_tests(httplib)
         end
         if get(ENV, "STRESS_PETSTORE", "false") == "true"
             @testset "stress" begin
-                test_stress()
+                test_stress(httplib)
             end
         end
     end
