@@ -1,0 +1,56 @@
+openapi: 3.0.3
+info:
+  title: Stress Test Echo Service
+  description: Simple echo service for stress testing the OpenAPI client
+  version: 1.0.0
+servers:
+  - url: http://127.0.0.1:8082
+    description: Local test server
+paths:
+  /echo:
+    get:
+      summary: Echo GET endpoint
+      description: Returns a simple JSON response with server timestamp
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: Server timestamp when request was received
+                  message:
+                    type: string
+                    description: Echo message
+    post:
+      summary: Echo POST endpoint
+      description: Echoes back the request body with metadata
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  type: string
+                  description: Data to echo back
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: Server timestamp when request was received
+                  data:
+                    type: string
+                    description: Echoed data from request
