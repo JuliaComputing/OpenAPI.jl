@@ -25,7 +25,9 @@ end
 
 lower(o::T) where {T<:APIModel} = JSONWrapper(o)
 function lower(o::T) where {T<:UnionAPIModel}
-    if typeof(o.value) <: APIModel
+    if typeof(o.value) <: UnionAPIModel
+        return lower(o.value)
+    elseif typeof(o.value) <: APIModel
         return JSONWrapper(o.value)
     elseif typeof(o.value) <: Union{String,Real}
         return o.value
