@@ -42,7 +42,7 @@ end
 
 is_deep_explode(sctx::StyleCtx) = sctx.name == "deepObject" && sctx.is_explode
 
-function deep_object_to_array(src::Dict)
+function deep_object_to_array(src::AbstractDict)
     keys_are_int = all(key -> occursin(r"^\d+$", key), keys(src))
     if keys_are_int
         sorted_keys = sort(collect(keys(src)), by=x->parse(Int, x))
@@ -58,14 +58,14 @@ end
 
 to_json(o) = JSON.json(o)
 
-from_json(::Type{Union{Nothing,T}}, json::Dict{String,Any}; stylectx=nothing) where {T} = from_json(T, json; stylectx)
-from_json(::Type{T}, json::Dict{String,Any}; stylectx=nothing) where {T} = from_json(T(), json; stylectx)
-from_json(::Type{T}, json::Dict{String,Any}; stylectx=nothing) where {T <: Dict} = convert(T, json)
-from_json(::Type{T}, j::Dict{String,Any}; stylectx=nothing) where {T <: String} = to_json(j)
-from_json(::Type{Any}, j::Dict{String,Any}; stylectx=nothing) = j
+from_json(::Type{Union{Nothing,T}}, json::AbstractDict{String,Any}; stylectx=nothing) where {T} = from_json(T, json; stylectx)
+from_json(::Type{T}, json::AbstractDict{String,Any}; stylectx=nothing) where {T} = from_json(T(), json; stylectx)
+from_json(::Type{T}, json::AbstractDict{String,Any}; stylectx=nothing) where {T <: Dict} = convert(T, Dict{String,Any}(json))
+from_json(::Type{T}, j::AbstractDict{String,Any}; stylectx=nothing) where {T <: String} = to_json(j)
+from_json(::Type{Any}, j::AbstractDict{String,Any}; stylectx=nothing) = j
 from_json(::Type{Vector{T}}, j::Vector{Any}; stylectx=nothing) where {T} = j
 
-function from_json(::Type{Vector{T}}, json::Dict{String, Any}; stylectx=nothing) where {T}
+function from_json(::Type{Vector{T}}, json::AbstractDict{String, Any}; stylectx=nothing) where {T}
     if !isnothing(stylectx) && is_deep_explode(stylectx)
         cvt = deep_object_to_array(json)
         if isa(cvt, Vector)
@@ -78,7 +78,7 @@ function from_json(::Type{Vector{T}}, json::Dict{String, Any}; stylectx=nothing)
     end
 end
 
-function from_json(o::T, json::Dict{String,Any};stylectx=nothing) where {T <: UnionAPIModel}
+function from_json(o::T, json::AbstractDict{String,Any};stylectx=nothing) where {T <: UnionAPIModel}
     return from_json(o, :value, json;stylectx)
 end
 
@@ -88,7 +88,7 @@ function from_json(o::T, val::Union{String,Real};stylectx=nothing) where {T <: U
     return o
 end
 
-function from_json(o::T, json::Dict{String,Any};stylectx=nothing) where {T <: APIModel}
+function from_json(o::T, json::AbstractDict{String,Any};stylectx=nothing) where {T <: APIModel}
     jsonkeys = [Symbol(k) for k in keys(json)]
     for name in intersect(propertynames(o), jsonkeys)
         from_json(o, name, json[String(name)];stylectx)
@@ -96,8 +96,8 @@ function from_json(o::T, json::Dict{String,Any};stylectx=nothing) where {T <: AP
     return o
 end
 
-function from_json(o::T, name::Symbol, json::Dict{String,Any};stylectx=nothing) where {T <: APIModel}
-    ftype = (T <: UnionAPIModel) ? property_type(T, name, json) : property_type(T, name)
+function from_json(o::T, name::Symbol, json::AbstractDict{String,Any};stylectx=nothing) where {T <: APIModel}
+    ftype = (T <: UnionAPIModel) ? property_type(T, name, Dict{String,Any}(json)) : property_type(T, name)
     fval = from_json(ftype, json; stylectx)
     setfield!(o, name, convert(ftype, fval))
     return o

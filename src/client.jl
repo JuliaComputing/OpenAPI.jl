@@ -12,7 +12,7 @@ using MIMEs
 
 import Base: convert, show, summary, getproperty, setproperty!, iterate
 import ..OpenAPI: APIModel, UnionAPIModel, OneOfAPIModel, AnyOfAPIModel, APIClientImpl, OpenAPIException, InvocationException, to_json, from_json, validate_property, property_type
-import ..OpenAPI: str2zoneddatetime, str2datetime, str2date
+import ..OpenAPI: str2zoneddatetime, str2datetime, str2date, _json_parse
 
 include("client/clienttypes.jl")
 include("client/chunk_readers.jl")
@@ -159,8 +159,8 @@ response(::Type{DateTime}, data) = str2datetime(data)
 response(::Type{Date}, data) = str2date(data)
 
 response(::Type{T}, data) where {T} = convert(T, data)
-response(::Type{T}, data::Dict{String,Any}) where {T} = from_json(T, data)::T
-response(::Type{T}, data::Dict{String,Any}) where {T<:Dict} = convert(T, data)
+response(::Type{T}, data::AbstractDict{String,Any}) where {T} = from_json(T, data)::T
+response(::Type{T}, data::AbstractDict{String,Any}) where {T<:Dict} = convert(T, Dict{String,Any}(data))
 response(::Type{Vector{T}}, data::Vector{V}) where {T,V} = T[response(T, v) for v in data]
 
 noop_pre_request_hook(ctx::Ctx) = ctx
@@ -299,14 +299,14 @@ end
 
 Base.hasproperty(o::T, name::Symbol) where {T<:APIModel} = ((name in propertynames(o)) && (getproperty(o, name) !== nothing))
 
-convert(::Type{T}, json::Dict{String,Any}) where {T<:APIModel} = from_json(T, json)
+convert(::Type{T}, json::AbstractDict{String,Any}) where {T<:APIModel} = from_json(T, json)
 convert(::Type{T}, v::Nothing) where {T<:APIModel} = T()
 convert(::Type{T}, v::T) where {T<:OneOfAPIModel} = v
-convert(::Type{T}, json::Dict{String,Any}) where {T<:OneOfAPIModel} = from_json(T, json)
+convert(::Type{T}, json::AbstractDict{String,Any}) where {T<:OneOfAPIModel} = from_json(T, json)
 convert(::Type{T}, v) where {T<:OneOfAPIModel} = T(v)
 convert(::Type{T}, v::String) where {T<:OneOfAPIModel} = T(v)
 convert(::Type{T}, v::T) where {T<:AnyOfAPIModel} = v
-convert(::Type{T}, json::Dict{String,Any}) where {T<:AnyOfAPIModel} = from_json(T, json)
+convert(::Type{T}, json::AbstractDict{String,Any}) where {T<:AnyOfAPIModel} = from_json(T, json)
 convert(::Type{T}, v) where {T<:AnyOfAPIModel} = T(v)
 convert(::Type{T}, v::String) where {T<:AnyOfAPIModel} = T(v)
 
