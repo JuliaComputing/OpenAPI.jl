@@ -89,7 +89,7 @@ to_param_type(::Type{Vector{UInt8}}, val::String; stylectx=nothing) = convert(Ve
 to_param_type(::Type{Vector{T}}, val::Vector{T}, _collection_format::Union{String,Nothing}; stylectx=nothing) where {T} = val
 to_param_type(::Type{Vector{T}}, json::Vector{Any}; stylectx=nothing) where {T} = [to_param_type(T, x; stylectx) for x in json]
 
-function to_param_type(::Type{Vector{T}}, json::Dict{String, Any}; stylectx=nothing) where {T}
+function to_param_type(::Type{Vector{T}}, json::AbstractDict{String, Any}; stylectx=nothing) where {T}
     if !isnothing(stylectx) && is_deep_explode(stylectx)
         cvt = deep_object_to_array(json)
         if isa(cvt, Vector)
@@ -103,7 +103,7 @@ function to_param_type(::Type{T}, strval::String; stylectx=nothing) where {T <: 
     from_json(T, JSON.parse(strval); stylectx)
 end
 
-function  to_param_type(::Type{T}, json::Dict{String,Any}; stylectx=nothing) where {T <: APIModel}
+function  to_param_type(::Type{T}, json::AbstractDict{String,Any}; stylectx=nothing) where {T <: APIModel}
     from_json(T, json; stylectx)
 end
 
