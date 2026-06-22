@@ -43,7 +43,7 @@ jobs:
             ${{ runner.os }}-test-
             ${{ runner.os }}-
       - name: Constrain HTTP.jl to v${{ matrix.http }}
-        run: sed -i -E 's/^HTTP = .*/HTTP = "${{ matrix.http }}"/' Project.toml
+        run: sed -i -E '/^\[compat\]/,/^\[/{s/^HTTP = .*/HTTP = "${{ matrix.http }}"/}' Project.toml
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
       - uses: julia-actions/julia-processcoverage@v1
