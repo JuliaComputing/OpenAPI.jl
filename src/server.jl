@@ -67,7 +67,7 @@ function get_param(source::Dict, name::String, required::Bool)
     return val
 end
 
-function get_param(source::Vector{HTTP.Forms.Multipart}, name::String, required::Bool)
+function get_param(source::Vector{HTTP.Multipart}, name::String, required::Bool)
     ind = findfirst(x -> x.name == name, source)
     if required && isnothing(ind)
         throw(ValidationException("required parameter \"$name\" missing"))
@@ -140,7 +140,7 @@ function to_param(T, source::Dict, name::String; required::Bool=false, collectio
     end
 end
 
-function to_param(T, source::Vector{HTTP.Forms.Multipart}, name::String; required::Bool=false, collection_format::Union{String,Nothing}=",", multipart::Bool=false, isfile::Bool=false)
+function to_param(T, source::Vector{HTTP.Multipart}, name::String; required::Bool=false, collection_format::Union{String,Nothing}=",", multipart::Bool=false, isfile::Bool=false)
     param = get_param(source, name, required)
     if param === nothing
         return nothing

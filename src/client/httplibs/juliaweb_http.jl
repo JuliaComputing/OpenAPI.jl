@@ -22,9 +22,49 @@
 #   - HTTPRequestError <: AbstractHTTPLibError
 # =============================================================================
 
+# HTTP.jl 2.0 dropped the `HTTP.Messages` submodule (and several other 1.x
+# symbols). We support both 1.x and 2.x by feature-detecting at load time.
+const _HTTP_V2 = !isdefined(HTTP, :Messages)
+
+# Status reason text: `HTTP.Messages.statustext` on 1.x, `Response.reason` on 2.x.
+function _http_statustext(raw::HTTP.Response)
+    if isdefined(HTTP, :Messages)
+        return HTTP.Messages.statustext(raw.status)
+    elseif hasproperty(raw, :reason) && !isempty(raw.reason)
+        return raw.reason
+    else
+        return string(raw.status)
+    end
+end
+
+# Case-insensitive header lookup over the request header collection (a Dict).
+# Avoids `HTTP.Header`/`HTTP.header(::Vector, ...)`, both removed in 2.0.
+function _header_value_ci(headers, key::AbstractString)
+    lk = lowercase(key)
+    for (k, v) in headers
+        lowercase(String(k)) == lk && return String(v)
+    end
+    return nothing
+end
+
+# Form content type: `HTTP.content_type` returns a `Pair` on 1.x, a `String` on 2.x.
+_http_form_content_type(body) = (ct = HTTP.content_type(body); ct isa Pair ? ct[2] : ct)
+
+# Timeout budget in ms: `TimeoutError.readtimeout` (s) on 1.x, `.timeout_ns` on 2.x.
+# Keep this an integer — the reason string is later matched against `\d+ milliseconds`.
+_http_timeout_ms(e::HTTP.TimeoutError) =
+    hasproperty(e, :readtimeout) ? e.readtimeout * 1000 : e.timeout_ns ÷ 1_000_000
+
+# Underlying cause of a connect error: `.error` on 1.x, `.cause` on 2.x.
+_http_connect_cause(e::HTTP.ConnectError) = hasproperty(e, :cause) ? e.cause : e.error
+
+# Inactivity-timeout keyword: 1.x calls it `readtimeout`; 2.0 renamed it to
+# `read_idle_timeout` (`readtimeout` still works but emits a deprecation warning).
+_http_read_timeout_kw(timeout) = _HTTP_V2 ? (; read_idle_timeout=timeout) : (; readtimeout=timeout)
+
 function get_response_property(raw::HTTP.Response, name::Symbol)
     if name === :message
-        return HTTP.Messages.statustext(raw.status)
+        return _http_statustext(raw)
     else
         return getproperty(raw, name)
     end
@@ -40,20 +80,21 @@ struct HTTPRequestError <: AbstractHTTPLibError
     response::Union{Nothing,HTTP.Response}
 
     function HTTPRequestError(error::HTTP.TimeoutError, bytesread::Int, response::Union{Nothing,HTTP.Response})
-        message = "Operation timed out after $(error.readtimeout*1000) milliseconds with $(bytesread) bytes received"
+        message = "Operation timed out after $(_http_timeout_ms(error)) milliseconds with $(bytesread) bytes received"
         new(message, error, response)
     end
 
     function HTTPRequestError(error::HTTP.TimeoutError, response::Union{Nothing,HTTP.Response})
-        message = "Operation timed out after $(error.readtimeout*1000) milliseconds"
+        message = "Operation timed out after $(_http_timeout_ms(error)) milliseconds"
         new(message, error, response)
     end
 
     function HTTPRequestError(error::HTTP.ConnectError)
-        message = if isa(error.error, CapturedException)
-            string(error.error.ex)
+        cause = _http_connect_cause(error)
+        message = if isa(cause, CapturedException)
+            string(cause.ex)
         else
-            string(error.error)
+            string(cause)
         end
         new(message, error, nothing)
     end
@@ -99,8 +140,7 @@ function prep_args(::Val{:http}, ctx::Ctx)
     headers = ctx.header
     body = nothing
 
-    header_pairs = [convert(HTTP.Header, p) for p in headers]
-    content_type_set = HTTP.header(header_pairs, "Content-Type", nothing)
+    content_type_set = _header_value_ci(headers, "Content-Type")
     if !isnothing(content_type_set)
         content_type_set = lowercase(content_type_set)
     end
@@ -146,7 +186,7 @@ function prep_args(::Val{:http}, ctx::Ctx)
                 body_dict[_k] = _v
             end
             body = HTTP.Form(body_dict)
-            headers["Content-Type"] = content_type_set = HTTP.content_type(body)[2]
+            headers["Content-Type"] = content_type_set = _http_form_content_type(body)
         end
 
         if ctx.body !== nothing
@@ -213,7 +253,7 @@ end
 
 function _http_request(ctx, method, url, headers, body, timeout, bytesread, captured_response, output)
     captured_response[] = http_response = HTTP.request(method, url, headers, body;
-                           readtimeout=timeout,
+                           _http_read_timeout_kw(timeout)...,
                            connect_timeout=timeout ÷ 2,
                            retry=false,
                            redirect=true,
@@ -229,22 +269,30 @@ end
 function _http_streaming_request(ctx, method, url, headers, body, timeout, bytesread, captured_response, output, stream_to)
     http_response = nothing
 
+    # HTTP.jl 2.0's `HTTP.open` does not accept a `verbose` keyword; only pass it on 1.x.
+    open_kwargs = merge(_http_read_timeout_kw(timeout),
+                        (; connect_timeout=timeout ÷ 2,
+                           retry=false,
+                           redirect=true,
+                           status_exception=false))
+    if !_HTTP_V2
+        open_kwargs = merge(open_kwargs, (; verbose=get(ctx.client.clntoptions, :verbose, false)))
+    end
+
     @sync begin
         @async begin
             try
-                HTTP.open(method, url, headers;
-                                      readtimeout=timeout,
-                                      connect_timeout=timeout ÷ 2,
-                                      retry=false,
-                                      redirect=true,
-                                      status_exception=false,
-                                      verbose=get(ctx.client.clntoptions, :verbose, false)) do io
+                HTTP.open(method, url, headers; open_kwargs...) do io
                     write(io, body)
                     captured_response[] = http_response = startread(io)
                     try
+                        # `read(io, n)` is unavailable on 2.0 streams; read into a reusable
+                        # buffer with `readbytes!`, which works on both 1.x and 2.x.
+                        buf = Vector{UInt8}(undef, 8192)  # 8KB chunks
                         while !eof(io)
-                            data = read(io, 8192)  # Read 8KB chunks
-                            bytesread[] += write(output, data)
+                            n = readbytes!(io, buf)
+                            n == 0 && break
+                            bytesread[] += write(output, view(buf, 1:n))
                         end
                     finally
                         close(output)

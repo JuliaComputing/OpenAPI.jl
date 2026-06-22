@@ -6,7 +6,7 @@ using .DeepServer: register, FindPetsByStatus200Response
 
 const server = Ref{Any}(nothing)
 
-function find_pets_by_status(::HTTP.Messages.Request, param::DeepServer.FindPetsByStatusStatusParameter)
+function find_pets_by_status(::HTTP.Request, param::DeepServer.FindPetsByStatusStatusParameter)
     return FindPetsByStatus200Response(param)
 end
 

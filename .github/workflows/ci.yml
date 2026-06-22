@@ -6,7 +6,7 @@ on:
   pull_request:
 jobs:
   test:
-    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    name: Julia ${{ matrix.version }} - HTTP ${{ matrix.http }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -15,10 +15,17 @@ jobs:
           - '1.6'
           - '1' # automatically expands to the latest stable 1.x release of Julia
           - 'nightly'
+        http:
+          - '1'
+          - '2'
         os:
           - ubuntu-latest
         arch:
           - x64
+        exclude:
+          # HTTP.jl 2.0 requires Julia >= 1.10
+          - version: '1.6'
+            http: '2'
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v1
@@ -35,6 +42,8 @@ jobs:
             ${{ runner.os }}-test-${{ env.cache-name }}-
             ${{ runner.os }}-test-
             ${{ runner.os }}-
+      - name: Constrain HTTP.jl to v${{ matrix.http }}
+        run: sed -i -E 's/^HTTP = .*/HTTP = "${{ matrix.http }}"/' Project.toml
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
       - uses: julia-actions/julia-processcoverage@v1

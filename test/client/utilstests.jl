@@ -68,16 +68,20 @@ end
 function test_longpoll_exception_check()
     resp = OpenAPI.Clients.Downloads.Response("http", "http://localhost", 200, "no error", [])
 
+    # HTTP.jl 1.x and 2.0 have different `TimeoutError`/`ConnectError` constructors.
+    mk_timeout_err() = OpenAPI.Clients._HTTP_V2 ? HTTP.TimeoutError("read_idle", 20_000_000) : HTTP.TimeoutError(20)
+    mk_connect_err() = HTTP.ConnectError("http://localhost", ErrorException("dns error"))
+
     not_longpoll_timeouts = [
         OpenAPI.Clients.Downloads.RequestError("http://localhost", 500, "not timeout error", resp),
-        OpenAPI.Clients.HTTPRequestError(HTTP.TimeoutError(20), 20, nothing),
-        OpenAPI.Clients.HTTPRequestError(HTTP.TimeoutError(20), nothing),
-        OpenAPI.Clients.HTTPRequestError(HTTP.ConnectError("http://localhost", "dns error")),
+        OpenAPI.Clients.HTTPRequestError(mk_timeout_err(), 20, nothing),
+        OpenAPI.Clients.HTTPRequestError(mk_timeout_err(), nothing),
+        OpenAPI.Clients.HTTPRequestError(mk_connect_err()),
     ]
 
     longpoll_timeouts = [
         OpenAPI.Clients.Downloads.RequestError("http://localhost", 200, "Operation timed out after 300 milliseconds with 0 bytes received", resp), # timeout error
-        OpenAPI.Clients.HTTPRequestError(HTTP.TimeoutError(20), 20, HTTP.Response(200, "hello")),
+        OpenAPI.Clients.HTTPRequestError(mk_timeout_err(), 20, HTTP.Response(200, "hello")),
     ]
 
     @test OpenAPI.Clients.is_longpoll_timeout("not an exception") == false
