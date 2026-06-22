@@ -22,9 +22,10 @@
 #   - HTTPRequestError <: AbstractHTTPLibError
 # =============================================================================
 
-# HTTP.jl 2.0 dropped the `HTTP.Messages` submodule (and several other 1.x
-# symbols). We support both 1.x and 2.x by feature-detecting at load time.
-const _HTTP_V2 = !isdefined(HTTP, :Messages)
+# HTTP.jl 2.0 reworked much of the public API; we support both 1.x and 2.x and
+# branch on the major version at load time. `pkgversion` exists from Julia 1.9;
+# on older Julia only HTTP 1.x can be installed (HTTP 2.0 needs Julia >= 1.10).
+const _HTTP_V2 = isdefined(Base, :pkgversion) && something(pkgversion(HTTP), v"1") >= v"2"
 
 # Status reason text: `HTTP.Messages.statustext` on 1.x, `Response.reason` on 2.x.
 function _http_statustext(raw::HTTP.Response)
