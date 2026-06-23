@@ -86,14 +86,26 @@ function test_debug(httplib::Symbol)
         )
         api = M.DefaultApi(client)
 
+        # HTTP.jl 2.x routes `verbose=true` output to stdout in a "[http] ... via h1"
+        # format, whereas 1.x (and the Downloads/curl backend) write the raw exchange to
+        # stderr. Capture the right stream and assert on the matching format per version.
+        use_stdout = httplib === :http && OpenAPI.Clients._HTTP_V2
         pipe = Pipe()
-        redirect_stderr(pipe) do
+        redirect = use_stdout ? redirect_stdout : redirect_stderr
+        redirect(pipe) do
             pet = M.AnyOfMappedPets(mapped_cat)
             api_return, http_resp = echo_anyof_mapped_pets_post(api, pet)
             @test pet_equals(api_return, pet)
         end
-        out_str = String(readavailable(pipe))
-        @test occursin("HTTP/1.1 200 OK", out_str)
+        # Close the write end so the read sees EOF; without this, `readavailable` blocks
+        # forever when nothing was written to the captured stream.
+        close(pipe.in)
+        out_str = read(pipe, String)
+        if use_stdout
+            @test occursin("[http]", out_str) && occursin("200", out_str)
+        else
+            @test occursin("HTTP/1.1 200 OK", out_str)
+        end
     end
 
     if httplib === :downloads
@@ -150,7 +162,10 @@ function test_debug(httplib::Symbol)
                 write(iob, message)
             end
             data_in_str = String(take!(iob))
-            data_in_str = strip(split(data_in_str, "\n")[2])
+            # The curl backend reports the raw response body. HTTP.jl 1.x servers send it
+            # chunk-framed ("27\r\n{json}\r\n0\r\n\r\n"); 2.x sends an unframed body with a
+            # Content-Length. Extract the JSON object itself so the parse works either way.
+            data_in_str = data_in_str[findfirst('{', data_in_str):findlast('}', data_in_str)]
             data_in_json = JSON.parse(data_in_str)
             @test data_in_json["pet_type"] == "cat"
             @test data_in_json["hunts"] == true
