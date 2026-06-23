@@ -61,6 +61,20 @@ end
 
 function get_param(source::Dict, name::String, required::Bool)
     val = get(source, name, nothing)
+    if isnothing(val)
+        # HTTP header field names are case-insensitive, and some HTTP.jl versions
+        # canonicalize incoming request header names (e.g. "api_key" -> "Api_key").
+        # Fall back to a case-insensitive match so header params resolve regardless
+        # of the HTTP.jl version. The exact lookup above wins first, so query/path
+        # params (whose dicts are not canonicalized) are unaffected.
+        lname = lowercase(name)
+        for (k, v) in source
+            if lowercase(k) == lname
+                val = v
+                break
+            end
+        end
+    end
     if required && isnothing(val)
         throw(ValidationException("required parameter \"$name\" missing"))
     end
