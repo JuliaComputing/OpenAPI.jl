@@ -59,6 +59,16 @@ _http_timeout_ms(e::HTTP.TimeoutError) =
 # Underlying cause of a connect error: `.error` on 1.x, `.cause` on 2.x.
 _http_connect_cause(e::HTTP.ConnectError) = hasproperty(e, :cause) ? e.cause : e.error
 
+# Message for a generic HTTP error. HTTP 2.x introduces a dedicated `HTTP.DNSError`
+# (a subtype of HTTP.HTTPError) for name-resolution failures, where 1.x instead wraps a
+# `Sockets.DNSError` inside a ConnectError. The two stringify differently
+# (`"HTTP.DNSError(...)"` vs `"DNSError: ..."`); normalize the 2.x form so the surfaced
+# reason starts with "DNSError" on both, keeping the message stable across versions.
+_http_error_message(error::HTTP.HTTPError) = string(error)
+@static if _HTTP_V2
+    _http_error_message(error::HTTP.DNSError) = "DNSError: could not resolve host \"$(error.hostname)\""
+end
+
 # Inactivity-timeout keyword: 1.x calls it `readtimeout`; 2.0 renamed it to
 # `read_idle_timeout` (`readtimeout` still works but emits a deprecation warning).
 _http_read_timeout_kw(timeout) = _HTTP_V2 ? (; read_idle_timeout=timeout) : (; readtimeout=timeout)
@@ -101,7 +111,7 @@ struct HTTPRequestError <: AbstractHTTPLibError
     end
 
     function HTTPRequestError(error::HTTP.HTTPError)
-        message = string(error)
+        message = _http_error_message(error)
         new(message, error, nothing)
     end
 end
