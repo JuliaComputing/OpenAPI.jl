@@ -1,7 +1,38 @@
 using Test
 
-using OpenAPI.Servers: deep_dict_repr
-using OpenAPI: deep_object_to_array
+using OpenAPI.Servers: deep_dict_repr, get_param, to_param
+using OpenAPI: deep_object_to_array, ValidationException
+
+@testset "Case-insensitive header param lookup" begin
+    # HTTP.jl 2.x canonicalizes incoming request header names (e.g. the wire header
+    # "api_key" arrives as "Api_key"), while 1.x preserves the sent case. Header field
+    # names are case-insensitive per RFC, so server param lookup must resolve them
+    # regardless of the HTTP.jl version. See get_param in src/server.jl.
+    canonicalized = Dict{String,String}("Api_key" => "secret", "Uuid_parameter" => "abc")
+
+    @testset "get_param resolves canonicalized keys" begin
+        @test get_param(canonicalized, "api_key", false) == "secret"
+        @test get_param(canonicalized, "uuid_parameter", false) == "abc"
+        # required param present only under its canonicalized key must not throw
+        @test get_param(canonicalized, "api_key", true) == "secret"
+    end
+
+    @testset "exact match still wins" begin
+        # an exact key takes precedence over any case-insensitive fallback
+        mixed = Dict{String,String}("api_key" => "exact", "Api_key" => "canon")
+        @test get_param(mixed, "api_key", false) == "exact"
+    end
+
+    @testset "genuinely missing param" begin
+        @test get_param(canonicalized, "missing", false) === nothing
+        @test_throws ValidationException get_param(canonicalized, "missing", true)
+    end
+
+    @testset "to_param end-to-end (as generated code calls it)" begin
+        @test to_param(String, canonicalized, "api_key") == "secret"
+        @test to_param(String, canonicalized, "uuid_parameter"; required=true) == "abc"
+    end
+end
 @testset "Test deep_dict_repr" begin
     @testset "Single level object" begin
         query_string = Dict("key1" => "value1", "key2" => "value2")

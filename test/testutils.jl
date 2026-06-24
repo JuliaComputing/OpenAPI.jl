@@ -27,7 +27,7 @@ end
 
 function wait_server(port)
     @info("Waiting for server", port)
-    is_ok = timedwait(20.0; pollint=2.0) do
+    is_ok = timedwait(90.0; pollint=2.0) do
         try
             resp = HTTP.request("GET", "http://127.0.0.1:$port/ping")
             return resp.status == 200

@@ -61,13 +61,27 @@ end
 
 function get_param(source::Dict, name::String, required::Bool)
     val = get(source, name, nothing)
+    if isnothing(val)
+        # HTTP header field names are case-insensitive, and some HTTP.jl versions
+        # canonicalize incoming request header names (e.g. "api_key" -> "Api_key").
+        # Fall back to a case-insensitive match so header params resolve regardless
+        # of the HTTP.jl version. The exact lookup above wins first, so query/path
+        # params (whose dicts are not canonicalized) are unaffected.
+        lname = lowercase(name)
+        for (k, v) in source
+            if lowercase(k) == lname
+                val = v
+                break
+            end
+        end
+    end
     if required && isnothing(val)
         throw(ValidationException("required parameter \"$name\" missing"))
     end
     return val
 end
 
-function get_param(source::Vector{HTTP.Forms.Multipart}, name::String, required::Bool)
+function get_param(source::Vector{HTTP.Multipart}, name::String, required::Bool)
     ind = findfirst(x -> x.name == name, source)
     if required && isnothing(ind)
         throw(ValidationException("required parameter \"$name\" missing"))
@@ -140,7 +154,7 @@ function to_param(T, source::Dict, name::String; required::Bool=false, collectio
     end
 end
 
-function to_param(T, source::Vector{HTTP.Forms.Multipart}, name::String; required::Bool=false, collection_format::Union{String,Nothing}=",", multipart::Bool=false, isfile::Bool=false)
+function to_param(T, source::Vector{HTTP.Multipart}, name::String; required::Bool=false, collection_format::Union{String,Nothing}=",", multipart::Bool=false, isfile::Bool=false)
     param = get_param(source, name, required)
     if param === nothing
         return nothing

@@ -51,7 +51,12 @@ function run_server(port=8081)
         HTTP.register!(router, "/longpollstream", longpollstream)
         HTTP.register!(router, "/stop", HTTP.streamhandler(stop))
         HTTP.register!(router, "/ping", HTTP.streamhandler(ping))
-        server[] = HTTP.serve!(router, port; stream=true)
+        # HTTP.jl 1.x serves stream handlers via `serve!(...; stream=true)`;
+        # 2.0 uses `listen!`, which always runs the handler in streaming mode.
+        http_v2 = isdefined(Base, :pkgversion) && something(pkgversion(HTTP), v"1") >= v"2"
+        server[] = http_v2 ?
+            HTTP.listen!(router, "127.0.0.1", port) :
+            HTTP.serve!(router, port; stream=true)
         wait(server[])
     catch ex
         @error("Server error", exception=(ex, catch_backtrace()))
