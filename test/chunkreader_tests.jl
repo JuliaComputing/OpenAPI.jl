@@ -116,6 +116,10 @@ function jsonchunk3()
 end
 
 function jsonchunk4()
+    # A truncated trailing document (the stream closed mid-object, e.g. a dropped
+    # or cancelled streaming response) is discarded rather than handed to the JSON
+    # parser, so iteration ends cleanly instead of throwing "Unexpected end of
+    # input". The complete documents read before the truncation are still yielded.
     buff = Base.BufferStream()
     reader = JSONChunkReader(buff)
     results = String[]
@@ -126,10 +130,11 @@ function jsonchunk4()
     end
 
     write(buff, "\n\n{\"hello\": \"world\"}\n\n")
-    write(buff, "{\"hello\": \"world\"\n")
+    write(buff, "{\"hello\": \"world\"\n")  # truncated: no closing brace before EOF
     close(buff)
-    @test_throws TaskFailedException wait(readertask)
+    wait(readertask)  # no throw
     @test length(results) == 1
+    @test JSON.parse(results[1])["hello"] == "world"
 end
 
 function rfc7464chunk1()
@@ -278,6 +283,40 @@ function read_json_chunk_brackets_in_string()
     @test eof(io)
 end
 
+function read_json_chunk_truncated_object()
+    # stream closed before the closing brace (e.g. dropped connection mid-object):
+    # the partial document is discarded rather than parsed.
+    io = IOBuffer("{\"statuses\":")
+    @test isempty(_read_json_chunk(io))
+    @test eof(io)
+end
+
+function read_json_chunk_truncated_nested_object()
+    io = IOBuffer("{\"a\": {\"b\": 1")
+    @test isempty(_read_json_chunk(io))
+    @test eof(io)
+end
+
+function read_json_chunk_truncated_array()
+    io = IOBuffer("[1, 2")
+    @test isempty(_read_json_chunk(io))
+    @test eof(io)
+end
+
+function read_json_chunk_truncated_string()
+    io = IOBuffer("\"dev/termina")
+    @test isempty(_read_json_chunk(io))
+    @test eof(io)
+end
+
+function read_json_chunk_complete_then_truncated()
+    # a complete document is returned; the following truncated one is discarded.
+    io = IOBuffer("{\"a\":1}{\"b\":")
+    @test String(_read_json_chunk(io)) == "{\"a\":1}"
+    @test isempty(_read_json_chunk(io))
+    @test eof(io)
+end
+
 function runtests()
     linechunk1()
     linechunk2()
@@ -303,6 +342,11 @@ function runtests()
     read_json_chunk_stops_at_boundary()
     read_json_chunk_braces_in_string()
     read_json_chunk_brackets_in_string()
+    read_json_chunk_truncated_object()
+    read_json_chunk_truncated_nested_object()
+    read_json_chunk_truncated_array()
+    read_json_chunk_truncated_string()
+    read_json_chunk_complete_then_truncated()
 end
 
 end # module ChunkReaderTests

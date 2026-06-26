@@ -29,6 +29,7 @@ function _read_json_chunk(io::IO)
         depth = 0
         in_string = false
         escaped = false
+        complete = false
 
         while !eof(io)
             byte = read(io, UInt8)
@@ -52,12 +53,22 @@ function _read_json_chunk(io::IO)
                     depth += 1
                 elseif byte == close_byte
                     depth -= 1
-                    depth == 0 && break
+                    if depth == 0
+                        complete = true
+                        break
+                    end
                 end
             end
         end
+        # The stream ended before the structure was balanced: the bytes read are a
+        # truncated document (a mid-stream connection close / cancelled response).
+        # Discard them instead of handing a partial document to the JSON parser,
+        # which would throw "Unexpected end of input". Returning empty makes
+        # `iterate` treat this as a clean end of stream.
+        complete || return UInt8[]
     elseif first_byte == UInt8('"')
         escaped = false
+        complete = false
         read(io, UInt8)  # consume opening quote
         write(out, UInt8('"'))
         while !eof(io)
@@ -68,9 +79,12 @@ function _read_json_chunk(io::IO)
             elseif byte == UInt8('\\')
                 escaped = true
             elseif byte == UInt8('"')
+                complete = true
                 break
             end
         end
+        # Truncated string (stream closed before the closing quote): discard.
+        complete || return UInt8[]
     else
         # number / true / false / null: read until delimiter
         while !eof(io)
