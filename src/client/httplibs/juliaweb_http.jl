@@ -373,9 +373,14 @@ function _http_streaming_request(ctx, method, url, headers, body, timeout, bytes
             # read-idle timeout. Mirrors the `:downloads` backend, which interrupts
             # its download task on channel close.
             try
+                # Block until the consumer closes the channel. Do NOT use
+                # `wait(stream_to)`: it returns as soon as data is AVAILABLE, so
+                # while an event sits in the channel not yet consumed, a
+                # wait+yield loop degenerates into a hot spin that burns a full
+                # core in scheduler/syscall overhead. Poll `isopen` instead;
+                # 250ms of extra abort latency is irrelevant here.
                 while isopen(stream_to)
-                    wait(stream_to)
-                    yield()
+                    sleep(0.25)
                 end
             catch ex
                 isa(ex, InvalidStateException) || rethrow(ex)
