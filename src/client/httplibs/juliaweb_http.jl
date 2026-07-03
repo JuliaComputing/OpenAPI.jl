@@ -73,6 +73,18 @@ end
 # `read_idle_timeout` (`readtimeout` still works but emits a deprecation warning).
 _http_read_timeout_kw(timeout) = _HTTP_V2 ? (; read_idle_timeout=timeout) : (; readtimeout=timeout)
 
+# Transport protocol selection on HTTP.jl 2.x. 2.x defaults to `prefer_http2=true`
+# and transparently upgrades any ALPN-capable TLS server to HTTP/2. We default to
+# HTTP/1.1 (`:h1`) instead, because OpenAPI's streaming abort model — interrupt the
+# read task and close the stream when the consumer closes the channel — assumes one
+# request per connection, as in HTTP/1.1. Observed behavior over a reused HTTP/2
+# connection: after a few aborted watch/streaming cycles the shared connection's read
+# loop wedges (the k8s watch hang), most likely from per-stream state left behind by
+# the aborts. Callers who want the 2.x default can set `:http_protocol => :auto`
+# (or `:h2`) in the client options. HTTP/1.x has no `protocol` keyword, so pass none.
+_http_protocol_kw(ctx) =
+    _HTTP_V2 ? (; protocol=get(ctx.client.clntoptions, :http_protocol, :h1)) : (;)
+
 function get_response_property(raw::HTTP.Response, name::Symbol)
     if name === :message
         return _http_statustext(raw)
@@ -265,6 +277,7 @@ end
 function _http_request(ctx, method, url, headers, body, timeout, bytesread, captured_response, output)
     captured_response[] = http_response = HTTP.request(method, url, headers, body;
                            _http_read_timeout_kw(timeout)...,
+                           _http_protocol_kw(ctx)...,
                            connect_timeout=timeout ÷ 2,
                            retry=false,
                            redirect=true,
@@ -282,6 +295,7 @@ function _http_streaming_request(ctx, method, url, headers, body, timeout, bytes
 
     # HTTP.jl 2.0's `HTTP.open` does not accept a `verbose` keyword; only pass it on 1.x.
     open_kwargs = merge(_http_read_timeout_kw(timeout),
+                        _http_protocol_kw(ctx),
                         (; connect_timeout=timeout ÷ 2,
                            retry=false,
                            redirect=true,
