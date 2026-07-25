@@ -3,6 +3,7 @@ using Test, HTTP
 import OpenAPI
 
 include("chunkreader_tests.jl")
+include("streaming_latency_tests.jl")
 include("testutils.jl")
 include("modelgen/testmodelgen.jl")
 include("client/runtests.jl")
@@ -18,6 +19,9 @@ include("deep_object/deep_client.jl")
     end
     @testset "Chunk Readers" begin
         ChunkReaderTests.runtests()
+    end
+    @testset "Streaming Latency" begin
+        StreamingLatencyTests.runtests()
     end
     @testset "Petstore Client" begin
         try
