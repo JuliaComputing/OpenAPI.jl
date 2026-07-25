@@ -317,13 +317,17 @@ function _http_streaming_request(ctx, method, url, headers, body, timeout, bytes
                     write(io, body)
                     captured_response[] = http_response = startread(io)
                     try
-                        # `read(io, n)` is unavailable on 2.0 streams; read into a reusable
-                        # buffer with `readbytes!`, which works on both 1.x and 2.x.
-                        buf = Vector{UInt8}(undef, 8192)  # 8KB chunks
+                        # `readavailable`, not `readbytes!`: on both 1.x and 2.x streams
+                        # `readbytes!(io, buf)` blocks until the whole buffer is filled
+                        # (or the body ends), so a response chunk smaller than the buffer
+                        # (e.g. a single Kubernetes watch event) is not forwarded until
+                        # enough later data accumulates — an indefinite stall on quiet
+                        # streams. `eof` blocks until data is available; `readavailable`
+                        # then returns whatever has arrived without further blocking.
                         while !eof(io)
-                            n = readbytes!(io, buf)
-                            n == 0 && break
-                            bytesread[] += write(output, view(buf, 1:n))
+                            bytes = readavailable(io)
+                            isempty(bytes) && continue
+                            bytesread[] += write(output, bytes)
                         end
                     finally
                         close(output)
