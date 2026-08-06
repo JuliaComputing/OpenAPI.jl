@@ -2,14 +2,19 @@
 
 ## Purpose
 
-OpenAPI.jl has two related surfaces:
+OpenAPI.jl has three related surfaces:
 
 1. It reads OpenAPI 3.0, 3.1, and 3.2 descriptions and generates typed Julia
    clients.
-2. It creates a smaller OpenAPI 3.2 document from declared Julia operations.
+2. It generates typed Julia server-stub modules from the same descriptions;
+   the framework router glue comes from extensions (`OpenAPIHTTPExt` for
+   `HTTP.Router`, downstream packages such as Servo.jl for their own routers)
+   through the `server_source` seam.
+3. It creates a smaller OpenAPI 3.2 document from declared Julia operations.
 
-The client generator must fail before code emission when it cannot preserve the
-specified wire behavior. Do not generate a plausible but incorrect client.
+The generators must fail before code emission when they cannot preserve the
+specified wire behavior. Do not generate a plausible but incorrect client or
+server.
 
 ## Architecture
 
@@ -59,7 +64,9 @@ The main files are:
 - Treat `src/schema_engine` as provisional. Preserve its extraction boundary
   so the code can move to JSONSchema.jl after it hardens.
 - Do not add a dependency on Servo or another server framework. Downstream
-  packages own router integration through package extensions.
+  packages own their router integration through package extensions built on
+  the `server_source`, `register!`, and `operations` seams; only HTTP.jl glue
+  lives in this repository (in `OpenAPIHTTPExt`).
 - Put generic strict JSON parsing behavior in JSON.jl when it belongs there.
 - Treat the normative OpenAPI text as authoritative over published structural
   schemas.
@@ -69,17 +76,21 @@ The main files are:
   affect names or emitted source.
 - Do not silently approximate unsupported wire behavior. The known deliberate
   planning failures are OAS 3.2 `querystring` parameters and streaming or
-  positional `itemSchema`, `itemEncoding`, and `prefixEncoding` behavior.
+  positional `itemSchema`, `itemEncoding`, and `prefixEncoding` behavior; the
+  server planner additionally rejects non-form-data `multipart/*` request
+  bodies and operations with more than one exploded object query or cookie
+  parameter.
 
 ## Public types and functions
 
 - `SourceDocument`, `Diagnostic`, `OpenAPIError`: loading and diagnostics.
 - `NormalizedAPI`: immutable normalized document.
-- `ClientPlan`: deterministic generation plan.
+- `ClientPlan`, `ServerPlan`: deterministic generation plans.
 - `load`, `check`, `normalize`, `plan`, `client`: client pipeline.
+- `serverplan`, `server`, `server_module_source`: server-stub generation.
 - `Param`, `Operation`, `document`: declaration-based authoring API.
-- `register!`, `operations`: extension seams implemented by downstream server
-  packages.
+- `register!`, `operations`, `server_source`: extension seams implemented by
+  the HTTP extension and downstream server packages.
 
 Generated modules have their own public runtime types. Important types include
 `Client`, credential types, `Upload`, `MultipartPartHeaders`, `ApiResponse`,

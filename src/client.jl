@@ -1,4 +1,4 @@
-const GENERATED_RUNTIME = raw"""
+const GENERATED_RUNTIME_COMMON = raw"""
 struct Absent end
 const ABSENT = Absent()
 Base.show(io::IO, ::Absent) = print(io, "ABSENT")
@@ -7,58 +7,6 @@ struct DecodeError <: Exception
     message::String
 end
 Base.showerror(io::IO, error::DecodeError) = print(io, error.message)
-
-struct ApiError <: Exception
-    operation_id::String
-    status::Int
-    headers::Vector{Pair{String,String}}
-    decoded_headers::Dict{String,Any}
-    body::Vector{UInt8}
-    decoded::Any
-    decode_error::Any
-end
-function Base.showerror(io::IO, error::ApiError)
-    print(io, "ApiError(", error.status, ") in ", error.operation_id)
-    if error.decode_error !== nothing
-        print(io, " (response decoding failed: ")
-        showerror(io, error.decode_error)
-        print(io, ')')
-    end
-    isempty(error.body) && return
-    text = isvalid(String, error.body) ? String(copy(error.body)) : nothing
-    if text === nothing
-        preview = bytes2hex(error.body[1:min(length(error.body), 32)])
-        print(io, ": ", length(error.body), " binary bytes (", preview)
-        length(error.body) > 32 && print(io, "…")
-        print(io, ')')
-    else
-        preview = first(text, min(length(text), 512))
-        print(io, ": ", preview)
-        length(text) > 512 && print(io, "…")
-    end
-end
-
-struct ApiResponse{T}
-    status::Int
-    headers::Vector{Pair{String,String}}
-    decoded_headers::Dict{String,Any}
-    body::T
-end
-
-struct UnexpectedBody <: Exception
-    operation_id::String
-    status::Int
-    bytes::Int
-end
-Base.showerror(io::IO, error::UnexpectedBody) = print(
-    io,
-    "operation ",
-    error.operation_id,
-    " received an undocumented ",
-    error.bytes,
-    "-byte response body for status ",
-    error.status,
-)
 
 struct UnsupportedMediaType <: Exception
     media_type::String
@@ -71,26 +19,6 @@ Base.showerror(io::IO, error::UnsupportedMediaType) = print(
     " codec is configured for media type ",
     repr(error.media_type),
 )
-
-struct UnexpectedContentType <: Exception
-    operation_id::String
-    status::Int
-    received::String
-    expected::Tuple
-end
-function Base.showerror(io::IO, error::UnexpectedContentType)
-    print(
-        io,
-        "unexpected Content-Type ",
-        repr(error.received),
-        " for ",
-        error.operation_id,
-        " response ",
-        error.status,
-        "; expected ",
-        join(error.expected, ", "),
-    )
-end
 
 struct SchemaValidationError <: Exception
     context::String
@@ -217,43 +145,6 @@ end
 _schema_valid(descriptor, value; direction::Symbol = :neutral) =
     isempty(_schema_issues(descriptor, value; direction))
 
-abstract type AbstractCredential end
-struct ApiKeyCredential <: AbstractCredential
-    value::String
-    authorizations::Set{String}
-end
-ApiKeyCredential(value::AbstractString; roles = String[]) =
-    ApiKeyCredential(String(value), Set(String.(roles)))
-struct BasicCredential <: AbstractCredential
-    username::String
-    password::String
-    authorizations::Set{String}
-end
-BasicCredential(username::AbstractString, password::AbstractString; roles = String[]) =
-    BasicCredential(String(username), String(password), Set(String.(roles)))
-struct BearerCredential <: AbstractCredential
-    token::String
-    authorizations::Set{String}
-end
-function BearerCredential(token::AbstractString; scopes = String[], roles = String[])
-    return BearerCredential(
-        String(token),
-        union(Set(String.(scopes)), Set(String.(roles))),
-    )
-end
-struct HttpCredential <: AbstractCredential
-    value::String
-    authorizations::Set{String}
-end
-HttpCredential(value::AbstractString; roles = String[]) =
-    HttpCredential(String(value), Set(String.(roles)))
-struct MutualTLSCredential <: AbstractCredential
-    request_options::NamedTuple
-    authorizations::Set{String}
-end
-MutualTLSCredential(request_options::NamedTuple; roles = String[]) =
-    MutualTLSCredential(request_options, Set(String.(roles)))
-
 struct Upload
     data::Vector{UInt8}
     filename::Union{Nothing,String}
@@ -281,151 +172,6 @@ function Upload(
         Pair{String,String}[String(key) => String(value) for (key, value) in headers],
     )
 end
-
-mutable struct Client
-    server::Union{Nothing,String}
-    server_index::Int
-    server_name::Union{Nothing,String}
-    server_variables::Dict{String,String}
-    credentials::Dict{String,AbstractCredential}
-    headers::Vector{Pair{String,String}}
-    request_options::NamedTuple
-    require_credentials::Bool
-    media_encoders::Dict{String,Function}
-    media_decoders::Dict{String,Function}
-    validate_requests::Bool
-    validate_responses::Bool
-end
-
-function _normalize_media_codecs(codecs::Dict{String,Function})
-    normalized = Dict{String,Function}()
-    for name in keys(codecs)
-        normalized[_base_media_type(name)] = codecs[name]
-    end
-    return normalized
-end
-
-function _normalize_media_codecs(codecs::AbstractDict)
-    return Dict{String,Function}(
-        _base_media_type(name) => codec for (name, codec) in codecs
-    )
-end
-
-function Client(
-    server::Union{Nothing,AbstractString} = nothing;
-    server_index::Integer = 1,
-    server_name::Union{Nothing,AbstractString} = nothing,
-    server_variables::AbstractDict = Dict{String,String}(),
-    credentials::AbstractDict = Dict{String,AbstractCredential}(),
-    headers = Pair{String,String}[],
-    request_options::NamedTuple = NamedTuple(),
-    require_credentials::Bool = true,
-    media_encoders::AbstractDict = Dict{String,Function}(),
-    media_decoders::AbstractDict = Dict{String,Function}(),
-    validate_requests::Bool = true,
-    validate_responses::Bool = true,
-)
-    server_index > 0 || throw(ArgumentError("server_index must be positive"))
-    normalized_credentials = credentials isa Dict{String,AbstractCredential} ?
-                             copy(credentials) :
-                             Dict{String,AbstractCredential}(
-        String(name) => credential for (name, credential) in credentials
-    )
-    normalized_headers = headers isa Vector{Pair{String,String}} ? copy(headers) :
-                         Pair{String,String}[
-        String(name) => String(value) for (name, value) in headers
-    ]
-    return Client(
-        server === nothing ? nothing : String(rstrip(server, '/')),
-        Int(server_index),
-        server_name === nothing ? nothing : String(server_name),
-        server_variables isa Dict{String,String} ? copy(server_variables) :
-        Dict{String,String}(
-            String(name) => String(value) for (name, value) in server_variables
-        ),
-        normalized_credentials,
-        normalized_headers,
-        request_options,
-        require_credentials,
-        _normalize_media_codecs(media_encoders),
-        _normalize_media_codecs(media_decoders),
-        validate_requests,
-        validate_responses,
-    )
-end
-
-function credential!(client::Client, name::AbstractString, credential::AbstractCredential)
-    client.credentials[String(name)] = credential
-    return client
-end
-credential!(name::AbstractString, credential::AbstractCredential) =
-    credential!(DEFAULT_CLIENT, name, credential)
-
-function clearcredential!(client::Client, name::AbstractString)
-    delete!(client.credentials, String(name))
-    return client
-end
-clearcredential!(name::AbstractString) = clearcredential!(DEFAULT_CLIENT, name)
-
-function server!(client::Client, server::Union{Nothing,AbstractString})
-    client.server = server === nothing ? nothing : String(rstrip(server, '/'))
-    isdefined(@__MODULE__, :DEFAULT_CLIENT) && client === DEFAULT_CLIENT &&
-        (SERVER[] = something(client.server, _DEFAULT_SERVER))
-    return client
-end
-server!(server::Union{Nothing,AbstractString}) = server!(DEFAULT_CLIENT, server)
-
-function server_index!(client::Client, index::Integer)
-    index > 0 || throw(ArgumentError("server index must be positive"))
-    client.server_index = Int(index)
-    client.server_name = nothing
-    return client
-end
-server_index!(index::Integer) = server_index!(DEFAULT_CLIENT, index)
-
-function server_name!(client::Client, name::Union{Nothing,AbstractString})
-    client.server_name = name === nothing ? nothing : String(name)
-    return client
-end
-server_name!(name::Union{Nothing,AbstractString}) = server_name!(DEFAULT_CLIENT, name)
-
-function server_variable!(client::Client, name::AbstractString, value::AbstractString)
-    client.server_variables[String(name)] = String(value)
-    return client
-end
-server_variable!(name::AbstractString, value::AbstractString) =
-    server_variable!(DEFAULT_CLIENT, name, value)
-
-function codec!(
-    client::Client,
-    media_type::AbstractString;
-    encode::Union{Nothing,Function} = nothing,
-    decode::Union{Nothing,Function} = nothing,
-)
-    key = _base_media_type(media_type)
-    encode === nothing || (client.media_encoders[key] = encode)
-    decode === nothing || (client.media_decoders[key] = decode)
-    return client
-end
-codec!(media_type::AbstractString; kwargs...) =
-    codec!(DEFAULT_CLIENT, media_type; kwargs...)
-
-function authorization!(client::Client, token::Union{Nothing,AbstractString})
-    names = String[
-        name for (name, scheme) in _SECURITY_SCHEMES
-        if scheme.type in (:http_bearer, :oauth2, :openidconnect)
-    ]
-    isempty(names) && throw(ArgumentError("the OpenAPI document has no bearer-compatible security scheme"))
-    for name in names
-        if token === nothing
-            delete!(client.credentials, name)
-        else
-            client.credentials[name] = BearerCredential(String(token))
-        end
-    end
-    return client
-end
-authorization!(token::Union{Nothing,AbstractString}) = authorization!(DEFAULT_CLIENT, token)
 
 _typename(::Type{T}) where {T} = string(T)
 _required(value, key, model) = haskey(value, key) ? value[key] :
@@ -601,6 +347,485 @@ function _encode(value::NamedTuple)
     return output
 end
 _encode(value) = value
+
+function _safe_header(name, value)
+    header = String(name)
+    content = String(value)
+    occursin(r"^[!#$%&'*+.^_`|~0-9A-Za-z-]+$", header) ||
+        throw(ArgumentError("invalid HTTP header name $(repr(header))"))
+    (occursin('\r', content) || occursin('\n', content)) &&
+        throw(ArgumentError("HTTP header values must not contain CR or LF"))
+    return header => content
+end
+
+function _set_header!(headers, name, value)
+    pair = _safe_header(name, value)
+    lowered = lowercase(pair.first)
+    filter!(entry -> lowercase(entry.first) != lowered, headers)
+    push!(headers, pair)
+    return headers
+end
+
+function _media_match_score(received::String, documented::String)
+    received == documented && return 4
+    documented == "*/*" && return 1
+    parts = split(documented, '/'; limit = 2)
+    received_parts = split(received, '/'; limit = 2)
+    length(parts) == 2 && length(received_parts) == 2 || return 0
+    parts[1] == received_parts[1] || parts[1] == "*" || return 0
+    parts[2] == "*" && return parts[1] == "*" ? 1 : 2
+    startswith(parts[2], "*+") &&
+        endswith(received_parts[2], parts[2][2:end]) && return 3
+    return 0
+end
+
+_media_match(received::String, documented::String) =
+    _media_match_score(_base_media_type(received), _base_media_type(documented)) > 0
+
+_base_media_type(value) = lowercase(strip(first(split(String(value), ';'; limit = 2))))
+
+function _select_media(media, received)
+    isempty(media) && return nothing
+    normalized = _base_media_type(received)
+    selected = nothing
+    score = 0
+    for entry in media
+        candidate = _media_match_score(normalized, _base_media_type(entry[1]))
+        if candidate > score
+            selected = entry
+            score = candidate
+        end
+    end
+    return selected
+end
+
+function _select_response(responses, status)
+    exact = string(status)
+    range = string(div(status, 100), "XX")
+    default = nothing
+    for response in responses
+        selector = uppercase(response.selector)
+        selector == exact && return response
+        selector == range && (default = response)
+        selector == "DEFAULT" && default === nothing && (default = response)
+    end
+    return default
+end
+
+function _header_values(headers, name)
+    lowered = lowercase(String(name))
+    return String[
+        value for (key, value) in headers if lowercase(String(key)) == lowered
+    ]
+end
+
+function _header_atom(value)
+    text = String(value)
+    lowered = lowercase(text)
+    lowered == "true" && return true
+    lowered == "false" && return false
+    lowered == "null" && return nothing
+    integer = tryparse(Int64, text)
+    integer === nothing || return integer
+    number = tryparse(Float64, text)
+    number === nothing || return number
+    return text
+end
+
+function _header_scalar(type, value)
+    text = String(value)
+    type === String && return text
+    type === Bool && return lowercase(text) == "true" ? true :
+                         lowercase(text) == "false" ? false :
+                         throw(DecodeError("invalid boolean value $(repr(text))"))
+    type <: Integer && return try
+        parse(type, text)
+    catch error
+        throw(DecodeError("invalid integer value: $(sprint(showerror, error))"))
+    end
+    type <: AbstractFloat && return try
+        parse(type, text)
+    catch error
+        throw(DecodeError("invalid numeric value: $(sprint(showerror, error))"))
+    end
+    return _decode(type, text)
+end
+
+function _header_type_variant(type, shape)
+    variants = type isa Union ? Base.uniontypes(type) : (type,)
+    for variant in variants
+        variant in (Nothing, Absent) && continue
+        shape === :array && variant <: AbstractVector && return variant
+        shape === :object &&
+            (variant <: AbstractDict || isstructtype(variant)) && return variant
+        shape === :scalar && return variant
+    end
+    return type
+end
+
+function _decode_schema_header(
+    type,
+    values,
+    shape,
+    explode,
+    schema;
+    set_cookie::Bool = false,
+    direction::Symbol = :output,
+    context = "decoding a response header",
+)
+    selected = _header_type_variant(type, shape)
+    raw = if shape === :array
+        items = if set_cookie
+            String[String(value) for value in values]
+        else
+            output = String[]
+            for value in values
+                append!(output, split(value, ','))
+            end
+            output
+        end
+        element = selected <: AbstractVector ? eltype(selected) : String
+        Any[_header_scalar(element, item) for item in items]
+    elseif shape === :object
+        object = JSON.Object{String,Any}()
+        if set_cookie && explode
+            for value in values
+                pair = split(value, '='; limit = 2)
+                length(pair) == 2 || throw(
+                    DecodeError("invalid Set-Cookie response header"),
+                )
+                object[pair[1]] = pair[2]
+            end
+        elseif explode
+            tokens = split(join(values, ','), ',')
+            for token in tokens
+                pair = split(token, '='; limit = 2)
+                length(pair) == 2 || throw(
+                    DecodeError("invalid exploded object response header"),
+                )
+                object[pair[1]] = _header_atom(pair[2])
+            end
+        else
+            tokens = split(join(values, ','), ',')
+            iseven(length(tokens)) ||
+                throw(DecodeError("invalid object response header"))
+            for index in 1:2:length(tokens)
+                object[tokens[index]] = _header_atom(tokens[index + 1])
+            end
+        end
+        object
+    else
+        _header_scalar(selected, join(values, set_cookie ? '\n' : ','))
+    end
+    _validate_schema(
+        schema,
+        _encode(raw),
+        context;
+        direction,
+    )
+    return _decode(type, raw)
+end
+
+_is_json_media(media) = media == "application/json" || endswith(media, "+json")
+_is_sequential_json_media(media) = media in (
+    "application/jsonl",
+    "application/x-ndjson",
+    "application/json-seq",
+    "application/geo+json-seq",
+) || endswith(media, "+json-seq")
+
+function _parse_json(text, context)
+    source = text isa AbstractString ? String(text) : String(copy(text))
+    isvalid(source) || throw(DecodeError("invalid UTF-8 while $context"))
+    try
+        return JSON.parse(source; duplicate_keys = :error)
+    catch error
+        throw(DecodeError("invalid JSON while $context: $(sprint(showerror, error))"))
+    end
+end
+
+function _decode_sequential_json(body, media)
+    records = Any[]
+    if media == "application/json-seq" || endswith(media, "+json-seq")
+        for chunk in split(String(body), Char(0x1e))
+            text = strip(chunk)
+            isempty(text) || push!(records, _parse_json(text, "decoding a JSON sequence"))
+        end
+    else
+        for line in eachline(IOBuffer(body))
+            text = strip(line)
+            isempty(text) || push!(records, _parse_json(text, "decoding JSON lines"))
+        end
+    end
+    return records
+end
+
+function _encode_sequential_json(value, media)
+    encoded = _encode(value)
+    encoded isa AbstractVector || encoded isa Tuple || throw(
+        ArgumentError("sequential JSON request bodies must be arrays or tuples"),
+    )
+    if media == "application/json-seq" || endswith(media, "+json-seq")
+        return join((string(Char(0x1e), JSON.json(item), '\n') for item in encoded))
+    end
+    return join((JSON.json(item) * "\n" for item in encoded))
+end
+"""
+
+const GENERATED_RUNTIME = raw"""
+struct ApiError <: Exception
+    operation_id::String
+    status::Int
+    headers::Vector{Pair{String,String}}
+    decoded_headers::Dict{String,Any}
+    body::Vector{UInt8}
+    decoded::Any
+    decode_error::Any
+end
+function Base.showerror(io::IO, error::ApiError)
+    print(io, "ApiError(", error.status, ") in ", error.operation_id)
+    if error.decode_error !== nothing
+        print(io, " (response decoding failed: ")
+        showerror(io, error.decode_error)
+        print(io, ')')
+    end
+    isempty(error.body) && return
+    text = isvalid(String, error.body) ? String(copy(error.body)) : nothing
+    if text === nothing
+        preview = bytes2hex(error.body[1:min(length(error.body), 32)])
+        print(io, ": ", length(error.body), " binary bytes (", preview)
+        length(error.body) > 32 && print(io, "…")
+        print(io, ')')
+    else
+        preview = first(text, min(length(text), 512))
+        print(io, ": ", preview)
+        length(text) > 512 && print(io, "…")
+    end
+end
+
+struct ApiResponse{T}
+    status::Int
+    headers::Vector{Pair{String,String}}
+    decoded_headers::Dict{String,Any}
+    body::T
+end
+
+struct UnexpectedBody <: Exception
+    operation_id::String
+    status::Int
+    bytes::Int
+end
+Base.showerror(io::IO, error::UnexpectedBody) = print(
+    io,
+    "operation ",
+    error.operation_id,
+    " received an undocumented ",
+    error.bytes,
+    "-byte response body for status ",
+    error.status,
+)
+
+struct UnexpectedContentType <: Exception
+    operation_id::String
+    status::Int
+    received::String
+    expected::Tuple
+end
+function Base.showerror(io::IO, error::UnexpectedContentType)
+    print(
+        io,
+        "unexpected Content-Type ",
+        repr(error.received),
+        " for ",
+        error.operation_id,
+        " response ",
+        error.status,
+        "; expected ",
+        join(error.expected, ", "),
+    )
+end
+
+abstract type AbstractCredential end
+struct ApiKeyCredential <: AbstractCredential
+    value::String
+    authorizations::Set{String}
+end
+ApiKeyCredential(value::AbstractString; roles = String[]) =
+    ApiKeyCredential(String(value), Set(String.(roles)))
+struct BasicCredential <: AbstractCredential
+    username::String
+    password::String
+    authorizations::Set{String}
+end
+BasicCredential(username::AbstractString, password::AbstractString; roles = String[]) =
+    BasicCredential(String(username), String(password), Set(String.(roles)))
+struct BearerCredential <: AbstractCredential
+    token::String
+    authorizations::Set{String}
+end
+function BearerCredential(token::AbstractString; scopes = String[], roles = String[])
+    return BearerCredential(
+        String(token),
+        union(Set(String.(scopes)), Set(String.(roles))),
+    )
+end
+struct HttpCredential <: AbstractCredential
+    value::String
+    authorizations::Set{String}
+end
+HttpCredential(value::AbstractString; roles = String[]) =
+    HttpCredential(String(value), Set(String.(roles)))
+struct MutualTLSCredential <: AbstractCredential
+    request_options::NamedTuple
+    authorizations::Set{String}
+end
+MutualTLSCredential(request_options::NamedTuple; roles = String[]) =
+    MutualTLSCredential(request_options, Set(String.(roles)))
+
+mutable struct Client
+    server::Union{Nothing,String}
+    server_index::Int
+    server_name::Union{Nothing,String}
+    server_variables::Dict{String,String}
+    credentials::Dict{String,AbstractCredential}
+    headers::Vector{Pair{String,String}}
+    request_options::NamedTuple
+    require_credentials::Bool
+    media_encoders::Dict{String,Function}
+    media_decoders::Dict{String,Function}
+    validate_requests::Bool
+    validate_responses::Bool
+end
+
+function _normalize_media_codecs(codecs::Dict{String,Function})
+    normalized = Dict{String,Function}()
+    for name in keys(codecs)
+        normalized[_base_media_type(name)] = codecs[name]
+    end
+    return normalized
+end
+
+function _normalize_media_codecs(codecs::AbstractDict)
+    return Dict{String,Function}(
+        _base_media_type(name) => codec for (name, codec) in codecs
+    )
+end
+
+function Client(
+    server::Union{Nothing,AbstractString} = nothing;
+    server_index::Integer = 1,
+    server_name::Union{Nothing,AbstractString} = nothing,
+    server_variables::AbstractDict = Dict{String,String}(),
+    credentials::AbstractDict = Dict{String,AbstractCredential}(),
+    headers = Pair{String,String}[],
+    request_options::NamedTuple = NamedTuple(),
+    require_credentials::Bool = true,
+    media_encoders::AbstractDict = Dict{String,Function}(),
+    media_decoders::AbstractDict = Dict{String,Function}(),
+    validate_requests::Bool = true,
+    validate_responses::Bool = true,
+)
+    server_index > 0 || throw(ArgumentError("server_index must be positive"))
+    normalized_credentials = credentials isa Dict{String,AbstractCredential} ?
+                             copy(credentials) :
+                             Dict{String,AbstractCredential}(
+        String(name) => credential for (name, credential) in credentials
+    )
+    normalized_headers = headers isa Vector{Pair{String,String}} ? copy(headers) :
+                         Pair{String,String}[
+        String(name) => String(value) for (name, value) in headers
+    ]
+    return Client(
+        server === nothing ? nothing : String(rstrip(server, '/')),
+        Int(server_index),
+        server_name === nothing ? nothing : String(server_name),
+        server_variables isa Dict{String,String} ? copy(server_variables) :
+        Dict{String,String}(
+            String(name) => String(value) for (name, value) in server_variables
+        ),
+        normalized_credentials,
+        normalized_headers,
+        request_options,
+        require_credentials,
+        _normalize_media_codecs(media_encoders),
+        _normalize_media_codecs(media_decoders),
+        validate_requests,
+        validate_responses,
+    )
+end
+
+function credential!(client::Client, name::AbstractString, credential::AbstractCredential)
+    client.credentials[String(name)] = credential
+    return client
+end
+credential!(name::AbstractString, credential::AbstractCredential) =
+    credential!(DEFAULT_CLIENT, name, credential)
+
+function clearcredential!(client::Client, name::AbstractString)
+    delete!(client.credentials, String(name))
+    return client
+end
+clearcredential!(name::AbstractString) = clearcredential!(DEFAULT_CLIENT, name)
+
+function server!(client::Client, server::Union{Nothing,AbstractString})
+    client.server = server === nothing ? nothing : String(rstrip(server, '/'))
+    isdefined(@__MODULE__, :DEFAULT_CLIENT) && client === DEFAULT_CLIENT &&
+        (SERVER[] = something(client.server, _DEFAULT_SERVER))
+    return client
+end
+server!(server::Union{Nothing,AbstractString}) = server!(DEFAULT_CLIENT, server)
+
+function server_index!(client::Client, index::Integer)
+    index > 0 || throw(ArgumentError("server index must be positive"))
+    client.server_index = Int(index)
+    client.server_name = nothing
+    return client
+end
+server_index!(index::Integer) = server_index!(DEFAULT_CLIENT, index)
+
+function server_name!(client::Client, name::Union{Nothing,AbstractString})
+    client.server_name = name === nothing ? nothing : String(name)
+    return client
+end
+server_name!(name::Union{Nothing,AbstractString}) = server_name!(DEFAULT_CLIENT, name)
+
+function server_variable!(client::Client, name::AbstractString, value::AbstractString)
+    client.server_variables[String(name)] = String(value)
+    return client
+end
+server_variable!(name::AbstractString, value::AbstractString) =
+    server_variable!(DEFAULT_CLIENT, name, value)
+
+function codec!(
+    client::Client,
+    media_type::AbstractString;
+    encode::Union{Nothing,Function} = nothing,
+    decode::Union{Nothing,Function} = nothing,
+)
+    key = _base_media_type(media_type)
+    encode === nothing || (client.media_encoders[key] = encode)
+    decode === nothing || (client.media_decoders[key] = decode)
+    return client
+end
+codec!(media_type::AbstractString; kwargs...) =
+    codec!(DEFAULT_CLIENT, media_type; kwargs...)
+
+function authorization!(client::Client, token::Union{Nothing,AbstractString})
+    names = String[
+        name for (name, scheme) in _SECURITY_SCHEMES
+        if scheme.type in (:http_bearer, :oauth2, :openidconnect)
+    ]
+    isempty(names) && throw(ArgumentError("the OpenAPI document has no bearer-compatible security scheme"))
+    for name in names
+        if token === nothing
+            delete!(client.credentials, name)
+        else
+            client.credentials[name] = BearerCredential(String(token))
+        end
+    end
+    return client
+end
+authorization!(token::Union{Nothing,AbstractString}) = authorization!(DEFAULT_CLIENT, token)
 
 _scalar(::Nothing) = ""
 _scalar(value::Bool) = value ? "true" : "false"
@@ -912,24 +1137,6 @@ function _append_parameter!(client, path, query, headers, cookies, descriptor, v
     return path
 end
 
-function _safe_header(name, value)
-    header = String(name)
-    content = String(value)
-    occursin(r"^[!#$%&'*+.^_`|~0-9A-Za-z-]+$", header) ||
-        throw(ArgumentError("invalid HTTP header name $(repr(header))"))
-    (occursin('\r', content) || occursin('\n', content)) &&
-        throw(ArgumentError("HTTP header values must not contain CR or LF"))
-    return header => content
-end
-
-function _set_header!(headers, name, value)
-    pair = _safe_header(name, value)
-    lowered = lowercase(pair.first)
-    filter!(entry -> lowercase(entry.first) != lowered, headers)
-    push!(headers, pair)
-    return headers
-end
-
 _authorizations(credential::AbstractCredential) = credential.authorizations
 
 function _credential_satisfies(scheme, credential, required)
@@ -1009,164 +1216,6 @@ function _security!(client, requirements, query, headers, cookies, base_options)
     return base_options
 end
 
-function _media_match_score(received::String, documented::String)
-    received == documented && return 4
-    documented == "*/*" && return 1
-    parts = split(documented, '/'; limit = 2)
-    received_parts = split(received, '/'; limit = 2)
-    length(parts) == 2 && length(received_parts) == 2 || return 0
-    parts[1] == received_parts[1] || parts[1] == "*" || return 0
-    parts[2] == "*" && return parts[1] == "*" ? 1 : 2
-    startswith(parts[2], "*+") &&
-        endswith(received_parts[2], parts[2][2:end]) && return 3
-    return 0
-end
-
-_media_match(received::String, documented::String) =
-    _media_match_score(_base_media_type(received), _base_media_type(documented)) > 0
-
-_base_media_type(value) = lowercase(strip(first(split(String(value), ';'; limit = 2))))
-
-function _select_media(media, received)
-    isempty(media) && return nothing
-    normalized = _base_media_type(received)
-    selected = nothing
-    score = 0
-    for entry in media
-        candidate = _media_match_score(normalized, _base_media_type(entry[1]))
-        if candidate > score
-            selected = entry
-            score = candidate
-        end
-    end
-    return selected
-end
-
-function _select_response(responses, status)
-    exact = string(status)
-    range = string(div(status, 100), "XX")
-    default = nothing
-    for response in responses
-        selector = uppercase(response.selector)
-        selector == exact && return response
-        selector == range && (default = response)
-        selector == "DEFAULT" && default === nothing && (default = response)
-    end
-    return default
-end
-
-function _header_values(headers, name)
-    lowered = lowercase(String(name))
-    return String[
-        value for (key, value) in headers if lowercase(String(key)) == lowered
-    ]
-end
-
-function _header_atom(value)
-    text = String(value)
-    lowered = lowercase(text)
-    lowered == "true" && return true
-    lowered == "false" && return false
-    lowered == "null" && return nothing
-    integer = tryparse(Int64, text)
-    integer === nothing || return integer
-    number = tryparse(Float64, text)
-    number === nothing || return number
-    return text
-end
-
-function _header_scalar(type, value)
-    text = String(value)
-    type === String && return text
-    type === Bool && return lowercase(text) == "true" ? true :
-                         lowercase(text) == "false" ? false :
-                         throw(DecodeError("invalid boolean response header $(repr(text))"))
-    type <: Integer && return try
-        parse(type, text)
-    catch error
-        throw(DecodeError("invalid integer response header: $(sprint(showerror, error))"))
-    end
-    type <: AbstractFloat && return try
-        parse(type, text)
-    catch error
-        throw(DecodeError("invalid numeric response header: $(sprint(showerror, error))"))
-    end
-    return _decode(type, text)
-end
-
-function _header_type_variant(type, shape)
-    variants = type isa Union ? Base.uniontypes(type) : (type,)
-    for variant in variants
-        variant in (Nothing, Absent) && continue
-        shape === :array && variant <: AbstractVector && return variant
-        shape === :object &&
-            (variant <: AbstractDict || isstructtype(variant)) && return variant
-        shape === :scalar && return variant
-    end
-    return type
-end
-
-function _decode_schema_header(
-    type,
-    values,
-    shape,
-    explode,
-    schema;
-    set_cookie::Bool = false,
-)
-    selected = _header_type_variant(type, shape)
-    raw = if shape === :array
-        items = if set_cookie
-            String[String(value) for value in values]
-        else
-            output = String[]
-            for value in values
-                append!(output, split(value, ','))
-            end
-            output
-        end
-        element = selected <: AbstractVector ? eltype(selected) : String
-        Any[_header_scalar(element, item) for item in items]
-    elseif shape === :object
-        object = JSON.Object{String,Any}()
-        if set_cookie && explode
-            for value in values
-                pair = split(value, '='; limit = 2)
-                length(pair) == 2 || throw(
-                    DecodeError("invalid Set-Cookie response header"),
-                )
-                object[pair[1]] = pair[2]
-            end
-        elseif explode
-            tokens = split(join(values, ','), ',')
-            for token in tokens
-                pair = split(token, '='; limit = 2)
-                length(pair) == 2 || throw(
-                    DecodeError("invalid exploded object response header"),
-                )
-                object[pair[1]] = _header_atom(pair[2])
-            end
-        else
-            tokens = split(join(values, ','), ',')
-            iseven(length(tokens)) ||
-                throw(DecodeError("invalid object response header"))
-            for index in 1:2:length(tokens)
-                object[tokens[index]] = _header_atom(tokens[index + 1])
-            end
-        end
-        object
-    else
-        _header_scalar(selected, join(values, set_cookie ? '\n' : ','))
-    end
-    _validate_schema(
-        schema,
-        _encode(raw),
-        "decoding a response header";
-        direction = :output,
-    )
-    return _decode(type, raw)
-end
-
 function _decode_response_headers(client, descriptor, headers)
     output = Dict{String,Any}()
     descriptor === nothing && return output
@@ -1201,40 +1250,6 @@ function _decode_response_headers(client, descriptor, headers)
         output[header.name] = decoded
     end
     return output
-end
-
-_is_json_media(media) = media == "application/json" || endswith(media, "+json")
-_is_sequential_json_media(media) = media in (
-    "application/jsonl",
-    "application/x-ndjson",
-    "application/json-seq",
-    "application/geo+json-seq",
-) || endswith(media, "+json-seq")
-
-function _parse_json(text, context)
-    source = text isa AbstractString ? String(text) : String(copy(text))
-    isvalid(source) || throw(DecodeError("invalid UTF-8 while $context"))
-    try
-        return JSON.parse(source; duplicate_keys = :error)
-    catch error
-        throw(DecodeError("invalid JSON while $context: $(sprint(showerror, error))"))
-    end
-end
-
-function _decode_sequential_json(body, media)
-    records = Any[]
-    if media == "application/json-seq" || endswith(media, "+json-seq")
-        for chunk in split(String(body), Char(0x1e))
-            text = strip(chunk)
-            isempty(text) || push!(records, _parse_json(text, "decoding a JSON sequence"))
-        end
-    else
-        for line in eachline(IOBuffer(body))
-            text = strip(line)
-            isempty(text) || push!(records, _parse_json(text, "decoding JSON lines"))
-        end
-    end
-    return records
 end
 
 function _decode_body(client::Client, type, content_type, body, schema)
@@ -1724,16 +1739,6 @@ function _multipart_body(
     return take!(io), String(media_type) * "; boundary=" * boundary
 end
 
-function _encode_sequential_json(value, media)
-    encoded = _encode(value)
-    encoded isa AbstractVector || encoded isa Tuple || throw(
-        ArgumentError("sequential JSON request bodies must be arrays or tuples"),
-    )
-    if media == "application/json-seq" || endswith(media, "+json-seq")
-        return join((string(Char(0x1e), JSON.json(item), '\n') for item in encoded))
-    end
-    return join((JSON.json(item) * "\n" for item in encoded))
-end
 
 function _encode_body(
     client,
@@ -2153,7 +2158,7 @@ function _security_type(scheme::NormalizedSecurityScheme)
     return scheme.type
 end
 
-function _emit_security(io::IO, plan::ClientPlan)
+function _emit_security(io::IO, plan::GenerationPlan)
     println(io, "const _SECURITY_SCHEMES = Dict{String,NamedTuple}(")
     for scheme in sort(collect(plan.api.security_schemes); by = item -> item.name)
         print(io, "    ", repr(scheme.name), " => (")
@@ -2165,7 +2170,7 @@ function _emit_security(io::IO, plan::ClientPlan)
     println(io, ")\n")
 end
 
-function _model_indices(plan::ClientPlan)
+function _model_indices(plan::GenerationPlan)
     return Dict(model.name => index for (index, model) in enumerate(plan.models))
 end
 
@@ -2179,7 +2184,7 @@ function _model_references(type::String, names)
     return output
 end
 
-function _cyclic_aliases(plan::ClientPlan)
+function _cyclic_aliases(plan::GenerationPlan)
     aliases = Set(model.name for model in plan.models if model.kind === :alias)
     edges = Dict(
         model.name => _model_references(something(model.alias, ""), aliases) for
@@ -2210,7 +2215,7 @@ function _model_types(model::ModelPlan, wrapped_aliases)
     return String[]
 end
 
-function _forward_abstracts(plan::ClientPlan, wrapped_aliases)
+function _forward_abstracts(plan::GenerationPlan, wrapped_aliases)
     indices = _model_indices(plan)
     concrete = Set(model.name for model in plan.models if model.kind !== :alias)
     union!(concrete, wrapped_aliases)
@@ -2547,7 +2552,7 @@ function _source_schema_node(registry, node::Resources.NodeId)
     return Resources.NodeId(source_resource.id, pointer)
 end
 
-function _directional_required_rules(plan::ClientPlan, template)
+function _directional_required_rules(plan::GenerationPlan, template)
     registry = template.registry
     directional_cache = Dict{Tuple{Resources.NodeId,String},Bool}()
     rules = Dict{
@@ -2604,7 +2609,7 @@ function _directional_required_rules(plan::ClientPlan, template)
     return output
 end
 
-function _client_schema_handles(plan::ClientPlan)
+function _client_schema_handles(plan::GenerationPlan)
     handles = SchemaHandle[last(pair) for pair in plan.api.schemas]
     for operation in plan.api.operations
         operation.direction === :request || continue
@@ -2640,7 +2645,7 @@ function _client_schema_handles(plan::ClientPlan)
     return handles
 end
 
-function _emit_schema_data(io::IO, plan::ClientPlan)
+function _emit_schema_data(io::IO, plan::GenerationPlan)
     handles = _client_schema_handles(plan)
     graph = isempty(handles) ? nothing : first(handles).workspace.compiled
     if graph === nothing
@@ -2768,6 +2773,7 @@ function _parameter_descriptor(parameter::ParameterPlan)
            ", style = " * repr(something(parameter.style, :none)) *
            ", explode = " * (parameter.explode === true ? "true" : "false") *
            ", allow_reserved = " * (parameter.allow_reserved ? "true" : "false") *
+           ", shape = " * repr(_schema_shape(_parameter_schema(parameter.parameter))) *
            ", schema = " *
            _schema_descriptor(_schema_node(_parameter_schema(parameter.parameter))) *
            ", content = " * content *
@@ -2872,29 +2878,44 @@ function _media_descriptor(media, normalized)
         end
         encoded = "(" * join(encodings, ',') *
                   (length(encodings) == 1 ? "," : "") * ")"
+        # Form and multipart request decoding needs each top-level property's
+        # shape so single-valued exploded arrays still decode as arrays.
+        fields = "()"
+        if base_media_type == "application/x-www-form-urlencoded" ||
+           startswith(base_media_type, "multipart/")
+            field_items = String[
+                "(name = " * repr(field_name) *
+                ", shape = " * repr(_schema_shape(field_view)) * ")" for
+                (field_name, field_view) in sort(collect(properties); by = first)
+            ]
+            fields = "(" * join(field_items, ',') *
+                     (length(field_items) == 1 ? "," : "") * ")"
+        end
         push!(
             items,
             "(" * repr(entry.first) * ", " * entry.second * ", " *
             _schema_descriptor(_schema_node(source.schema)) * ", " * encoded *
-            ")",
+            ", " * fields * ")",
         )
     end
     return "(" * join(items, ',') * (length(items) == 1 ? "," : "") * ")"
 end
 
-function _schema_shape(handle::Union{Nothing,SchemaHandle})
-    handle === nothing && return :scalar
-    view = _resolved_view(SchemaView(handle))
-    _is_object_schema(view) && return :object
-    types = _schema_types(view.value)
+function _schema_shape(view::SchemaView)
+    resolved = _resolved_view(view)
+    _is_object_schema(resolved) && return :object
+    types = _schema_types(resolved.value)
     (
         "array" in types ||
-        view.value isa AbstractDict &&
-        (haskey(view.value, "items") || haskey(view.value, "prefixItems"))
+        resolved.value isa AbstractDict &&
+        (haskey(resolved.value, "items") || haskey(resolved.value, "prefixItems"))
     ) &&
         return :array
     return :scalar
 end
+
+_schema_shape(handle::Union{Nothing,SchemaHandle}) =
+    handle === nothing ? :scalar : _schema_shape(SchemaView(handle))
 
 function _header_descriptor(header::NormalizedHeader, type::String)
     schema = header.schema !== nothing ? header.schema :
@@ -3106,6 +3127,7 @@ function _generate(plan::ClientPlan)
     _emit_security(io, plan)
     _emit_schema_data(io, plan)
     default_server = _default_server(plan.api)
+    print(io, GENERATED_RUNTIME_COMMON, '\n')
     print(io, GENERATED_RUNTIME, '\n')
     println(io, "const _DEFAULT_SERVER = ", repr(default_server))
     println(io, "const SERVER = Ref{String}(_DEFAULT_SERVER)")

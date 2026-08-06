@@ -12,6 +12,12 @@ Two pieces:
    running app) into a deterministic single-file Julia client. Generated
    modules use HTTP.jl for transport and JSON.jl plus OpenAPI's provisional
    schema engine for typed, validated request and response handling.
+3. **Server generation** — [`OpenAPI.server`](@ref) turns the same documents
+   into a deterministic single-file server-stub module: typed request decoding,
+   response validation and encoding, and a `register!(router, impl)` entry
+   point that mounts handler functions you implement onto a framework router
+   (`HTTP.Router` through the HTTP extension; other frameworks through the
+   [`OpenAPI.server_source`](@ref) seam).
 """
 module OpenAPI
 
@@ -35,6 +41,7 @@ include("planning.jl")
 include("read.jl")
 include("runtime.jl")
 include("client.jl")
+include("servergen.jl")
 
 # ── extension seams ─────────────────────────────────────────────────────────
 

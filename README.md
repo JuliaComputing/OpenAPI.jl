@@ -75,6 +75,78 @@ headers, decoded documented headers, and typed body. A non-2xx response throws
 `ApiError`. The error keeps the raw body even when documented error decoding
 fails.
 
+## Generate a server
+
+The same document generates a server-stub module. The document stays the
+source of truth: generate the client and the server from one specification and
+implement one handler function per operation.
+
+```julia
+using OpenAPI, HTTP
+
+OpenAPI.server(
+    "https://example.com/openapi.yaml";
+    framework = :HTTP,
+    name = "ExampleServer",
+    path = "ExampleServer.jl",
+)
+```
+
+`framework = :HTTP` (the default, available when HTTP.jl is loaded) targets
+`HTTP.Router`. Server framework packages add their own emitters through the
+`OpenAPI.server_source` extension seam — loading Servo.jl enables
+`framework = :Servo`. `OpenAPI.serverplan` is the staged sibling of
+`OpenAPI.plan` and rejects documents whose requests cannot be decoded
+faithfully (for example `multipart/mixed` request bodies, or two exploded
+object query parameters whose wire names cannot be told apart).
+
+The generated module header lists every handler signature the implementation
+must define. Handler functions receive the raw request first, then typed path
+parameters in template order, then a required body; optional parameters arrive
+as keyword arguments only when the request supplied them.
+
+```julia
+include("ExampleServer.jl")
+
+module Handlers
+
+using HTTP
+
+# GET /widgets/{id} -> get_widget(request, id::Int64; verbose = ABSENT)
+function get_widget(request, id; verbose = false)
+    return lookup_widget(id; verbose)      # encoded, validated, 200
+end
+
+# DELETE /widgets/{id} -> nothing becomes a 204
+delete_widget(request, id) = nothing
+
+# Return an HTTP.Response directly for anything custom.
+create_widget(request, body) = HTTP.Response(409, "already exists")
+
+end
+
+router = HTTP.Router()
+ExampleServer.register!(router, Handlers; path_prefix = "/v1")
+server = HTTP.serve!(router, "127.0.0.1", 8080)
+```
+
+`register!(router, impl; path_prefix, middleware)` mounts every documented
+operation and fails eagerly, listing the expected signatures, when `impl` is
+missing any handler. `middleware` wraps each operation handler
+(`middleware(handler) -> handler`). `register` is kept as an alias, and the
+handler contract — implementation module second, typed positional parameters,
+typed-value-or-`HTTP.Response` returns — matches the shape OpenAPI.jl 0.2.x
+users generated with `-g julia-server`.
+
+Request decoding mirrors client encoding: parameter styles (`simple`, `label`,
+`matrix`, `form`, `spaceDelimited`, `pipeDelimited`, `deepObject`), header and
+cookie parameters, JSON, `application/x-www-form-urlencoded`, and
+`multipart/form-data` request bodies, with request-direction schema validation
+before handlers run. Decoding failures produce structured JSON `400` (or `415`
+for undocumented media types) responses without invoking the handler. Response
+values are validated against the output-direction schema and encoded from the
+first documented success response.
+
 ## Pipeline and diagnostics
 
 The public stages are separate so applications can inspect or cache them.

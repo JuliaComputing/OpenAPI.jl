@@ -71,6 +71,19 @@ struct ClientPlan
     uses_base64::Bool
 end
 
+struct ServerPlan
+    api::NormalizedAPI
+    module_name::String
+    models::Tuple{Vararg{ModelPlan}}
+    operations::Tuple{Vararg{OperationPlan}}
+    diagnostics::Tuple{Vararg{Diagnostic}}
+    uses_dates::Bool
+    uses_uuids::Bool
+    uses_base64::Bool
+end
+
+const GenerationPlan = Union{ClientPlan,ServerPlan}
+
 struct SchemaView
     value::Any
     node::Resources.NodeId
@@ -1503,19 +1516,8 @@ function _check_generation_support!(context::PlanningContext, strict::Bool)
     return
 end
 
-"""Build the deterministic Julia model and operation plan used by code generation."""
-function plan(
-    source;
-    name::AbstractString = "ApiClient",
-    strict::Bool = true,
-    max_diagnostics::Integer = 1_000,
-    kwargs...,
-)
-    api = source isa NormalizedAPI ? source :
-          normalize(source; strict, max_diagnostics, kwargs...)
-    bag = DiagnosticBag(max_diagnostics)
-    context = PlanningContext(api, bag)
-    _check_generation_support!(context, strict)
+function _plan_components!(context::PlanningContext)
+    api = context.api
     # Reserve stable component names before recursive planning starts.
     for (component_name, handle) in sort(collect(api.schemas); by = first)
         view = SchemaView(handle)
@@ -1536,9 +1538,31 @@ function plan(
     for operation in ordered
         push!(operations, _plan_operation!(context, operation, used_functions))
     end
-    diagnostics = Diagnostic[api.diagnostics...]
-    append!(diagnostics, bag.diagnostics)
-    _throw_on_errors("Cannot plan Julia client", diagnostics)
+    return operations
+end
+
+function _finish_diagnostics(context::PlanningContext, summary::AbstractString)
+    diagnostics = Diagnostic[context.api.diagnostics...]
+    append!(diagnostics, context.bag.diagnostics)
+    _throw_on_errors(summary, diagnostics)
+    return Tuple(diagnostics)
+end
+
+"""Build the deterministic Julia model and operation plan used by code generation."""
+function plan(
+    source;
+    name::AbstractString = "ApiClient",
+    strict::Bool = true,
+    max_diagnostics::Integer = 1_000,
+    kwargs...,
+)
+    api = source isa NormalizedAPI ? source :
+          normalize(source; strict, max_diagnostics, kwargs...)
+    bag = DiagnosticBag(max_diagnostics)
+    context = PlanningContext(api, bag)
+    _check_generation_support!(context, strict)
+    operations = _plan_components!(context)
+    diagnostics = _finish_diagnostics(context, "Cannot plan Julia client")
     # Recursive planning emits dependencies before parents. Sort only aliases and
     # enums that do not depend on declaration order; object order stays topological.
     return ClientPlan(
@@ -1546,7 +1570,85 @@ function plan(
         _type_identifier(name),
         Tuple(context.models),
         Tuple(operations),
-        Tuple(diagnostics),
+        diagnostics,
+        context.uses_dates,
+        context.uses_uuids,
+        context.uses_base64,
+    )
+end
+
+function _check_server_generation_support!(context::PlanningContext, strict::Bool)
+    for operation in context.api.operations
+        operation.direction === :request || continue
+        # A form-style exploded object query or cookie parameter consumes
+        # arbitrary wire names. One such parameter per location decodes from the
+        # pairs no other declared parameter claimed; two or more are ambiguous.
+        for location in (:query, :cookie)
+            exploded = NormalizedParameter[
+                parameter for parameter in operation.parameters
+                if parameter.location === location &&
+                   parameter.style === :form &&
+                   parameter.explode === true &&
+                   _schema_shape(_parameter_schema(parameter)) === :object
+            ]
+            length(exploded) > 1 && _error!(
+                context.bag,
+                :ambiguous_exploded_object_parameters,
+                "multiple form-style exploded object $location parameters cannot be decoded unambiguously",
+                SourceLocation(
+                    exploded[2].provenance.node.resource,
+                    exploded[2].provenance.node.pointer,
+                ),
+            )
+        end
+        operation.request_body === nothing && continue
+        for media in operation.request_body.content
+            base = _planning_content_base(media.content_type)
+            if startswith(base, "multipart/") && base != "multipart/form-data"
+                _error!(
+                    context.bag,
+                    :unsupported_multipart_server_generation,
+                    "server generation only decodes multipart/form-data request bodies",
+                    SourceLocation(
+                        media.provenance.node.resource,
+                        media.provenance.node.pointer,
+                    ),
+                )
+            end
+        end
+    end
+    return
+end
+
+"""
+    OpenAPI.serverplan(source; name="ApiServer", strict=true, options...) -> ServerPlan
+
+Build the deterministic Julia model and operation plan used by server stub
+generation. Accepts the same sources and options as [`OpenAPI.plan`](@ref) and
+additionally rejects documents whose requests cannot be decoded faithfully on
+the server side.
+"""
+function serverplan(
+    source;
+    name::AbstractString = "ApiServer",
+    strict::Bool = true,
+    max_diagnostics::Integer = 1_000,
+    kwargs...,
+)
+    api = source isa NormalizedAPI ? source :
+          normalize(source; strict, max_diagnostics, kwargs...)
+    bag = DiagnosticBag(max_diagnostics)
+    context = PlanningContext(api, bag)
+    _check_generation_support!(context, strict)
+    _check_server_generation_support!(context, strict)
+    operations = _plan_components!(context)
+    diagnostics = _finish_diagnostics(context, "Cannot plan Julia server")
+    return ServerPlan(
+        api,
+        _type_identifier(name),
+        Tuple(context.models),
+        Tuple(operations),
+        diagnostics,
         context.uses_dates,
         context.uses_uuids,
         context.uses_base64,
