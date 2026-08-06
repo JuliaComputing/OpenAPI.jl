@@ -1,27 +1,56 @@
+"""
+OpenAPI.jl: build OpenAPI documents from declared endpoints, and generate Julia
+clients from OpenAPI documents.
+
+Two pieces:
+
+1. **Document generation** — describe endpoints as [`OpenAPI.Operation`](@ref)s
+   and get a valid OpenAPI 3.2.0 document. Framework packages can add router
+   adapters through the `operations` and `register!` extension seams.
+2. **Client generation** — [`OpenAPI.client`](@ref) turns an OpenAPI 3.0, 3.1,
+   or 3.2 document (built in-process, read from JSON or YAML, or fetched from a
+   running app) into a deterministic single-file Julia client. Generated
+   modules use HTTP.jl for transport and JSON.jl plus OpenAPI's provisional
+   schema engine for typed, validated request and response handling.
+"""
 module OpenAPI
 
-using HTTP, JSON, URIs, Dates, TimeZones, Base64
-using Downloads
-using p7zip_jll
+using Dates, JSON, SHA
+import YAML
 
-import Base: getindex, keys, length, iterate, hasproperty
-import JSON: lower
+const OPENAPI_VERSION = "3.2.0"
 
+include("schema_engine/SchemaEngine.jl")
 
-const _JSON_PARSE_ISROOT_SUPPORTED = try; JSON.parse("1 "; isroot=false); true; catch; false; end
+public SchemaEngine
 
-if _JSON_PARSE_ISROOT_SUPPORTED
-    _json_parse(io_or_str) = JSON.parse(io_or_str; isroot=false)
-else
-    _json_parse(io_or_str) = JSON.parse(io_or_str)
-end
-
-include("commontypes.jl")
-include("datetime.jl")
-include("val.jl")
-include("json.jl")
+include("schemas.jl")
+include("document.jl")
+include("diagnostics.jl")
+include("source_locations.jl")
+include("loading.jl")
+include("references.jl")
+include("normalize.jl")
+include("planning.jl")
+include("read.jl")
+include("runtime.jl")
 include("client.jl")
-include("server.jl")
-include("tools.jl")
+
+# ── extension seams ─────────────────────────────────────────────────────────
+
+"""
+    OpenAPI.register!(integration; kwargs...)
+
+Extension seam for downstream server frameworks that expose a generated OpenAPI
+document. OpenAPI.jl itself does not depend on a server framework.
+"""
+function register! end
+
+"""Extension seam for converting framework routes to `Vector{Operation}`."""
+function operations end
+
+# implemented by OpenAPIHTTPExt (loaded with the HTTP package)
+function fetchurl end
+function fetchresource end
 
 end # module

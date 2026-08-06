@@ -1,0 +1,5 @@
+[deps]
+HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+JuliaC = "acedd4c2-ced6-4a15-accc-2607eb759ba2"
+OpenAPI = "d5e62ea6-ddf3-4d43-8e4c-ad5e6c8bfd7d"

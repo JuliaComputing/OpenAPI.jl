@@ -1,2 +1,7 @@
-Manifest.toml
-.vscode
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+.DS_Store
+/Manifest.toml
+/Manifest-v*.toml
+/test/Manifest.toml
