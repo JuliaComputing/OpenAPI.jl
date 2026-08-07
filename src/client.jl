@@ -209,8 +209,12 @@ function _decode(::Type{Dates.Time}, value::AbstractString)
     end
 end
 function _decode(::Type{Dates.DateTime}, value::AbstractString)
+    # RFC 3339 requires the offset, but zone-less ISO 8601 date-times are
+    # widespread in deployed APIs (most JSON serializers print naive
+    # timestamps). Accept input liberally: a missing offset means UTC, the
+    # same convention _encode uses when it stamps naive DateTimes with `Z`.
     matched = match(
-        r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:\d{2})$",
+        r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:\d{2})?$",
         value,
     )
     matched === nothing && throw(DecodeError("invalid RFC 3339 date-time $(repr(value))"))
@@ -222,7 +226,7 @@ function _decode(::Type{Dates.DateTime}, value::AbstractString)
             output += Dates.Millisecond(milliseconds)
         end
         zone = matched.captures[3]
-        if zone != "Z"
+        if zone !== nothing && zone != "Z"
             sign = startswith(zone, '+') ? 1 : -1
             hours = parse(Int, zone[2:3])
             minutes = parse(Int, zone[5:6])

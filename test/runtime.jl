@@ -37,6 +37,28 @@
         @test invoke(:_path_parameter, "id", "a/b", :simple, false) == "a%2Fb"
     end
 
+    @testset "date-time decoding accepts RFC 3339 and zone-less ISO 8601" begin
+        decode(value) = invoke(:_decode, Dates.DateTime, value)
+        # canonical RFC 3339 forms
+        @test decode("2026-08-07T15:00:00Z") == Dates.DateTime(2026, 8, 7, 15)
+        @test decode("2026-08-07T15:00:00.076Z") ==
+              Dates.DateTime(2026, 8, 7, 15, 0, 0, 76)
+        @test decode("2026-08-07T15:00:00+02:00") ==
+              Dates.DateTime(2026, 8, 7, 13)
+        @test decode("2026-08-07T15:00:00-04:30") ==
+              Dates.DateTime(2026, 8, 7, 19, 30)
+        # zone-less ISO 8601, as most JSON serializers print naive
+        # timestamps: interpreted as UTC, mirroring _encode's convention
+        @test decode("2026-08-07T15:00:00") == Dates.DateTime(2026, 8, 7, 15)
+        @test decode("2026-08-07T15:00:00.076") ==
+              Dates.DateTime(2026, 8, 7, 15, 0, 0, 76)
+        # still not anything-goes
+        DecodeError = Base.invokelatest(getfield, C, :DecodeError)
+        @test_throws DecodeError decode("2026-08-07")
+        @test_throws DecodeError decode("2026-08-07T15:00:00+02")
+        @test_throws DecodeError decode("garbage")
+    end
+
     @testset "query, header, and cookie styles" begin
         @test invoke(:_query_parameter, "q", ["a", "b"], :form, false, false) ==
               [("q", "a,b", true)]
