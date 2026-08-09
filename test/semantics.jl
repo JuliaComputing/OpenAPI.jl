@@ -235,7 +235,7 @@ end
                                 "description" => "media",
                                 "content" => OpenAPI.obj(
                                     "application/json" => OpenAPI.obj(),
-                                    "Application/JSON; charset=utf-8" => OpenAPI.obj(),
+                                    "Application/JSON" => OpenAPI.obj(),
                                     "not a media type" => OpenAPI.obj(),
                                 ),
                             ),
@@ -248,6 +248,34 @@ end
         media_codes = Set(diagnostic.code for diagnostic in media_error.value.diagnostics)
         @test :duplicate_media_type in media_codes
         @test :invalid_media_type in media_codes
+
+        # Content keys differing only in parameters are distinct entries: the
+        # Kubernetes OpenAPI v3 documents pair `application/json` with
+        # `application/json;stream=watch` on every list operation.
+        parameterized = minimal_openapi(
+            "3.1.1",
+            OpenAPI.obj(
+                "/media" => OpenAPI.obj(
+                    "get" => semantic_operation(
+                        "media";
+                        responses = OpenAPI.obj(
+                            "200" => OpenAPI.obj(
+                                "description" => "media",
+                                "content" => OpenAPI.obj(
+                                    "application/json" => OpenAPI.obj(),
+                                    "application/json;stream=watch" => OpenAPI.obj(),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        normalized_parameterized = OpenAPI.normalize(parameterized)
+        parameterized_response =
+            only(only(normalized_parameterized.operations).responses)
+        @test [media.content_type for media in parameterized_response.content] ==
+              ["application/json", "application/json;stream=watch"]
     end
 
     @testset "planning rejects incompatible styles and encodings" begin

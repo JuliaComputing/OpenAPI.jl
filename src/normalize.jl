@@ -1012,9 +1012,10 @@ function _normalize_content!(context::NormalizationContext, value, node)
             "content key $(repr(content_type)) is not a valid media type or media range",
             itemnode,
         )
-        normalized_content_type = lowercase(
-            strip(first(split(String(content_type), ';'; limit = 2))),
-        )
+        # Keys differing only in parameters are distinct entries — deployed
+        # specs use them (Kubernetes documents `application/json` next to
+        # `application/json;stream=watch`) — so compare the whole key.
+        normalized_content_type = lowercase(strip(String(content_type)))
         normalized_content_type in seen && _reference_error!(
             context.resolver,
             :duplicate_media_type,
