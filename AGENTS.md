@@ -80,6 +80,16 @@ The main files are:
   server planner additionally rejects non-form-data `multipart/*` request
   bodies and operations with more than one exploded object query or cookie
   parameter.
+- Generation-time strictness does not extend to runtime tolerance of deployed
+  servers on success paths. Deliberately lenient client runtime behavior:
+  undocumented `2XX` statuses return `nothing` or raw bytes instead of
+  throwing, and a missing — or unambiguously misreported — response
+  Content-Type decodes by status alone. `UnexpectedContentType` is reserved
+  for genuinely ambiguous multi-media responses.
+- Response streaming is a runtime feature (`stream_to::Channel` on every
+  generated operation, over `HTTP.open`), not an `itemSchema` planning
+  feature. Bodies split per media type: consecutive JSON documents, JSON
+  lines, RFC 7464 records, text lines, or raw chunks.
 
 ## Public types and functions
 

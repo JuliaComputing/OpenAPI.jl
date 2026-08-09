@@ -93,6 +93,22 @@ end
             return HTTP.Response(200, ["Content-Type" => "text/plain"], "surprise")
         elseif startswith(path, "/wrong-content")
             return HTTP.Response(200, ["Content-Type" => "text/html"], "<p>wrong</p>")
+        elseif startswith(path, "/sloppy-content")
+            return HTTP.Response(200, ["Content-Type" => "text/plain"], """{"ok":true}""")
+        elseif startswith(path, "/ambiguous-content")
+            return HTTP.Response(200, ["Content-Type" => "application/xml"], "<x/>")
+        elseif startswith(path, "/no-content-type")
+            return HTTP.Response(200, Pair{String,String}[], """{"ok":true}""")
+        elseif startswith(path, "/undocumented/204")
+            return HTTP.Response(204)
+        elseif startswith(path, "/undocumented/201")
+            return HTTP.Response(
+                201,
+                ["Content-Type" => "application/json"],
+                """{"extra":true}""",
+            )
+        elseif startswith(path, "/undocumented/404")
+            return HTTP.Response(404, ["Content-Type" => "text/plain"], "missing")
         elseif startswith(path, "/bad-text")
             return HTTP.Response(
                 200,
@@ -190,6 +206,15 @@ end
             "properties" => OpenAPI.obj(
                 "kind" => OpenAPI.obj("const" => "range"),
                 "queued" => OpenAPI.obj("type" => "boolean"),
+            ),
+            "additionalProperties" => false,
+        )
+        event_schema = OpenAPI.obj(
+            "type" => "object",
+            "required" => ["kind", "seq"],
+            "properties" => OpenAPI.obj(
+                "kind" => string_schema,
+                "seq" => OpenAPI.obj("type" => "integer"),
             ),
             "additionalProperties" => false,
         )
@@ -439,6 +464,55 @@ end
                     ),
                 ),
             ),
+            "/sloppy-content" => OpenAPI.obj(
+                "get" => OpenAPI.obj(
+                    "operationId" => "sloppyContent",
+                    "responses" => OpenAPI.obj(
+                        "200" => runtime_response("application/json", OpenAPI.obj()),
+                    ),
+                ),
+            ),
+            "/ambiguous-content" => OpenAPI.obj(
+                "get" => OpenAPI.obj(
+                    "operationId" => "ambiguousContent",
+                    "responses" => OpenAPI.obj(
+                        "200" => OpenAPI.obj(
+                            "description" => "two media types",
+                            "content" => OpenAPI.obj(
+                                "application/json" => OpenAPI.obj(
+                                    "schema" => OpenAPI.obj(),
+                                ),
+                                "text/plain" => OpenAPI.obj(
+                                    "schema" => string_schema,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            "/no-content-type" => OpenAPI.obj(
+                "get" => OpenAPI.obj(
+                    "operationId" => "missingContentType",
+                    "responses" => OpenAPI.obj(
+                        "200" => runtime_response("application/json", OpenAPI.obj()),
+                    ),
+                ),
+            ),
+            "/undocumented/{code}" => OpenAPI.obj(
+                "get" => OpenAPI.obj(
+                    "operationId" => "undocumentedStatus",
+                    "parameters" => Any[
+                        runtime_parameter(
+                            "code",
+                            "path",
+                            OpenAPI.obj("type" => "integer"),
+                        ),
+                    ],
+                    "responses" => OpenAPI.obj(
+                        "200" => runtime_response("application/json", OpenAPI.obj()),
+                    ),
+                ),
+            ),
             "/bad-text" => OpenAPI.obj(
                 "get" => OpenAPI.obj(
                     "operationId" => "badText",
@@ -458,6 +532,74 @@ end
                                 "items" => OpenAPI.obj("type" => "integer"),
                             ),
                         ),
+                    ),
+                ),
+            ),
+            "/stream/watch" => OpenAPI.obj(
+                "get" => OpenAPI.obj(
+                    "operationId" => "watchStream",
+                    "responses" => OpenAPI.obj(
+                        "200" => runtime_response("application/json", event_schema),
+                    ),
+                ),
+            ),
+            "/stream/logs" => OpenAPI.obj(
+                "get" => OpenAPI.obj(
+                    "operationId" => "logStream",
+                    "responses" => OpenAPI.obj(
+                        "200" => runtime_response(
+                            "application/x-ndjson",
+                            OpenAPI.obj(
+                                "type" => "array",
+                                "items" => OpenAPI.obj("type" => "integer"),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            "/stream/seq" => OpenAPI.obj(
+                "get" => OpenAPI.obj(
+                    "operationId" => "seqStream",
+                    "responses" => OpenAPI.obj(
+                        "200" => runtime_response(
+                            "application/json-seq",
+                            OpenAPI.obj(
+                                "type" => "array",
+                                "items" => string_schema,
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            "/stream/truncated" => OpenAPI.obj(
+                "get" => OpenAPI.obj(
+                    "operationId" => "truncatedStream",
+                    "responses" => OpenAPI.obj(
+                        "200" => runtime_response("application/json", event_schema),
+                    ),
+                ),
+            ),
+            "/stream/invalid" => OpenAPI.obj(
+                "get" => OpenAPI.obj(
+                    "operationId" => "invalidStream",
+                    "responses" => OpenAPI.obj(
+                        "200" => runtime_response("application/json", event_schema),
+                    ),
+                ),
+            ),
+            "/stream/missing" => OpenAPI.obj(
+                "get" => OpenAPI.obj(
+                    "operationId" => "missingStream",
+                    "responses" => OpenAPI.obj(
+                        "200" => runtime_response("application/json", event_schema),
+                    ),
+                ),
+            ),
+            "/stream/forever" => OpenAPI.obj(
+                "get" => OpenAPI.obj(
+                    "operationId" => "foreverStream",
+                    "responses" => OpenAPI.obj(
+                        "200" => runtime_response("application/json", event_schema),
                     ),
                 ),
             ),
@@ -787,10 +929,177 @@ end
 
             @test_throws C.UnexpectedBody call(:unexpectedbody; client)
             take_request()
-            @test_throws C.UnexpectedContentType call(:wrongcontent; client)
+            # A misreported Content-Type falls back to the only documented
+            # media type, so the html body fails JSON decoding rather than
+            # content-type selection.
+            @test_throws C.DecodeError call(:wrongcontent; client)
             take_request()
+            sloppy = call(:sloppycontent; client)
+            take_request()
+            @test sloppy["ok"] === true
+            @test_throws C.UnexpectedContentType call(:ambiguouscontent; client)
+            take_request()
+            missing_content_type = call(:missingcontenttype; client)
+            take_request()
+            @test missing_content_type["ok"] === true
             @test_throws C.DecodeError call(:badtext; client)
             take_request()
+
+            @test call(:undocumentedstatus, 204; client) === nothing
+            take_request()
+            undocumented_bytes = call(:undocumentedstatus, 201; client)
+            take_request()
+            @test undocumented_bytes isa Vector{UInt8}
+            @test JSON.parse(String(copy(undocumented_bytes)))["extra"] === true
+            undocumented_error = @test_throws C.ApiError call(
+                :undocumentedstatus,
+                404;
+                client,
+                request_options = (; retry = false),
+            )
+            take_request()
+            @test undocumented_error.value.status == 404
+            @test undocumented_error.value.body == Vector{UInt8}(codeunits("missing"))
+        end
+
+        @testset "streaming responses" begin
+            # A raw chunked HTTP/1.1 server gives the tests exact control over
+            # how response bytes split across the wire.
+            raw_server = Sockets.listen(Sockets.IPv4("127.0.0.1"), 0)
+            raw_port = Sockets.getsockname(raw_server)[2]
+            raw_client = C.Client("http://127.0.0.1:$raw_port")
+            send_chunk = (socket, text) -> begin
+                write(socket, string(ncodeunits(text), base = 16), "\r\n", text, "\r\n")
+                flush(socket)
+            end
+            chunked_head = (media) ->
+                "HTTP/1.1 200 OK\r\nContent-Type: $media\r\nTransfer-Encoding: chunked\r\n\r\n"
+            finish_chunks = (socket) -> begin
+                write(socket, "0\r\n\r\n")
+                flush(socket)
+            end
+            accept_task = @async while isopen(raw_server)
+                socket = try
+                    Sockets.accept(raw_server)
+                catch
+                    break
+                end
+                @async try
+                    request_line = readline(socket)
+                    while !isempty(readline(socket))
+                    end
+                    path = split(request_line, ' ')[2]
+                    if startswith(path, "/stream/watch")
+                        write(socket, chunked_head("application/json"))
+                        flush(socket)
+                        # one item split across two chunks, then two more items
+                        send_chunk(socket, """{"kind":"ADDED",""")
+                        sleep(0.05)
+                        send_chunk(socket, """ "seq":1}\n{"kind":"MODIFIED","seq":2}\n""")
+                        sleep(0.05)
+                        send_chunk(socket, """{"kind":"DELETED","seq":3}""")
+                        finish_chunks(socket)
+                    elseif startswith(path, "/stream/logs")
+                        write(socket, chunked_head("application/x-ndjson"))
+                        flush(socket)
+                        send_chunk(socket, "1\n2\n")
+                        sleep(0.05)
+                        send_chunk(socket, "3")
+                        finish_chunks(socket)
+                    elseif startswith(path, "/stream/seq")
+                        write(socket, chunked_head("application/json-seq"))
+                        flush(socket)
+                        send_chunk(socket, "\x1e\"alpha\"\n\x1e\"be")
+                        sleep(0.05)
+                        send_chunk(socket, "ta\"\n")
+                        finish_chunks(socket)
+                    elseif startswith(path, "/stream/truncated")
+                        write(socket, chunked_head("application/json"))
+                        flush(socket)
+                        send_chunk(socket, """{"kind":"ADDED","seq":1}\n{"kind":"MOD""")
+                        finish_chunks(socket)
+                    elseif startswith(path, "/stream/invalid")
+                        write(socket, chunked_head("application/json"))
+                        flush(socket)
+                        send_chunk(socket, """{"kind":"ADDED","seq":"nope"}""")
+                        finish_chunks(socket)
+                    elseif startswith(path, "/stream/missing")
+                        body = """{"error":"nope"}"""
+                        write(
+                            socket,
+                            "HTTP/1.1 404 Not Found\r\nContent-Type: application/json\r\n" *
+                            "Content-Length: $(ncodeunits(body))\r\n\r\n$body",
+                        )
+                        flush(socket)
+                    elseif startswith(path, "/stream/forever")
+                        write(socket, chunked_head("application/json"))
+                        flush(socket)
+                        for tick in 1:1000
+                            send_chunk(socket, """{"kind":"TICK","seq":$tick}\n""")
+                            sleep(0.02)
+                        end
+                    end
+                    close(socket)
+                catch
+                    close(socket)
+                end
+            end
+            try
+                watch_channel = Channel{Any}(16)
+                watch_info = call(
+                    :watchstream;
+                    client = raw_client,
+                    stream_to = watch_channel,
+                    with_http_info = true,
+                )
+                @test watch_info.status == 200
+                @test watch_info.body === watch_channel
+                watch_items = collect(watch_channel)
+                @test [(item.kind, item.seq) for item in watch_items] ==
+                      [("ADDED", 1), ("MODIFIED", 2), ("DELETED", 3)]
+
+                log_channel = Channel{Any}(16)
+                @test call(:logstream; client = raw_client, stream_to = log_channel) ===
+                      log_channel
+                log_items = collect(log_channel)
+                @test log_items == [1, 2, 3]
+                @test all(item -> item isa Int64, log_items)
+
+                seq_channel = Channel{Any}(16)
+                call(:seqstream; client = raw_client, stream_to = seq_channel)
+                @test collect(seq_channel) == ["alpha", "beta"]
+
+                truncated_channel = Channel{Any}(16)
+                call(:truncatedstream; client = raw_client, stream_to = truncated_channel)
+                first_event = take!(truncated_channel)
+                @test (first_event.kind, first_event.seq) == ("ADDED", 1)
+                @test_throws C.DecodeError take!(truncated_channel)
+
+                invalid_channel = Channel{Any}(16)
+                call(:invalidstream; client = raw_client, stream_to = invalid_channel)
+                @test_throws C.SchemaValidationError take!(invalid_channel)
+
+                missing_channel = Channel{Any}(16)
+                missing_error = @test_throws C.ApiError call(
+                    :missingstream;
+                    client = raw_client,
+                    stream_to = missing_channel,
+                )
+                @test missing_error.value.status == 404
+                @test JSON.parse(String(copy(missing_error.value.body)))["error"] ==
+                      "nope"
+
+                # Closing the channel from the consumer side aborts the
+                # transfer; the call itself already returned at the response
+                # head, so an endless stream does not block anything.
+                forever_channel = Channel{Any}(2)
+                call(:foreverstream; client = raw_client, stream_to = forever_channel)
+                first_tick = take!(forever_channel)
+                @test first_tick.kind == "TICK"
+                close(forever_channel)
+            finally
+                close(raw_server)
+            end
         end
 
         @testset "security OR, AND, roles, and credential types" begin

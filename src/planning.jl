@@ -69,6 +69,7 @@ struct ClientPlan
     uses_dates::Bool
     uses_uuids::Bool
     uses_base64::Bool
+    datetime::Symbol
 end
 
 struct ServerPlan
@@ -80,6 +81,7 @@ struct ServerPlan
     uses_dates::Bool
     uses_uuids::Bool
     uses_base64::Bool
+    datetime::Symbol
 end
 
 const GenerationPlan = Union{ClientPlan,ServerPlan}
@@ -115,6 +117,7 @@ mutable struct PlanningContext
     uses_dates::Bool
     uses_uuids::Bool
     uses_base64::Bool
+    datetime::Symbol
 end
 
 const JULIA_RESERVED_NAMES = Set([
@@ -445,7 +448,11 @@ function _base_component_names(api::NormalizedAPI)
     return output
 end
 
-function PlanningContext(api::NormalizedAPI, bag::DiagnosticBag)
+function PlanningContext(
+    api::NormalizedAPI,
+    bag::DiagnosticBag;
+    datetime::Symbol = :utc,
+)
     return PlanningContext(
         api,
         bag,
@@ -460,7 +467,18 @@ function PlanningContext(api::NormalizedAPI, bag::DiagnosticBag)
         false,
         false,
         false,
+        datetime,
     )
+end
+
+function _validate_datetime_option(datetime::Symbol)
+    datetime in (:utc, :zoned) || throw(
+        ArgumentError(
+            "datetime must be :utc (Dates.DateTime, offsets normalized to UTC) " *
+            "or :zoned (TimeZones.ZonedDateTime, offsets preserved), got $(repr(datetime))",
+        ),
+    )
+    return datetime
 end
 
 function _model_name!(context::PlanningContext, view::SchemaView, suggested, mode)
@@ -587,7 +605,8 @@ function _primitive_type!(
             return "Dates.Date"
         elseif format == "date-time"
             context.uses_dates = true
-            return "Dates.DateTime"
+            return context.datetime === :zoned ? "TimeZones.ZonedDateTime" :
+                   "Dates.DateTime"
         elseif format == "time"
             context.uses_dates = true
             return "Dates.Time"
@@ -1554,12 +1573,14 @@ function plan(
     name::AbstractString = "ApiClient",
     strict::Bool = true,
     max_diagnostics::Integer = 1_000,
+    datetime::Symbol = :utc,
     kwargs...,
 )
+    _validate_datetime_option(datetime)
     api = source isa NormalizedAPI ? source :
           normalize(source; strict, max_diagnostics, kwargs...)
     bag = DiagnosticBag(max_diagnostics)
-    context = PlanningContext(api, bag)
+    context = PlanningContext(api, bag; datetime)
     _check_generation_support!(context, strict)
     operations = _plan_components!(context)
     diagnostics = _finish_diagnostics(context, "Cannot plan Julia client")
@@ -1574,6 +1595,7 @@ function plan(
         context.uses_dates,
         context.uses_uuids,
         context.uses_base64,
+        context.datetime,
     )
 end
 
@@ -1633,12 +1655,14 @@ function serverplan(
     name::AbstractString = "ApiServer",
     strict::Bool = true,
     max_diagnostics::Integer = 1_000,
+    datetime::Symbol = :utc,
     kwargs...,
 )
+    _validate_datetime_option(datetime)
     api = source isa NormalizedAPI ? source :
           normalize(source; strict, max_diagnostics, kwargs...)
     bag = DiagnosticBag(max_diagnostics)
-    context = PlanningContext(api, bag)
+    context = PlanningContext(api, bag; datetime)
     _check_generation_support!(context, strict)
     _check_server_generation_support!(context, strict)
     operations = _plan_components!(context)
@@ -1652,5 +1676,6 @@ function serverplan(
         context.uses_dates,
         context.uses_uuids,
         context.uses_base64,
+        context.datetime,
     )
 end

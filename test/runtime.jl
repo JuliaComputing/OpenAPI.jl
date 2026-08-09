@@ -59,6 +59,107 @@
         @test_throws DecodeError decode("garbage")
     end
 
+    @testset "datetime = :zoned preserves time zone offsets" begin
+        zoned_document = OpenAPI.obj(
+            "openapi" => "3.2.0",
+            "info" => OpenAPI.obj("title" => "Zoned", "version" => "1"),
+            "paths" => OpenAPI.obj(
+                "/event" => OpenAPI.obj(
+                    "get" => OpenAPI.obj(
+                        "operationId" => "getEvent",
+                        "responses" => OpenAPI.obj(
+                            "200" => OpenAPI.obj(
+                                "description" => "event",
+                                "content" => OpenAPI.obj(
+                                    "application/json" => OpenAPI.obj(
+                                        "schema" => OpenAPI.obj(
+                                            "\$ref" => "#/components/schemas/Event",
+                                        ),
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            "components" => OpenAPI.obj(
+                "schemas" => OpenAPI.obj(
+                    "Event" => OpenAPI.obj(
+                        "type" => "object",
+                        "required" => ["at"],
+                        "properties" => OpenAPI.obj(
+                            "at" => OpenAPI.obj(
+                                "type" => "string",
+                                "format" => "date-time",
+                            ),
+                        ),
+                        "additionalProperties" => false,
+                    ),
+                ),
+            ),
+        )
+        @test_throws ArgumentError OpenAPI.client(
+            zoned_document;
+            name = "ZonedUnitClient",
+            datetime = :bogus,
+        )
+        source = OpenAPI.client(
+            zoned_document;
+            name = "ZonedUnitClient",
+            datetime = :zoned,
+        )
+        @test occursin("using TimeZones", source)
+        @test occursin("at::TimeZones.ZonedDateTime", source)
+        zoned_host = Module(:ZonedUnitClientHost)
+        Base.include_string(zoned_host, source, "ZonedUnitClient.jl")
+        Cz = Base.invokelatest(getfield, zoned_host, :ZonedUnitClient)
+        zoned_invoke(function_name, args...; kwargs...) =
+            Base.invokelatest(getfield(Cz, function_name), args...; kwargs...)
+
+        decoded = zoned_invoke(
+            :_decode,
+            TimeZones.ZonedDateTime,
+            "2026-08-07T15:00:00.5+05:30",
+        )
+        @test decoded == TimeZones.ZonedDateTime(
+            Dates.DateTime(2026, 8, 7, 15, 0, 0, 500),
+            TimeZones.tz"UTC+05:30",
+        )
+        @test Dates.value(decoded.zone.offset) == 5 * 3600 + 30 * 60
+        encoded = zoned_invoke(:_encode, decoded)
+        @test encoded == "2026-08-07T15:00:00.500+05:30"
+        @test zoned_invoke(:_decode, TimeZones.ZonedDateTime, encoded) == decoded
+        @test zoned_invoke(:_decode, TimeZones.ZonedDateTime, "2026-08-07T15:00:00Z") ==
+              TimeZones.ZonedDateTime(
+            Dates.DateTime(2026, 8, 7, 15),
+            TimeZones.tz"UTC",
+        )
+        @test zoned_invoke(:_decode, TimeZones.ZonedDateTime, "2026-08-07T15:00:00") ==
+              TimeZones.ZonedDateTime(
+            Dates.DateTime(2026, 8, 7, 15),
+            TimeZones.tz"UTC",
+        )
+        ZonedDecodeError = Base.invokelatest(getfield, Cz, :DecodeError)
+        @test_throws ZonedDecodeError zoned_invoke(
+            :_decode,
+            TimeZones.ZonedDateTime,
+            "2026-08-07T15:00:00+02",
+        )
+
+        event = zoned_invoke(
+            :_decode,
+            Base.invokelatest(getfield, Cz, :EventModel),
+            JSON.parse("""{"at":"2026-08-07T15:00:00-04:00"}"""),
+        )
+        @test Dates.value(event.at.zone.offset) == -4 * 3600
+        @test zoned_invoke(:_encode, event)["at"] == "2026-08-07T15:00:00.000-04:00"
+
+        # the default mapping stays plain, trim-friendly Dates.DateTime
+        default_source = OpenAPI.client(zoned_document; name = "ZonedUnitClient")
+        @test !occursin("ZonedDateTime", default_source)
+        @test occursin("at::Dates.DateTime", default_source)
+    end
+
     @testset "query, header, and cookie styles" begin
         @test invoke(:_query_parameter, "q", ["a", "b"], :form, false, false) ==
               [("q", "a,b", true)]

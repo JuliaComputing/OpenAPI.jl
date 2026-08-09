@@ -776,10 +776,12 @@ function server_module_source(
     end
     println(io, "module ", plan.module_name, "\n")
     println(io, imports)
+    plan.datetime === :zoned && println(io, "using TimeZones")
     println(io, "const SchemaEngine = OpenAPI.SchemaEngine\n")
     _emit_security(io, plan)
     _emit_schema_data(io, plan)
     print(io, GENERATED_RUNTIME_COMMON, '\n')
+    plan.datetime === :zoned && print(io, GENERATED_ZONED_RUNTIME, '\n')
     print(io, GENERATED_RUNTIME_SERVER, '\n')
     indices = _model_indices(plan)
     wrapped_aliases = _cyclic_aliases(plan)

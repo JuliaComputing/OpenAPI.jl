@@ -1,5 +1,5 @@
 using Test, OpenAPI, JSON, Dates
-import Downloads, HTTP
+import Downloads, HTTP, Sockets, TimeZones
 
 const SchemaEngine = OpenAPI.SchemaEngine
 

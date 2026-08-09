@@ -576,6 +576,42 @@ function _encode_sequential_json(value, media)
 end
 """
 
+# Emitted only for `datetime = :zoned` plans, directly after
+# GENERATED_RUNTIME_COMMON, in both generated clients and servers.
+const GENERATED_ZONED_RUNTIME = raw"""
+function _decode(::Type{TimeZones.ZonedDateTime}, value::AbstractString)
+    matched = match(
+        r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:\d{2})?$",
+        value,
+    )
+    matched === nothing && throw(DecodeError("invalid RFC 3339 date-time $(repr(value))"))
+    try
+        clock = Dates.DateTime(matched.captures[1])
+        fraction = matched.captures[2]
+        if fraction !== nothing
+            clock += Dates.Millisecond(
+                parse(Int, rpad(first(fraction, min(3, length(fraction))), 3, '0')),
+            )
+        end
+        zone = matched.captures[3]
+        timezone = if zone === nothing || zone == "Z"
+            TimeZones.tz"UTC"
+        else
+            sign = startswith(zone, '+') ? 1 : -1
+            hours = parse(Int, zone[2:3])
+            minutes = parse(Int, zone[5:6])
+            TimeZones.FixedTimeZone(zone, sign * (3600 * hours + 60 * minutes))
+        end
+        return TimeZones.ZonedDateTime(clock, timezone)
+    catch error
+        error isa DecodeError && rethrow()
+        throw(DecodeError("invalid RFC 3339 date-time: $(sprint(showerror, error))"))
+    end
+end
+_encode(value::TimeZones.ZonedDateTime) =
+    Dates.format(value, TimeZones.ISOZonedDateTimeFormat)
+"""
+
 const GENERATED_RUNTIME = raw"""
 struct ApiError <: Exception
     operation_id::String
@@ -1853,6 +1889,7 @@ function _request(
     request_headers = Pair{String,String}[],
     request_options::NamedTuple = NamedTuple(),
     multipart_headers = NamedTuple(),
+    stream_to::Union{Nothing,Channel} = nothing,
 )
     path = operation.path
     query = Tuple{String,String,Bool,Bool}[]
@@ -1967,6 +2004,16 @@ function _request(
     selected_accept === nothing || isempty(selected_accept) ||
         _set_header!(headers, "Accept", selected_accept)
 
+    stream_to === nothing || return _stream_request(
+        client,
+        operation,
+        url,
+        headers,
+        payload,
+        options,
+        stream_to,
+        with_http_info,
+    )
     options = merge(options, (body = payload, status_exception = false))
     response = HTTP.request(
         operation.method,
@@ -1977,9 +2024,48 @@ function _request(
     response_headers = Pair{String,String}[
         String(key) => String(value) for (key, value) in response.headers
     ]
-    bytes = Vector{UInt8}(response.body)
-    descriptor = _select_response(operation.responses, response.status)
-    received = HTTP.header(response, "Content-Type", "")
+    return _finish_buffered_response(
+        client,
+        operation,
+        Int(response.status),
+        response_headers,
+        HTTP.header(response, "Content-Type", ""),
+        Vector{UInt8}(response.body),
+        with_http_info,
+    )
+end
+
+# Deployed servers routinely omit or misreport Content-Type, so decode by
+# status alone unless several documented media types make the choice ambiguous.
+# Returns the selected media entry and the media type to decode the body as.
+function _selected_media_entry(operation_id, status, descriptor, received)
+    selected = isempty(received) ? nothing :
+               _select_media(descriptor.media, received)
+    selected === nothing || return selected, String(received)
+    if isempty(received) || length(descriptor.media) == 1
+        entry = first(descriptor.media)
+        return entry, entry[1]
+    end
+    throw(
+        UnexpectedContentType(
+            operation_id,
+            status,
+            received,
+            Tuple(first.(descriptor.media)),
+        ),
+    )
+end
+
+function _finish_buffered_response(
+    client::Client,
+    operation,
+    status::Int,
+    response_headers,
+    received,
+    bytes::Vector{UInt8},
+    with_http_info::Bool,
+)
+    descriptor = _select_response(operation.responses, status)
     decoded = nothing
     decoded_headers = Dict{String,Any}()
     decode_error = nothing
@@ -1987,22 +2073,13 @@ function _request(
         decoded_headers = _decode_response_headers(client, descriptor, response_headers)
         if descriptor !== nothing
             if isempty(descriptor.media)
-                if !isempty(bytes) && 200 <= response.status < 300
-                    throw(UnexpectedBody(operation.id, response.status, length(bytes)))
+                if !isempty(bytes) && 200 <= status < 300
+                    throw(UnexpectedBody(operation.id, status, length(bytes)))
                 end
                 decoded = nothing
             else
-                selected = isempty(received) && isempty(bytes) ? first(descriptor.media) :
-                           _select_media(descriptor.media, received)
-                selected === nothing && throw(
-                    UnexpectedContentType(
-                        operation.id,
-                        response.status,
-                        received,
-                        Tuple(first.(descriptor.media)),
-                    ),
-                )
-                actual_media = isempty(received) ? selected[1] : received
+                selected, actual_media =
+                    _selected_media_entry(operation.id, status, descriptor, received)
                 decoded = _decode_body(
                     client,
                     selected[2],
@@ -2011,40 +2088,318 @@ function _request(
                     selected[3],
                 )
             end
-        elseif isempty(operation.responses)
+        else
+            # The response status is not documented. Specs regularly leave
+            # data-less statuses (204, redirects) out, so a successful call
+            # must not fail here: surface an empty body as `nothing` and any
+            # payload as raw bytes.
             decoded = isempty(bytes) ? nothing : copy(bytes)
         end
     catch error
-        200 <= response.status < 300 && rethrow()
+        200 <= status < 300 && rethrow()
         decode_error = error
     end
-    if !(200 <= response.status < 300)
-        throw(
-            ApiError(
-                operation.id,
-                response.status,
-                response_headers,
-                decoded_headers,
-                bytes,
-                decoded,
-                decode_error,
-            ),
-        )
-    end
-    descriptor === nothing && !isempty(operation.responses) && throw(
+    200 <= status < 300 || throw(
         ApiError(
             operation.id,
-            response.status,
+            status,
             response_headers,
             decoded_headers,
             bytes,
-            nothing,
-            nothing,
-        )
+            decoded,
+            decode_error,
+        ),
     )
     return with_http_info ?
-           ApiResponse(response.status, response_headers, decoded_headers, decoded) :
+           ApiResponse(status, response_headers, decoded_headers, decoded) :
            decoded
+end
+
+# ── streaming responses ──────────────────────────────────────────────────────
+#
+# Passing `stream_to::Channel` to an operation delivers the response body
+# incrementally: the call returns as soon as the response head arrives, a
+# background task splits the body into items, decodes each one, and `put!`s it
+# on the channel. The channel is closed when the response ends, or closed with
+# the error when splitting or decoding fails. Closing the channel from the
+# consumer side aborts the transfer.
+
+# How the body is split into items, and what each item decodes to:
+# `:json` re-uses the documented response schema per item (concatenated or
+# newline-separated JSON documents, e.g. watch-style endpoints); sequential
+# JSON media types split records and decode each to the documented array's
+# element type; `text/*` yields lines; anything else yields raw byte chunks.
+function _stream_plan(media, type, schema)
+    if _is_sequential_json_media(media)
+        item_type = type <: AbstractVector && type !== Vector{UInt8} ?
+                    eltype(type) : type
+        kind = media == "application/json-seq" || endswith(media, "+json-seq") ?
+               :jsonseq : :jsonlines
+        # The documented schema describes the whole sequence, not one record,
+        # so per-item validation is skipped.
+        return kind, item_type, nothing
+    elseif _is_json_media(media)
+        return :json, type, schema
+    elseif startswith(media, "text/") || type === String
+        return :text, type, nothing
+    end
+    return :bytes, Vector{UInt8}, nothing
+end
+
+_stream_whitespace(byte::UInt8) =
+    byte == 0x20 || byte == 0x09 || byte == 0x0d || byte == 0x0a
+
+function _next_stream_line!(buffer::Vector{UInt8}, final::Bool)
+    while !isempty(buffer)
+        index = findfirst(==(0x0a), buffer)
+        if index === nothing
+            final || return nothing
+            frame = copy(buffer)
+            empty!(buffer)
+        else
+            frame = buffer[1:index-1]
+            deleteat!(buffer, 1:index)
+        end
+        while !isempty(frame) && frame[end] == 0x0d
+            pop!(frame)
+        end
+        isempty(frame) || return frame
+    end
+    return nothing
+end
+
+# Extract the next complete item from `buffer`, or return `nothing` when more
+# bytes are needed. `final` marks the end of the response body.
+function _next_stream_frame!(buffer::Vector{UInt8}, kind::Symbol, final::Bool)
+    if kind === :jsonseq
+        # RFC 7464: records start with RS and may contain unescaped newlines,
+        # so a record is complete at the next RS or at the end of the body.
+        while true
+            start = 1
+            while start <= length(buffer) &&
+                  (buffer[start] == 0x1e || _stream_whitespace(buffer[start]))
+                start += 1
+            end
+            start > 1 && deleteat!(buffer, 1:start-1)
+            isempty(buffer) && return nothing
+            index = findfirst(==(0x1e), buffer)
+            if index === nothing
+                final || return nothing
+                frame = copy(buffer)
+                empty!(buffer)
+            else
+                frame = buffer[1:index-1]
+                deleteat!(buffer, 1:index-1)
+            end
+            while !isempty(frame) && _stream_whitespace(frame[end])
+                pop!(frame)
+            end
+            isempty(frame) || return frame
+        end
+    end
+    kind === :json || return _next_stream_line!(buffer, final)
+    start = 1
+    while start <= length(buffer) &&
+          (_stream_whitespace(buffer[start]) || buffer[start] == 0x1e)
+        start += 1
+    end
+    start > 1 && deleteat!(buffer, 1:start-1)
+    isempty(buffer) && return nothing
+    open_byte = buffer[1]
+    if open_byte == UInt8('{') || open_byte == UInt8('[')
+        close_byte = open_byte == UInt8('{') ? UInt8('}') : UInt8(']')
+        depth = 0
+        in_string = false
+        escaped = false
+        for (index, byte) in enumerate(buffer)
+            if escaped
+                escaped = false
+            elseif in_string
+                byte == UInt8('\\') && (escaped = true)
+                byte == UInt8('"') && (in_string = false)
+            elseif byte == UInt8('"')
+                in_string = true
+            elseif byte == open_byte
+                depth += 1
+            elseif byte == close_byte
+                depth -= 1
+                if depth == 0
+                    frame = buffer[1:index]
+                    deleteat!(buffer, 1:index)
+                    return frame
+                end
+            end
+        end
+        return nothing
+    end
+    # top-level scalar items (numbers, strings, booleans) end at a newline
+    return _next_stream_line!(buffer, final)
+end
+
+function _decode_stream_item(client::Client, frame::Vector{UInt8}, kind::Symbol, item_type, schema)
+    if kind === :text
+        isvalid(String, frame) ||
+            throw(DecodeError("streaming text response is not UTF-8"))
+        return _decode(item_type, String(frame))
+    end
+    value = _parse_json(frame, "decoding a streaming response item")
+    schema === nothing || !client.validate_responses || _validate_schema(
+        schema,
+        value,
+        "decoding a streaming response item";
+        direction = :output,
+    )
+    return _decode(item_type, value)
+end
+
+function _drain_stream_buffer!(
+    client::Client,
+    channel::Channel,
+    buffer::Vector{UInt8},
+    kind::Symbol,
+    item_type,
+    schema,
+    final::Bool,
+)
+    while true
+        frame = _next_stream_frame!(buffer, kind, final)
+        frame === nothing && break
+        put!(channel, _decode_stream_item(client, frame, kind, item_type, schema))
+    end
+    final && kind === :json && !all(_stream_whitespace, buffer) &&
+        throw(DecodeError("streaming response ended with a truncated item"))
+    return nothing
+end
+
+function _pump_stream!(
+    client::Client,
+    stream,
+    channel::Channel,
+    kind::Symbol,
+    item_type,
+    schema,
+)
+    buffer = UInt8[]
+    try
+        while !eof(stream)
+            chunk = readavailable(stream)
+            isempty(chunk) && continue
+            if kind === :bytes
+                put!(channel, chunk)
+            else
+                append!(buffer, chunk)
+                _drain_stream_buffer!(
+                    client,
+                    channel,
+                    buffer,
+                    kind,
+                    item_type,
+                    schema,
+                    false,
+                )
+            end
+        end
+        kind === :bytes || _drain_stream_buffer!(
+            client,
+            channel,
+            buffer,
+            kind,
+            item_type,
+            schema,
+            true,
+        )
+        close(channel)
+    catch error
+        # A channel the consumer closed is the abort signal; anything else is
+        # delivered to the consumer through the channel.
+        error isa InvalidStateException && !isopen(channel) || close(channel, error)
+    finally
+        try
+            HTTP.closeread(stream)
+        catch
+        end
+    end
+    return nothing
+end
+
+function _stream_request(
+    client::Client,
+    operation,
+    url,
+    headers,
+    payload::Vector{UInt8},
+    options,
+    stream_to::Channel,
+    with_http_info::Bool,
+)
+    stream = HTTP.open(operation.method, url, headers; options...)
+    local response
+    try
+        isempty(payload) || write(stream, payload)
+        HTTP.closewrite(stream)
+        response = HTTP.startread(stream)
+    catch
+        try
+            HTTP.closeread(stream)
+        catch
+        end
+        rethrow()
+    end
+    response_headers = Pair{String,String}[
+        String(key) => String(value) for (key, value) in response.headers
+    ]
+    received = HTTP.header(response, "Content-Type", "")
+    status = Int(response.status)
+    if !(200 <= status < 300)
+        bytes = try
+            read(stream)
+        finally
+            try
+                HTTP.closeread(stream)
+            catch
+            end
+        end
+        # Throws ApiError with the fully decoded error body.
+        return _finish_buffered_response(
+            client,
+            operation,
+            status,
+            response_headers,
+            received,
+            bytes,
+            with_http_info,
+        )
+    end
+    local descriptor, decoded_headers, kind, item_type, schema
+    try
+        descriptor = _select_response(operation.responses, status)
+        decoded_headers = _decode_response_headers(client, descriptor, response_headers)
+        if descriptor === nothing || isempty(descriptor.media)
+            kind, item_type, schema = :bytes, Vector{UInt8}, nothing
+        else
+            selected, actual_media =
+                _selected_media_entry(operation.id, status, descriptor, received)
+            kind, item_type, schema =
+                _stream_plan(_base_media_type(actual_media), selected[2], selected[3])
+        end
+    catch
+        try
+            HTTP.closeread(stream)
+        catch
+        end
+        rethrow()
+    end
+    Threads.@spawn _pump_stream!(
+        $client,
+        $stream,
+        $stream_to,
+        $kind,
+        $item_type,
+        $schema,
+    )
+    return with_http_info ?
+           ApiResponse(status, response_headers, decoded_headers, stream_to) :
+           stream_to
 end
 """
 
@@ -3079,6 +3434,7 @@ function _emit_operation(io, operation::OperationPlan, const_name)
             "with_http_info::Bool = false",
             "request_headers = Pair{String,String}[]",
             "request_options::NamedTuple = NamedTuple()",
+            "stream_to::Union{Nothing,Channel} = nothing",
         ],
     )
     summary = something(operation.operation.summary, operation.operation.description, "")
@@ -3108,7 +3464,7 @@ function _emit_operation(io, operation::OperationPlan, const_name)
         const_name,
         ", values; body = ",
         body_expression,
-        ", content_type, accept, with_http_info, request_headers, request_options",
+        ", content_type, accept, with_http_info, request_headers, request_options, stream_to",
     )
     has_multipart_request && print(io, ", multipart_headers")
     println(io, ")")
@@ -3127,11 +3483,13 @@ function _generate(plan::ClientPlan)
     )
     println(io, "module ", plan.module_name, "\n")
     println(io, "using HTTP, JSON, OpenAPI, Base64, Dates, UUIDs")
+    plan.datetime === :zoned && println(io, "using TimeZones")
     println(io, "const SchemaEngine = OpenAPI.SchemaEngine\n")
     _emit_security(io, plan)
     _emit_schema_data(io, plan)
     default_server = _default_server(plan.api)
     print(io, GENERATED_RUNTIME_COMMON, '\n')
+    plan.datetime === :zoned && print(io, GENERATED_ZONED_RUNTIME, '\n')
     print(io, GENERATED_RUNTIME, '\n')
     println(io, "const _DEFAULT_SERVER = ", repr(default_server))
     println(io, "const SERVER = Ref{String}(_DEFAULT_SERVER)")
@@ -3169,6 +3527,11 @@ Generate a deterministic Julia client module after full OpenAPI loading,
 reference binding, semantic normalization, and type planning. The generated
 module supports OpenAPI 3.0, 3.1, and 3.2 request/response models, parameter
 styles, content negotiation, and security requirements.
+
+`datetime = :utc` (the default) maps `format: date-time` to `Dates.DateTime`
+and normalizes RFC 3339 offsets to UTC while decoding; `datetime = :zoned`
+maps to `TimeZones.ZonedDateTime` and preserves offsets, making the generated
+module depend on TimeZones.jl.
 """
 function client(
     source;

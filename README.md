@@ -230,6 +230,10 @@ Implemented model behavior includes:
   bounds, formats, and unevaluated constraints through runtime validation;
 - `readOnly` and `writeOnly` request and response projections;
 - Julia `Date`, `Time`, `DateTime`, `UUID`, and base64 byte values;
+- `format: date-time` maps to `Dates.DateTime` by default, decoding RFC 3339
+  offsets by normalizing to UTC; generate with `datetime = :zoned` to map to
+  `TimeZones.ZonedDateTime` instead, preserving offsets end to end (the
+  generated module then depends on TimeZones.jl);
 - deterministic names with protection against Julia keywords, Base/Core names,
   and generated runtime names.
 
@@ -270,6 +274,38 @@ Use `content_type=...` and `accept=...` on an operation when the document offers
 more than one representation. Use `request_headers` for one call and
 `Client(headers=...)` for all calls. `request_options` passes options to
 `HTTP.request`.
+
+Responses are decoded by status alone when a server omits its Content-Type
+header, or misreports it while only one media type is documented for that
+status; `UnexpectedContentType` is thrown only when several documented media
+types make the choice ambiguous. A `2XX` status the document does not describe
+never fails the call: an empty body returns `nothing` and a payload returns
+raw bytes. Undocumented error statuses still throw `ApiError`.
+
+## Streaming responses
+
+Pass `stream_to = Channel(n)` to any operation to consume the response body
+incrementally, e.g. long-running watch endpoints or large exports:
+
+```julia
+events = Channel{Any}(16)
+ExampleClient.watch_pods(; client, stream_to = events)  # returns at the response head
+for event in events
+    # each item is decoded to the documented response type
+end
+```
+
+The call returns as soon as the response head arrives (the channel itself, or
+an `ApiResponse` whose body is the channel with `with_http_info = true`), and a
+background task decodes items onto the channel. `application/json` bodies split
+into consecutive JSON documents, each decoded against the documented response
+schema — the convention used by Kubernetes-style watch endpoints. JSON Lines
+and NDJSON bodies decode each line to the documented array's element type, and
+JSON text sequences split on RFC 7464 record separators. `text/*` yields lines
+and any other media type yields raw byte chunks. The channel closes when the
+response ends, closes with the error when decoding or validation fails, and
+closing it from the consumer side aborts the transfer. Error statuses still
+throw `ApiError` with the fully buffered error body.
 
 For a custom media type, register an encoder or decoder:
 
@@ -330,7 +366,9 @@ client needs. The following boundaries are intentional and explicit:
 | OAS 3.2 streaming `itemSchema`, `itemEncoding`, and `prefixEncoding` | **Deferred. Client planning fails with `unsupported_streaming_generation`.** |
 
 The two deferred features fail during planning. They never produce a client
-that silently sends the wrong wire format.
+that silently sends the wrong wire format. Runtime response streaming with
+`stream_to` is independent of the deferred OAS 3.2 `itemSchema` generation: it
+streams response bodies that are described by normal schemas.
 
 `strict=true` is the default. Use `strict=false` only for documented ecosystem
 compatibility cases. Permissive mode can retain ambiguous path templates and a
