@@ -10,5 +10,4 @@ schema.
 - `oas-3.2.json`: <https://spec.openapis.org/oas/3.2/schema/2025-11-23>
 
 The schemas are distributed under the Apache License 2.0 as part of the
-OpenAPI Specification project. See
-<https://github.com/OAI/OpenAPI-Specification/blob/main/LICENSE>.
+OpenAPI Specification project. See [`LICENSE`](LICENSE).

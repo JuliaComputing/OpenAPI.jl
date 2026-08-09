@@ -206,6 +206,101 @@
         @test pet.value.foo_bar_2 == 7
     end
 
+    @testset "document text and generated locals cannot alter source" begin
+        field_names = [
+            "raw",
+            "value",
+            "unknown",
+            "key",
+            "item",
+            "output",
+            "haskey",
+            "keys",
+            "collect",
+            "setdiff",
+            "isempty",
+            "join",
+        ]
+        summary = "literal \$(expression) and triple quote \"\"\"\nconst INJECTED_DOC = true"
+        document = OpenAPI.obj(
+            "openapi" => "3.1.1",
+            "info" => OpenAPI.obj(
+                "title" => "Quoted metadata",
+                "version" => "1.0\nconst INJECTED_VERSION = true",
+            ),
+            "paths" => OpenAPI.obj(
+                "/hostile" => OpenAPI.obj(
+                    "get" => OpenAPI.obj(
+                        "operationId" => "length",
+                        "summary" => summary,
+                        "parameters" => Any[
+                            OpenAPI.obj(
+                                "name" => "values",
+                                "in" => "query",
+                                "schema" => OpenAPI.obj("type" => "string"),
+                            ),
+                            OpenAPI.obj(
+                                "name" => "stream_to",
+                                "in" => "query",
+                                "schema" => OpenAPI.obj("type" => "string"),
+                            ),
+                        ],
+                        "responses" => OpenAPI.obj(
+                            "200" => OpenAPI.obj(
+                                "description" => "hostile fields",
+                                "content" => OpenAPI.obj(
+                                    "application/json" => OpenAPI.obj(
+                                        "schema" => OpenAPI.obj(
+                                            "\$ref" => "#/components/schemas/Hostile",
+                                        ),
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            "components" => OpenAPI.obj(
+                "schemas" => OpenAPI.obj(
+                    "Hostile" => OpenAPI.obj(
+                        "type" => "object",
+                        "required" => field_names,
+                        "properties" => OpenAPI.obj(
+                            (name => OpenAPI.obj("type" => "string") for name in field_names)...,
+                        ),
+                        "additionalProperties" => false,
+                    ),
+                ),
+            ),
+        )
+
+        plan = OpenAPI.plan(document; name = "HostileClient")
+        operation = only(plan.operations)
+        @test operation.name == "length_"
+        @test [parameter.name for parameter in operation.parameters] ==
+              ["values", "stream_to_2"]
+        source = OpenAPI.client(plan)
+        @test occursin("version \"1.0\\nconst INJECTED_VERSION = true\"", source)
+        host = Module(:HostileClientHost)
+        Base.include_string(host, source, "HostileClient.jl")
+        @test !isdefined(host, :INJECTED_VERSION)
+        client_module = Base.invokelatest(getfield, host, :HostileClient)
+        @test !isdefined(client_module, :INJECTED_DOC)
+        binding = Base.Docs.Binding(client_module, :length_)
+        doc = Base.Docs.docstr(binding, Tuple{})
+        @test occursin(summary, String(only(doc.text)))
+
+        raw = Dict(name => name for name in field_names)
+        value = Base.invokelatest(client_module._decode, client_module.Hostile, raw)
+        @test all(name -> getproperty(value, Symbol(name)) == name, field_names)
+        @test Base.invokelatest(client_module._encode, value) == raw
+
+        server_source = OpenAPI.server(document; name = "HostileServer")
+        server_host = Module(:HostileServerHost)
+        Base.include_string(server_host, server_source, "HostileServer.jl")
+        @test !isdefined(server_host, :INJECTED_VERSION)
+    end
+
     @testset "forward recursive union declarations" begin
         document = minimal_openapi(
             "3.1.1",

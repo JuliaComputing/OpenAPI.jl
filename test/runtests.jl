@@ -28,6 +28,26 @@ getschema(reg, T) = OpenAPI.schemaof(reg, T)
 
 @testset "OpenAPI" begin
 
+    @testset "public API uses the package namespace" begin
+        for name in (
+            :Operation,
+            :Param,
+            :check,
+            :client,
+            :document,
+            :load,
+            :normalize,
+            :plan,
+            :server,
+            :server_source,
+            :serverplan,
+            :validate,
+        )
+            @test Base.ispublic(OpenAPI, name)
+            @test !Base.isexported(OpenAPI, name)
+        end
+    end
+
     @testset "Julia types -> JSON Schema" begin
         reg = OpenAPI.SchemaRegistry()
         @test getschema(reg, Int)["type"] == "integer"

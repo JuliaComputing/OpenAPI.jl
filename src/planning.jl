@@ -188,6 +188,19 @@ const GENERATED_TYPE_NAMES = Set([
     "Client",
 ])
 
+const GENERATED_PARAMETER_NAMES = Set([
+    "body",
+    "client",
+    "content_type",
+    "accept",
+    "server",
+    "with_http_info",
+    "request_headers",
+    "request_options",
+    "multipart_headers",
+    "stream_to",
+])
+
 function _words(value::AbstractString)
     normalized = replace(String(value), r"[^A-Za-z0-9]+" => " ")
     return [word for word in split(normalized) if !isempty(word)]
@@ -213,6 +226,13 @@ function _field_identifier(value::AbstractString)
     isdigit(first(output)) && (output = "value_" * output)
     output in JULIA_RESERVED_NAMES && (output *= '_')
     Base.isidentifier(output) || (output = "value")
+    return output
+end
+
+function _operation_identifier(value::AbstractString)
+    output = _field_identifier(value)
+    symbol = Symbol(output)
+    (isdefined(Core, symbol) || isdefined(Base, symbol)) && (output *= '_')
     return output
 end
 
@@ -1227,17 +1247,7 @@ end
 
 function _plan_parameters!(context, operation, function_name)
     output = ParameterPlan[]
-    used = Dict(
-        "body" => 1,
-        "client" => 1,
-        "content_type" => 1,
-        "accept" => 1,
-        "server" => 1,
-        "with_http_info" => 1,
-        "request_headers" => 1,
-        "request_options" => 1,
-        "multipart_headers" => 1,
-    )
+    used = Dict(name => 1 for name in GENERATED_PARAMETER_NAMES)
     for parameter in operation.parameters
         name = _field_identifier(parameter.name)
         count = get(used, name, 0) + 1
@@ -1360,7 +1370,7 @@ function _plan_responses!(context, operation, function_name)
 end
 
 function _plan_operation!(context, operation, used_functions)
-    base = _field_identifier(operation.id)
+    base = _operation_identifier(operation.id)
     count = get(used_functions, base, 0) + 1
     used_functions[base] = count
     name = count == 1 ? base : string(base, '_', count)
@@ -1636,6 +1646,46 @@ function _check_server_generation_support!(context::PlanningContext, strict::Boo
                         media.provenance.node.pointer,
                     ),
                 )
+            end
+            for encoding in media.encoding
+                if !isempty(encoding.encoding)
+                    _error!(
+                        context.bag,
+                        :unsupported_nested_server_encoding,
+                        "server generation cannot decode nested request-body Encoding Objects",
+                        SourceLocation(
+                            encoding.provenance.node.resource,
+                            encoding.provenance.node.pointer,
+                        ),
+                    )
+                end
+                if startswith(base, "multipart/") && !isempty(encoding.headers)
+                    _error!(
+                        context.bag,
+                        :unsupported_multipart_server_headers,
+                        "server generation cannot recover custom multipart part headers",
+                        SourceLocation(
+                            encoding.provenance.node.resource,
+                            encoding.provenance.node.pointer,
+                        ),
+                    )
+                end
+                if base in ("application/x-www-form-urlencoded", "multipart/form-data") &&
+                   (
+                    encoding.style !== nothing ||
+                    encoding.explode !== nothing ||
+                    haskey(encoding.raw, "allowReserved")
+                )
+                    _error!(
+                        context.bag,
+                        :unsupported_server_encoding_style,
+                        "server generation cannot invert explicit request-body encoding style, explode, or allowReserved fields",
+                        SourceLocation(
+                            encoding.provenance.node.resource,
+                            encoding.provenance.node.pointer,
+                        ),
+                    )
+                end
             end
         end
     end

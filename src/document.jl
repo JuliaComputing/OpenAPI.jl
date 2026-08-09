@@ -46,8 +46,8 @@ Keywords:
 - `summary=""` — human description
 - `params=Param[]` — path/query parameters
 - `bodytype=nothing` — Julia type of the request body, or `nothing` for none
-- `responsetype=nothing` — Julia type of the success response; `nothing` means
-  unknown (empty schema), the *type* `Nothing` means 204 No Content, and a
+- `responsetype=nothing` — no success response body (status 200); the *type*
+  `Nothing` means 204 No Content, `Any` means unconstrained JSON, and a
   `Union{Nothing, T}` emits both 204 and a 200 with `T`'s schema
 - `contenttype="application/json"` — media type for body/response content
 - `secured=false` — whether the operation requires authentication (emitted as a

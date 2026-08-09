@@ -6,8 +6,26 @@ module OpenAPIHTTPExt
 
 using OpenAPI, HTTP
 
+struct _ResponseTooLarge <: Exception end
+
+mutable struct _BoundedResponseBuffer <: IO
+    buffer::IOBuffer
+    max_bytes::Int
+end
+
+Base.isopen(buffer::_BoundedResponseBuffer) = isopen(buffer.buffer)
+Base.position(buffer::_BoundedResponseBuffer) = position(buffer.buffer)
+function Base.unsafe_write(
+    buffer::_BoundedResponseBuffer,
+    pointer::Ptr{UInt8},
+    bytes::UInt,
+)
+    bytes <= buffer.max_bytes - position(buffer) || throw(_ResponseTooLarge())
+    return Base.unsafe_write(buffer.buffer, pointer, bytes)
+end
+
 function OpenAPI.fetchresource(id::OpenAPI.Resources.ResourceId, max_bytes::Integer)
-    body = Vector{UInt8}(undef, max_bytes)
+    body = _BoundedResponseBuffer(IOBuffer(), Int(max_bytes))
     response = try
         HTTP.get(
             string(id);
@@ -21,8 +39,7 @@ function OpenAPI.fetchresource(id::OpenAPI.Resources.ResourceId, max_bytes::Inte
         )
     catch error
         message = sprint(showerror, error)
-        if occursin("response stream", message) ||
-           occursin("DecompressionLimitError", message)
+        if error isa _ResponseTooLarge || error isa HTTP.DecompressionLimitError
             throw(
                 OpenAPI.Resources.RetrievalError(
                     id,
@@ -43,7 +60,7 @@ function OpenAPI.fetchresource(id::OpenAPI.Resources.ResourceId, max_bytes::Inte
             "HTTP request returned status $(response.status)",
         ),
     )
-    bytes = copy(body)
+    bytes = take!(body.buffer)
     media_type = HTTP.header(response, "Content-Type", "")
     return OpenAPI.Resources.RetrievedResource(
         id,
@@ -96,7 +113,8 @@ function _http_handler(impl, entry)
     return function (request::HTTP.Request)
         content_values = _header_values(request.headers, "Content-Type")
         content_type = isempty(content_values) ? "" : first(content_values)
-        bytes = Vector{UInt8}(codeunits(String(request.body)))
+        bytes = request.body isa AbstractVector{UInt8} ? copy(request.body) :
+                Vector{UInt8}(codeunits(String(request.body)))
         local args, kwargs
         try
             parts = _http_multipart_parts(content_type, bytes)

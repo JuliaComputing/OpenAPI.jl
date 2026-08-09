@@ -978,6 +978,7 @@ end
                 write(socket, "0\r\n\r\n")
                 flush(socket)
             end
+            forever_stopped = Channel{Nothing}(1)
             accept_task = @async while isopen(raw_server)
                 socket = try
                     Sockets.accept(raw_server)
@@ -1032,11 +1033,13 @@ end
                         )
                         flush(socket)
                     elseif startswith(path, "/stream/forever")
-                        write(socket, chunked_head("application/json"))
-                        flush(socket)
-                        for tick in 1:1000
-                            send_chunk(socket, """{"kind":"TICK","seq":$tick}\n""")
-                            sleep(0.02)
+                        try
+                            write(socket, chunked_head("application/json"))
+                            flush(socket)
+                            send_chunk(socket, """{"kind":"TICK","seq":1}\n""")
+                            read(socket, 1)
+                        finally
+                            put!(forever_stopped, nothing)
                         end
                     end
                     close(socket)
@@ -1097,6 +1100,8 @@ end
                 first_tick = take!(forever_channel)
                 @test first_tick.kind == "TICK"
                 close(forever_channel)
+                @test Base.timedwait(() -> isready(forever_stopped), 5) == :ok
+                take!(forever_stopped)
             finally
                 close(raw_server)
             end

@@ -127,13 +127,21 @@ const SERVER_ROUNDTRIP_DOCUMENT = OpenAPI.obj(
                         "application/x-www-form-urlencoded" => OpenAPI.obj(
                             "schema" => OpenAPI.obj(
                                 "type" => "object",
-                                "required" => Any["q"],
+                                "required" => Any["q", "meta"],
                                 "properties" => OpenAPI.obj(
                                     "q" => OpenAPI.obj("type" => "string"),
                                     "limit" => OpenAPI.obj("type" => "integer"),
                                     "tags" => OpenAPI.obj(
                                         "type" => "array",
                                         "items" => OpenAPI.obj("type" => "string"),
+                                    ),
+                                    "meta" => OpenAPI.obj(
+                                        "type" => "object",
+                                        "required" => Any["code"],
+                                        "properties" => OpenAPI.obj(
+                                            "code" => OpenAPI.obj("type" => "string"),
+                                        ),
+                                        "additionalProperties" => false,
                                     ),
                                 ),
                             ),
@@ -154,6 +162,15 @@ const SERVER_ROUNDTRIP_DOCUMENT = OpenAPI.obj(
                                             "type" => "array",
                                             "items" => OpenAPI.obj("type" => "string"),
                                         ),
+                                        "meta" => OpenAPI.obj(
+                                            "type" => "object",
+                                            "required" => Any["code"],
+                                            "properties" => OpenAPI.obj(
+                                                "code" => OpenAPI.obj("type" => "string"),
+                                            ),
+                                            "additionalProperties" => false,
+                                        ),
+                                        "raw" => OpenAPI.obj("type" => "string"),
                                     ),
                                 ),
                             ),
@@ -171,10 +188,14 @@ const SERVER_ROUNDTRIP_DOCUMENT = OpenAPI.obj(
                         "multipart/form-data" => OpenAPI.obj(
                             "schema" => OpenAPI.obj(
                                 "type" => "object",
-                                "required" => Any["note"],
+                                "required" => Any["note", "file", "count"],
                                 "properties" => OpenAPI.obj(
                                     "note" => OpenAPI.obj("type" => "string"),
-                                    "file" => OpenAPI.obj("type" => "string"),
+                                    "file" => OpenAPI.obj(
+                                        "type" => "string",
+                                        "format" => "binary",
+                                    ),
+                                    "count" => OpenAPI.obj("type" => "integer"),
                                 ),
                             ),
                         ),
@@ -190,6 +211,7 @@ const SERVER_ROUNDTRIP_DOCUMENT = OpenAPI.obj(
                                     "properties" => OpenAPI.obj(
                                         "note" => OpenAPI.obj("type" => "string"),
                                         "bytes" => OpenAPI.obj("type" => "integer"),
+                                        "count" => OpenAPI.obj("type" => "integer"),
                                     ),
                                 ),
                             ),
@@ -248,6 +270,31 @@ const SERVER_ROUNDTRIP_DOCUMENT = OpenAPI.obj(
                 "operationId" => "noContent",
                 "responses" => OpenAPI.obj(
                     "204" => OpenAPI.obj("description" => "empty"),
+                ),
+            ),
+        ),
+        "/empty-200" => OpenAPI.obj(
+            "get" => OpenAPI.obj(
+                "operationId" => "empty200",
+                "responses" => OpenAPI.obj(
+                    "200" => OpenAPI.obj("description" => "empty success"),
+                ),
+            ),
+        ),
+        "/null" => OpenAPI.obj(
+            "get" => OpenAPI.obj(
+                "operationId" => "nullOut",
+                "responses" => OpenAPI.obj(
+                    "200" => OpenAPI.obj(
+                        "description" => "nullable success",
+                        "content" => OpenAPI.obj(
+                            "application/json" => OpenAPI.obj(
+                                "schema" => OpenAPI.obj(
+                                    "type" => Any["string", "null"],
+                                ),
+                            ),
+                        ),
+                    ),
                 ),
             ),
         ),
@@ -328,11 +375,14 @@ submitform(req, body) = (;
     q = body.q,
     limit = body.limit isa Int ? body.limit : 0,
     tags = body.tags isa Vector ? body.tags : String[],
+    meta = body.meta,
+    raw = String(copy(req.body)),
 )
 
 upload(req, body) = (;
     note = body.note,
-    bytes = body.file isa AbstractString ? ncodeunits(body.file) : 0,
+    bytes = length(body.file),
+    count = body.count,
 )
 
 textout(req) = "plain text"
@@ -342,6 +392,10 @@ binout(req) = Vector{UInt8}(codeunits("raw-bytes"))
 custom(req) = HTTP.Response(418, ["Content-Type" => "text/plain"], "teapot")
 
 nocontent(req) = nothing
+
+empty200(req) = nothing
+
+nullout(req) = nothing
 """
 
 @testset "server generation" begin
@@ -440,33 +494,45 @@ nocontent(req) = nothing
         end
 
         @testset "form and multipart bodies round trip" begin
+            meta = call(:SubmitformRequestMetaModel; code = "001")
             form_body = call(
-                :SubmitformRequest,
-                "search term",
-                5,
-                ["solo"],
-                Dict{String,Any}(),
+                :SubmitformRequest;
+                q = "001",
+                limit = 5,
+                tags = ["solo"],
+                meta,
             )
             form_echo = call(:submitform, form_body)
-            @test form_echo.q == "search term"
+            @test form_echo.q == "001"
             @test form_echo.limit == 5
             @test form_echo.tags == ["solo"]
+            @test form_echo.meta.code == "001"
+            @test !isempty(form_echo.raw)
+            @test occursin("q=001", form_echo.raw)
 
+            bytes = Vector{UInt8}(codeunits("valid UTF-8 binary"))
             upload_body = call(
-                :UploadModelRequest,
-                "note text",
-                "file contents here",
-                Dict{String,Any}(),
+                :UploadModelRequest;
+                note = "note text",
+                file = bytes,
+                count = 7,
             )
             upload_echo = call(:upload, upload_body)
             @test upload_echo.note == "note text"
-            @test upload_echo.bytes == ncodeunits("file contents here")
+            @test upload_echo.bytes == length(bytes)
+            @test upload_echo.count == 7
         end
 
         @testset "response encodings" begin
             @test call(:textout) == "plain text"
             @test call(:binout) == "raw-bytes"
             @test call(:nocontent) === nothing
+            empty = call(:empty200; with_http_info = true)
+            @test empty.status == 200
+            @test empty.body === nothing
+            nullable = call(:nullout; with_http_info = true)
+            @test nullable.status == 200
+            @test nullable.body === nothing
         end
 
         @testset "framework response passthrough" begin
@@ -476,6 +542,24 @@ nocontent(req) = nothing
         end
 
         @testset "request error responses" begin
+            RequestFailure = Base.invokelatest(getfield, S, :_RequestFailure)
+            @test_throws RequestFailure Base.invokelatest(
+                getfield(S, :_percent_decode),
+                "%ZZ",
+            )
+            @test_throws RequestFailure Base.invokelatest(
+                getfield(S, :_percent_decode),
+                "%",
+            )
+
+            unicode = HTTP.get(
+                "$base/styles/a/.l/;matrix=1/;mexp=1?qform=x&deep[%C3%A9]=value";
+                status_exception = false,
+            )
+            @test unicode.status == 200
+            unicode_echo = JSON.parse(unicode.body)
+            @test unicode_echo["deep"]["é"] == "value"
+
             bad_path = HTTP.get(
                 "$base/styles/a/.l/;matrix=oops/;mexp=1?qform=x";
                 status_exception = false,
@@ -570,6 +654,96 @@ end
             error.diagnostics,
         )
         @test OpenAPI.plan(document) isa OpenAPI.ClientPlan
+    end
+
+    @testset "lossy request-body encodings are rejected" begin
+        function body_encoding_document(schema, encoding)
+            return OpenAPI.obj(
+                "openapi" => "3.2.0",
+                "info" => OpenAPI.obj("title" => "Encoding", "version" => "1.0.0"),
+                "paths" => OpenAPI.obj(
+                    "/encoded" => OpenAPI.obj(
+                        "post" => OpenAPI.obj(
+                            "operationId" => "encoded",
+                            "requestBody" => OpenAPI.obj(
+                                "content" => OpenAPI.obj(
+                                    "multipart/form-data" => OpenAPI.obj(
+                                        "schema" => schema,
+                                        "encoding" => encoding,
+                                    ),
+                                ),
+                            ),
+                            "responses" => OpenAPI.obj(
+                                "204" => OpenAPI.obj("description" => "empty"),
+                            ),
+                        ),
+                    ),
+                ),
+            )
+        end
+
+        nested = body_encoding_document(
+            OpenAPI.obj(
+                "type" => "object",
+                "properties" => OpenAPI.obj(
+                    "bundle" => OpenAPI.obj(
+                        "type" => "object",
+                        "properties" => OpenAPI.obj(
+                            "child" => OpenAPI.obj("type" => "string"),
+                        ),
+                    ),
+                ),
+            ),
+            OpenAPI.obj(
+                "bundle" => OpenAPI.obj(
+                    "contentType" => "multipart/form-data",
+                    "encoding" => OpenAPI.obj(
+                        "child" => OpenAPI.obj("contentType" => "text/plain"),
+                    ),
+                ),
+            ),
+        )
+        headers = body_encoding_document(
+            OpenAPI.obj(
+                "type" => "object",
+                "properties" => OpenAPI.obj(
+                    "file" => OpenAPI.obj("type" => "string", "format" => "binary"),
+                ),
+            ),
+            OpenAPI.obj(
+                "file" => OpenAPI.obj(
+                    "headers" => OpenAPI.obj(
+                        "X-Part" => OpenAPI.obj(
+                            "schema" => OpenAPI.obj("type" => "string"),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        styled = body_encoding_document(
+            OpenAPI.obj(
+                "type" => "object",
+                "properties" => OpenAPI.obj(
+                    "items" => OpenAPI.obj(
+                        "type" => "array",
+                        "items" => OpenAPI.obj("type" => "string"),
+                    ),
+                ),
+            ),
+            OpenAPI.obj(
+                "items" => OpenAPI.obj("style" => "form", "explode" => false),
+            ),
+        )
+
+        for (document, code) in (
+            (nested, :unsupported_nested_server_encoding),
+            (headers, :unsupported_multipart_server_headers),
+            (styled, :unsupported_server_encoding_style),
+        )
+            error = @test_throws OpenAPI.OpenAPIError OpenAPI.serverplan(document)
+            @test code in Set(diagnostic.code for diagnostic in error.value.diagnostics)
+            @test OpenAPI.plan(document) isa OpenAPI.ClientPlan
+        end
     end
 
     @testset "ambiguous exploded object parameters are rejected" begin

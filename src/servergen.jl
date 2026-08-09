@@ -23,8 +23,11 @@ function _percent_decode(text::AbstractString; plus_space::Bool = false)
     index = 1
     while index <= length(bytes)
         byte = bytes[index]
-        if byte == UInt8('%') && index + 2 <= length(bytes) &&
-           _is_hex_byte(bytes[index + 1]) && _is_hex_byte(bytes[index + 2])
+        if byte == UInt8('%')
+            index + 2 <= length(bytes) &&
+                _is_hex_byte(bytes[index + 1]) &&
+                _is_hex_byte(bytes[index + 2]) ||
+                throw(_RequestFailure(400, "invalid percent-encoding in request"))
             write(io, parse(UInt8, String(Char.(bytes[index + 1:index + 2])); base = 16))
             index += 3
         elseif plus_space && byte == UInt8('+')
@@ -265,13 +268,11 @@ function _decode_query_parameter(descriptor, pairs, consumed)
             value() = _percent_decode(String(pair.second); plus_space = true)
             if key == list_key
                 push!(items, _header_atom(value()))
-            elseif startswith(key, prefix) && endswith(key, ']') &&
-                   ncodeunits(key) > ncodeunits(prefix) + 1
-                inner = String(SubString(
-                    key,
-                    ncodeunits(prefix) + 1,
-                    ncodeunits(key) - 1,
-                ))
+            elseif startswith(key, prefix) && endswith(key, ']')
+                start = nextind(key, lastindex(prefix))
+                stop = prevind(key, lastindex(key))
+                start <= stop || continue
+                inner = String(SubString(key, start, stop))
                 object[inner] = _header_atom(value())
             elseif key == name
                 scalar = _header_atom(value())
@@ -367,6 +368,21 @@ function _field_shape(fields, name)
     return :scalar
 end
 
+function _field_value_kind(fields, name)
+    for field in fields
+        field.name == name || continue
+        return field.shape === :array ? field.item_kind : field.kind
+    end
+    return :default
+end
+
+function _form_field_value(fields, name, text, context)
+    kind = _field_value_kind(fields, name)
+    kind === :object && return _parse_json(text, context)
+    kind in (:string, :bytes) && return String(text)
+    return _header_atom(text)
+end
+
 function _push_form_value!(object, fields, name, value)
     if haskey(object, name)
         existing = object[name]
@@ -403,7 +419,12 @@ function _form_body_object(body, encodings, fields)
                 for item in split(pair.second, delimiter)
             ]
         else
-            _header_atom(_percent_decode(String(pair.second); plus_space = true))
+            _form_field_value(
+                fields,
+                name,
+                _percent_decode(String(pair.second); plus_space = true),
+                "decoding form field " * name,
+            )
         end
         _push_form_value!(object, fields, name, value)
     end
@@ -420,12 +441,19 @@ function _multipart_body_object(parts, encodings, fields)
             !isempty(declared) ? declared :
             encoding === nothing ? "" : something(encoding.content_type, ""),
         )
-        # Text parts stay strings; binary parts become base64 so schema
-        # validation sees JSON-like values and base64-typed fields round trip.
+        kind = _field_value_kind(fields, name)
         value = if _is_json_media(media)
             _parse_json(part.data, "decoding multipart field " * name)
-        elseif isvalid(String, part.data)
+        elseif kind === :object
+            _parse_json(part.data, "decoding multipart field " * name)
+        elseif kind === :bytes
+            Base64.base64encode(part.data)
+        elseif kind === :string
+            isvalid(String, part.data) ||
+                throw(_RequestFailure(400, "multipart string field is not valid UTF-8"))
             String(copy(part.data))
+        elseif isvalid(String, part.data)
+            _header_atom(String(copy(part.data)))
         else
             Base64.base64encode(part.data)
         end
@@ -608,16 +636,31 @@ function _success_response(responses)
 end
 
 function _server_response(operation, result)
-    result === nothing && return (204, Pair{String,String}[], UInt8[])
     descriptor = _success_response(operation.responses)
-    if descriptor === nothing || isempty(descriptor.media)
-        throw(ArgumentError(string(
+    descriptor === nothing && throw(ArgumentError(string(
+        "operation ",
+        operation.id,
+        " documents no success response",
+    )))
+    status = _selector_status(descriptor.selector)
+    if isempty(descriptor.media)
+        result === nothing || throw(ArgumentError(string(
             "operation ",
             operation.id,
             " documents no success response content; return `nothing` or a framework response",
         )))
+        return (status, Pair{String,String}[], UInt8[])
     end
-    status = _selector_status(descriptor.selector)
+    if result === nothing && all(
+        entry -> !_is_json_media(_base_media_type(entry[1])),
+        descriptor.media,
+    )
+        throw(ArgumentError(string(
+            "operation ",
+            operation.id,
+            " cannot encode `nothing` using its documented non-JSON success media types",
+        )))
+    end
     index = something(
         findfirst(entry -> _is_json_media(_base_media_type(entry[1])), descriptor.media),
         1,
@@ -766,7 +809,7 @@ function server_module_source(
         "# Generated by OpenAPI.jl from ",
         repr(plan.api.title),
         " version ",
-        plan.api.api_version,
+        repr(plan.api.api_version),
         ". Do not edit.",
     )
     println(io, "# Implement these handler functions in a module (or any value")

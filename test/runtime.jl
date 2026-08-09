@@ -251,6 +251,40 @@
         @test invoke(:_media_match_score, "text/plain", "text/*") == 2
         @test invoke(:_media_match_score, "application/json", "*/*") == 1
         @test invoke(:_media_match_score, "application/json", "text/*") == 0
+        @test invoke(
+            :_media_match,
+            "application/json; stream=watch",
+            "application/json;stream=watch",
+        )
+        @test !invoke(
+            :_media_match,
+            "application/json",
+            "application/json;stream=watch",
+        )
+        @test invoke(
+            :_media_match,
+            "application/json; charset=UTF-8",
+            "application/json;charset=utf-8",
+        )
+
+        plain = ("application/json", :plain)
+        watch = ("application/json;stream=watch", :watch)
+        @test invoke(
+            :_select_media,
+            (plain, watch),
+            "application/json; stream=watch",
+        ) == watch
+        @test invoke(
+            :_select_media,
+            (watch, plain),
+            "application/json",
+        ) == plain
+        quoted = ("application/json;profile=\"a;b\"", :quoted)
+        @test invoke(
+            :_select_media,
+            (plain, quoted),
+            "application/json; profile=\"a;b\"",
+        ) == quoted
 
         responses = (
             (selector = "default", media = (), headers = ()),

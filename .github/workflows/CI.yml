@@ -11,6 +11,8 @@ jobs:
   test:
     name: Julia ${{ matrix.version }} - ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    env:
+      OPENAPI_SCHEMA_SUITE: ${{ matrix.version == '1' && 'all' || '' }}
     strategy:
       fail-fast: false
       matrix:

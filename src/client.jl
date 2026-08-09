@@ -370,11 +370,74 @@ function _set_header!(headers, name, value)
     return headers
 end
 
+function _media_segments(value)
+    output = String[]
+    io = IOBuffer()
+    quoted = false
+    escaped = false
+    for char in String(value)
+        if escaped
+            write(io, char)
+            escaped = false
+        elseif quoted && char == '\\'
+            write(io, char)
+            escaped = true
+        elseif char == '"'
+            write(io, char)
+            quoted = !quoted
+        elseif char == ';' && !quoted
+            push!(output, String(take!(io)))
+        else
+            write(io, char)
+        end
+    end
+    push!(output, String(take!(io)))
+    return output
+end
+
+function _media_parameter_value(value)
+    text = strip(String(value))
+    startswith(text, '"') && endswith(text, '"') && ncodeunits(text) >= 2 ||
+        return text
+    ncodeunits(text) == 2 && return ""
+    io = IOBuffer()
+    escaped = false
+    for char in SubString(text, nextind(text, firstindex(text)), prevind(text, lastindex(text)))
+        if escaped
+            write(io, char)
+            escaped = false
+        elseif char == '\\'
+            escaped = true
+        else
+            write(io, char)
+        end
+    end
+    escaped && write(io, '\\')
+    return String(take!(io))
+end
+
+function _media_type(value)
+    segments = _media_segments(value)
+    base = lowercase(strip(first(segments)))
+    parameters = Dict{String,String}()
+    for segment in Iterators.drop(segments, 1)
+        pair = split(segment, '='; limit = 2)
+        length(pair) == 2 || continue
+        name = lowercase(strip(pair[1]))
+        isempty(name) && continue
+        parameter = _media_parameter_value(pair[2])
+        parameters[name] = name == "charset" ? lowercase(parameter) : parameter
+    end
+    return base, parameters
+end
+
 function _media_match_score(received::String, documented::String)
-    received == documented && return 4
-    documented == "*/*" && return 1
-    parts = split(documented, '/'; limit = 2)
-    received_parts = split(received, '/'; limit = 2)
+    received_base = first(_media_type(received))
+    documented_base = first(_media_type(documented))
+    received_base == documented_base && return 4
+    documented_base == "*/*" && return 1
+    parts = split(documented_base, '/'; limit = 2)
+    received_parts = split(received_base, '/'; limit = 2)
     length(parts) == 2 && length(received_parts) == 2 || return 0
     parts[1] == received_parts[1] || parts[1] == "*" || return 0
     parts[2] == "*" && return parts[1] == "*" ? 1 : 2
@@ -383,18 +446,29 @@ function _media_match_score(received::String, documented::String)
     return 0
 end
 
+function _media_selection_score(received::String, documented::String)
+    received_base, received_parameters = _media_type(received)
+    documented_base, documented_parameters = _media_type(documented)
+    base_score = _media_match_score(received_base, documented_base)
+    base_score > 0 || return (0, 0, 0)
+    all(documented_parameters) do (name, value)
+        return get(received_parameters, name, nothing) == value
+    end || return (0, 0, 0)
+    exact = length(received_parameters) == length(documented_parameters)
+    return (base_score, length(documented_parameters), exact ? 1 : 0)
+end
+
 _media_match(received::String, documented::String) =
-    _media_match_score(_base_media_type(received), _base_media_type(documented)) > 0
+    first(_media_selection_score(received, documented)) > 0
 
 _base_media_type(value) = lowercase(strip(first(split(String(value), ';'; limit = 2))))
 
 function _select_media(media, received)
     isempty(media) && return nothing
-    normalized = _base_media_type(received)
     selected = nothing
-    score = 0
+    score = (0, 0, 0)
     for entry in media
-        candidate = _media_match_score(normalized, _base_media_type(entry[1]))
+        candidate = _media_selection_score(String(received), String(entry[1]))
         if candidate > score
             selected = entry
             score = candidate
@@ -1923,7 +1997,8 @@ function _request(
     end
     occursin('{', path) &&
         throw(ArgumentError("not all path template parameters were supplied for $(operation.id)"))
-    base_options = merge(client.request_options, request_options)
+    default_options = stream_to isa Channel ? (; protocol = :h1) : NamedTuple()
+    base_options = merge(default_options, client.request_options, request_options)
     options = _security!(
         client,
         operation.security,
@@ -1964,12 +2039,11 @@ function _request(
     payload = UInt8[]
     if operation.request !== nothing && !(body isa Absent)
         media = operation.request.media
-        selected = content_type === nothing ? first(media) :
-                   something(findfirst(entry -> _media_match(lowercase(content_type), lowercase(entry[1])), media), 0)
-        selected === 0 && throw(
+        entry = content_type === nothing ? first(media) :
+                _select_media(media, String(content_type))
+        entry === nothing && throw(
             ArgumentError("unsupported request Content-Type $(repr(content_type)) for $(operation.id)"),
         )
-        entry = selected isa Integer ? media[selected] : selected
         client.validate_requests && _validate_schema(
             entry[3],
             _encode(body),
@@ -2278,6 +2352,7 @@ function _pump_stream!(
     kind::Symbol,
     item_type,
     schema,
+    finished,
 )
     buffer = UInt8[]
     try
@@ -2308,16 +2383,41 @@ function _pump_stream!(
             schema,
             true,
         )
+        finished[] = true
         close(channel)
     catch error
         # A channel the consumer closed is the abort signal; anything else is
         # delivered to the consumer through the channel.
-        error isa InvalidStateException && !isopen(channel) || close(channel, error)
+        if isopen(channel)
+            finished[] = true
+            close(channel, error)
+        end
     finally
         try
             HTTP.closeread(stream)
         catch
         end
+        finished[] = true
+    end
+    return nothing
+end
+
+function _abort_stream_on_close!(stream, channel::Channel, producer::Task, finished)
+    while isopen(channel) && !finished[]
+        sleep(0.25)
+    end
+    finished[] && return nothing
+    try
+        HTTP.closeread(stream)
+    catch
+    end
+    for _ in 1:4
+        istaskdone(producer) && return nothing
+        sleep(0.25)
+    end
+    try
+        close(stream)
+    catch
     end
     return nothing
 end
@@ -2389,14 +2489,17 @@ function _stream_request(
         end
         rethrow()
     end
-    Threads.@spawn _pump_stream!(
-        $client,
-        $stream,
-        $stream_to,
-        $kind,
-        $item_type,
-        $schema,
-    )
+    finished = Ref(false)
+    producer = errormonitor(@async _pump_stream!(
+        client,
+        stream,
+        stream_to,
+        kind,
+        item_type,
+        schema,
+        finished,
+    ))
+    errormonitor(@async _abort_stream_on_close!(stream, stream_to, producer, finished))
     return with_http_info ?
            ApiResponse(status, response_headers, decoded_headers, stream_to) :
            stream_to
@@ -2774,19 +2877,20 @@ function _emit_model(
         model.name,
         ", value)",
     )
-    println(io, "function _decode(::Type{", model.name, "}, raw)")
-    println(io, "    _validate_schema(", schema, ", raw, ", repr("decoding " * model.name), "; direction = ", direction, ")")
-    println(io, "    value = _object(raw, ", repr(model.name), ")")
+    println(io, "function _decode(::Type{", model.name, "}, _openapi_raw)")
+    println(io, "    _validate_schema(", schema, ", _openapi_raw, ", repr("decoding " * model.name), "; direction = ", direction, ")")
+    println(io, "    _openapi_object = _object(_openapi_raw, ", repr(model.name), ")")
     for field in model.fields
         type = _rewrite_forward(field.type, index, indices, abstract_targets)
+        local_name = "_openapi_field_" * field.name
         if field.required
             println(
                 io,
                 "    ",
-                field.name,
+                local_name,
                 " = _decode(",
                 type,
-                ", _required(value, ",
+                ", _required(_openapi_object, ",
                 repr(field.wire_name),
                 ", ",
                 repr(model.name),
@@ -2796,12 +2900,12 @@ function _emit_model(
             println(
                 io,
                 "    ",
-                field.name,
-                " = haskey(value, ",
+                local_name,
+                " = haskey(_openapi_object, ",
                 repr(field.wire_name),
                 ") ? _decode(",
                 type,
-                ", value[",
+                ", _openapi_object[",
                 repr(field.wire_name),
                 "]) : ABSENT",
             )
@@ -2810,51 +2914,53 @@ function _emit_model(
     known = Tuple(field.wire_name for field in model.fields)
     if model.additional_type !== nothing
         additional_type = _rewrite_forward(model.additional_type, index, indices, abstract_targets)
-        println(io, "    additional_properties = Dict{String,", additional_type, "}()")
-        println(io, "    for (key, item) in value")
-        println(io, "        String(key) in ", _julia_literal(known), " && continue")
-        println(io, "        additional_properties[String(key)] = _decode(", additional_type, ", item)")
+        println(io, "    _openapi_additional_properties = Dict{String,", additional_type, "}()")
+        println(io, "    for (_openapi_key, _openapi_item) in _openapi_object")
+        println(io, "        String(_openapi_key) in ", _julia_literal(known), " && continue")
+        println(io, "        _openapi_additional_properties[String(_openapi_key)] = _decode(", additional_type, ", _openapi_item)")
         println(io, "    end")
     else
-        println(io, "    unknown = setdiff(String.(collect(keys(value))), collect(", _julia_literal(known), "))")
-        println(io, "    isempty(unknown) || throw(DecodeError(\"unknown fields while decoding ", model.name, ": \" * join(unknown, \", \")))")
+        println(io, "    _openapi_unknown = setdiff(String.(collect(keys(_openapi_object))), collect(", _julia_literal(known), "))")
+        println(io, "    isempty(_openapi_unknown) || throw(DecodeError(\"unknown fields while decoding ", model.name, ": \" * join(_openapi_unknown, \", \")))")
     end
     print(io, "    return ", model.name, "(")
-    assignments = String[string(field.name, " = ", field.name) for field in model.fields]
-    model.additional_type === nothing || push!(assignments, "additional_properties = additional_properties")
+    assignments = String[
+        string(field.name, " = _openapi_field_", field.name) for field in model.fields
+    ]
+    model.additional_type === nothing || push!(assignments, "additional_properties = _openapi_additional_properties")
     println(io, "; ", join(assignments, ", "), ")")
     println(io, "end")
-    println(io, "function _encode(value::", model.name, ")")
-    println(io, "    output = JSON.Object{String,Any}()")
+    println(io, "function _encode(_openapi_value::", model.name, ")")
+    println(io, "    _openapi_output = JSON.Object{String,Any}()")
     for field in model.fields
-        println(io, "    value.", field.name, " isa Absent || (output[", repr(field.wire_name), "] = _encode(value.", field.name, "))")
+        println(io, "    _openapi_value.", field.name, " isa Absent || (_openapi_output[", repr(field.wire_name), "] = _encode(_openapi_value.", field.name, "))")
     end
     if model.additional_type !== nothing
-        println(io, "    for (key, item) in value.additional_properties")
-        println(io, "        haskey(output, key) && throw(ArgumentError(\"additional property conflicts with declared field: \" * key))")
-        println(io, "        output[key] = _encode(item)")
+        println(io, "    for (_openapi_key, _openapi_item) in _openapi_value.additional_properties")
+        println(io, "        haskey(_openapi_output, _openapi_key) && throw(ArgumentError(\"additional property conflicts with declared field: \" * _openapi_key))")
+        println(io, "        _openapi_output[_openapi_key] = _encode(_openapi_item)")
         println(io, "    end")
     end
-    println(io, "    return _validate_schema(", schema, ", output, ", repr("encoding " * model.name), "; direction = ", direction, ")")
+    println(io, "    return _validate_schema(", schema, ", _openapi_output, ", repr("encoding " * model.name), "; direction = ", direction, ")")
     println(io, "end\n")
-    println(io, "function _form_fields(value::", model.name, ")")
-    println(io, "    output = Pair{String,Any}[]")
+    println(io, "function _form_fields(_openapi_value::", model.name, ")")
+    println(io, "    _openapi_output = Pair{String,Any}[]")
     for field in model.fields
         println(
             io,
-            "    value.",
+            "    _openapi_value.",
             field.name,
-            " isa Absent || push!(output, ",
+            " isa Absent || push!(_openapi_output, ",
             repr(field.wire_name),
-            " => value.",
+            " => _openapi_value.",
             field.name,
             ")",
         )
     end
     if model.additional_type !== nothing
-        println(io, "    append!(output, collect(value.additional_properties))")
+        println(io, "    append!(_openapi_output, collect(_openapi_value.additional_properties))")
     end
-    println(io, "    return output")
+    println(io, "    return _openapi_output")
     println(io, "end\n")
 end
 
@@ -3164,6 +3270,17 @@ function _encoding_content_base(content_type)
     return lowercase(strip(first(split(selected, ';'; limit = 2))))
 end
 
+function _field_wire_kind(view::SchemaView)
+    format = _primitive_format(view)
+    format in ("byte", "base64", "binary") && return :bytes
+    _is_object_schema(view) && return :object
+    types = unique(_without_null_type(_effective_types(view)))
+    length(types) == 1 || return :default
+    type = only(types)
+    type in ("string", "boolean", "integer", "number") || return :default
+    return Symbol(type)
+end
+
 function _encoding_descriptor(
     encoding::NormalizedEncoding,
     base_media_type::String,
@@ -3244,7 +3361,11 @@ function _media_descriptor(media, normalized)
            startswith(base_media_type, "multipart/")
             field_items = String[
                 "(name = " * repr(field_name) *
-                ", shape = " * repr(_schema_shape(field_view)) * ")" for
+                ", shape = " * repr(_schema_shape(field_view)) *
+                ", kind = " * repr(_field_wire_kind(field_view)) *
+                ", item_kind = " * repr(
+                    _field_wire_kind(_named_encoding_value_view(field_view)),
+                ) * ")" for
                 (field_name, field_view) in sort(collect(properties); by = first)
             ]
             fields = "(" * join(field_items, ',') *
@@ -3438,11 +3559,11 @@ function _emit_operation(io, operation::OperationPlan, const_name)
         ],
     )
     summary = something(operation.operation.summary, operation.operation.description, "")
-    println(io, "\"\"\"")
-    println(io, "    ", operation.name, "(...)")
-    isempty(summary) || println(io, "\n", summary)
-    println(io, "\n`", operation.operation.method, " ", operation.operation.path, "`")
-    println(io, "\"\"\"")
+    doc = "    " * operation.name * "(...)\n"
+    isempty(summary) || (doc *= "\n" * summary * "\n")
+    doc *= "\n`" * String(operation.operation.method) * " " *
+           operation.operation.path * "`"
+    println(io, "@doc ", repr(doc))
     println(
         io,
         "function ",
@@ -3453,16 +3574,16 @@ function _emit_operation(io, operation::OperationPlan, const_name)
         join(keywords, ", "),
         ")",
     )
-    println(io, "    values = Dict{Symbol,Any}()")
+    println(io, "    _openapi_values = Dict{Symbol,Any}()")
     for parameter in operation.parameters
-        println(io, "    values[", repr(Symbol(parameter.name)), "] = ", parameter.name)
+        println(io, "    _openapi_values[", repr(Symbol(parameter.name)), "] = ", parameter.name)
     end
     body_expression = operation.request_body === nothing ? "ABSENT" : "body"
     print(
         io,
         "    return _request(client, ",
         const_name,
-        ", values; body = ",
+        ", _openapi_values; body = ",
         body_expression,
         ", content_type, accept, with_http_info, request_headers, request_options, stream_to",
     )
@@ -3478,7 +3599,7 @@ function _generate(plan::ClientPlan)
         "# Generated by OpenAPI.jl from ",
         repr(plan.api.title),
         " version ",
-        plan.api.api_version,
+        repr(plan.api.api_version),
         ". Do not edit.",
     )
     println(io, "module ", plan.module_name, "\n")

@@ -2,7 +2,7 @@
 OpenAPI.jl: build OpenAPI documents from declared endpoints, and generate Julia
 clients from OpenAPI documents.
 
-Two pieces:
+Three pieces:
 
 1. **Document generation** — describe endpoints as [`OpenAPI.Operation`](@ref)s
    and get a valid OpenAPI 3.2.0 document. Framework packages can add router
@@ -27,8 +27,6 @@ import YAML
 const OPENAPI_VERSION = "3.2.0"
 
 include("schema_engine/SchemaEngine.jl")
-
-public SchemaEngine
 
 include("schemas.jl")
 include("document.jl")
@@ -59,5 +57,38 @@ function operations end
 # implemented by OpenAPIHTTPExt (loaded with the HTTP package)
 function fetchurl end
 function fetchresource end
+
+public ClientPlan,
+    Diagnostic,
+    DocumentVersion,
+    NormalizedAPI,
+    OpenAPIError,
+    Operation,
+    Param,
+    Resources,
+    SchemaEngine,
+    SchemaRegistry,
+    ServerPlan,
+    SourceDocument,
+    SourceLocation,
+    SourcePosition,
+    check,
+    client,
+    document,
+    load,
+    location,
+    normalize,
+    oas_family,
+    obj,
+    operations,
+    parse,
+    plan,
+    read,
+    register!,
+    schemaof,
+    server,
+    server_source,
+    serverplan,
+    validate
 
 end # module

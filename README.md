@@ -117,10 +117,10 @@ function get_widget(request, id; verbose = false)
     return lookup_widget(id; verbose)      # encoded, validated, 200
 end
 
-# DELETE /widgets/{id} -> nothing becomes a 204
+# This operation documents 204, so nothing becomes an empty 204 response.
 delete_widget(request, id) = nothing
 
-# Return an HTTP.Response directly for anything custom.
+# Return an HTTP.Response directly for custom behavior.
 create_widget(request, body) = HTTP.Response(409, "already exists")
 
 end
@@ -145,7 +145,16 @@ cookie parameters, JSON, `application/x-www-form-urlencoded`, and
 before handlers run. Decoding failures produce structured JSON `400` (or `415`
 for undocumented media types) responses without invoking the handler. Response
 values are validated against the output-direction schema and encoded from the
-first documented success response.
+first documented success response. Returning `nothing` follows that response:
+it emits an empty body when the response has no content, or JSON `null` when
+the selected JSON schema accepts null. A full `HTTP.Response` bypasses generated
+status, header, and body validation. The handler owns that validation.
+
+Generated server stubs do not authenticate or authorize requests. Apply a
+`middleware` that enforces the operation's security policy before it calls the
+handler. `serverplan` rejects request-body Encoding Objects that the generated
+HTTP server cannot recover faithfully. This includes nested encodings, custom
+multipart part headers, and explicit body encoding style modifiers.
 
 ## Pipeline and diagnostics
 
@@ -272,8 +281,11 @@ Generated clients support:
 
 Use `content_type=...` and `accept=...` on an operation when the document offers
 more than one representation. Use `request_headers` for one call and
-`Client(headers=...)` for all calls. `request_options` passes options to
-`HTTP.request`.
+`Client(headers=...)` for all calls. `request_options` passes options to the
+HTTP transport. Streaming calls default to HTTP/1.1 because consumer-driven
+stream cancellation closes one request connection. Set `protocol=:auto` or
+`:h2` in `request_options` when the caller accepts HTTP/2 stream lifecycle
+semantics. Buffered calls keep HTTP.jl's automatic protocol selection.
 
 Responses are decoded by status alone when a server omits its Content-Type
 header, or misreports it while only one media type is documented for that
@@ -453,4 +465,5 @@ OpenAPI behavior follows the normative
 [OpenAPI 3.1.1](https://spec.openapis.org/oas/v3.1.1.html), and
 [OpenAPI 3.2.0](https://spec.openapis.org/oas/v3.2.0.html) specifications.
 The files in `schemas/` are official structural schemas. The normative text
-remains authoritative when a published schema differs from it.
+remains authoritative when a published schema differs from it. Their Apache
+License 2.0 text is included in [`schemas/LICENSE`](schemas/LICENSE).
