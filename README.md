@@ -255,7 +255,12 @@ Set `validate_requests=false` or `validate_responses=false` on a generated
 `Client` only when the application accepts that loss of boundary validation.
 For example, a response schema with `additionalProperties: false` rejects a new
 server field. This is contract-correct but can make a client less tolerant of
-an API that changes outside its published contract.
+an API that changes outside its published contract. With response validation
+disabled, that policy also reaches nested generated models. Unknown response
+properties are ignored, and an explicit null on an optional response property
+decodes to `nothing` even when the document marks that property non-nullable.
+Missing optional properties still decode to `ABSENT`. Values that cannot fit
+the generated Julia type can still raise `DecodeError`.
 
 ## HTTP behavior
 
@@ -318,6 +323,22 @@ and any other media type yields raw byte chunks. The channel closes when the
 response ends, closes with the error when decoding or validation fails, and
 closing it from the consumer side aborts the transfer. Error statuses still
 throw `ApiError` with the fully buffered error body.
+
+A registered response decoder also applies to streaming calls. The runtime
+calls it once for each framed item and puts its return value directly on the
+channel. This is an escape hatch for deployed APIs whose streaming wire format
+does not match the response schema. Register the full parameterized media type
+to limit the override to that stream:
+
+```julia
+ExampleClient.codec!(
+    client,
+    "application/json;stream=watch";
+    decode = (bytes, media_type) -> JSON.parse(String(bytes)),
+)
+```
+
+This decoder does not replace the decoder for plain `application/json`.
 
 For a custom media type, register an encoder or decoder:
 

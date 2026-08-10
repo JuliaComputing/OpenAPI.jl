@@ -115,6 +115,12 @@ end
                 ["Content-Type" => "text/plain"],
                 UInt8[0xff],
             )
+        elseif startswith(path, "/drift")
+            return HTTP.Response(
+                200,
+                ["Content-Type" => "application/json"],
+                """{"items":[{"probe":{"lastProbeTime":null,"newServerField":true}}]}""",
+            )
         elseif startswith(path, "/sequence")
             return HTTP.Response(
                 200,
@@ -215,6 +221,43 @@ end
             "properties" => OpenAPI.obj(
                 "kind" => string_schema,
                 "seq" => OpenAPI.obj("type" => "integer"),
+            ),
+            "additionalProperties" => false,
+        )
+        event_list_schema = OpenAPI.obj(
+            "type" => "object",
+            "required" => ["items"],
+            "properties" => OpenAPI.obj(
+                "items" => OpenAPI.obj("type" => "array", "items" => event_schema),
+            ),
+            "additionalProperties" => false,
+        )
+        probe_schema = OpenAPI.obj(
+            "type" => "object",
+            "properties" => OpenAPI.obj(
+                "lastProbeTime" => OpenAPI.obj(
+                    "type" => "string",
+                    "format" => "date-time",
+                ),
+            ),
+            "additionalProperties" => false,
+        )
+        pod_schema = OpenAPI.obj(
+            "type" => "object",
+            "required" => ["probe"],
+            "properties" => OpenAPI.obj(
+                "probe" => OpenAPI.obj("\$ref" => "#/components/schemas/Probe"),
+            ),
+            "additionalProperties" => false,
+        )
+        pod_list_schema = OpenAPI.obj(
+            "type" => "object",
+            "required" => ["items"],
+            "properties" => OpenAPI.obj(
+                "items" => OpenAPI.obj(
+                    "type" => "array",
+                    "items" => OpenAPI.obj("\$ref" => "#/components/schemas/Pod"),
+                ),
             ),
             "additionalProperties" => false,
         )
@@ -521,6 +564,17 @@ end
                     ),
                 ),
             ),
+            "/drift" => OpenAPI.obj(
+                "get" => OpenAPI.obj(
+                    "operationId" => "driftList",
+                    "responses" => OpenAPI.obj(
+                        "200" => runtime_response(
+                            "application/json",
+                            OpenAPI.obj("\$ref" => "#/components/schemas/PodList"),
+                        ),
+                    ),
+                ),
+            ),
             "/sequence" => OpenAPI.obj(
                 "get" => OpenAPI.obj(
                     "operationId" => "sequence",
@@ -540,6 +594,17 @@ end
                     "operationId" => "watchStream",
                     "responses" => OpenAPI.obj(
                         "200" => runtime_response("application/json", event_schema),
+                    ),
+                ),
+            ),
+            "/stream/custom-watch" => OpenAPI.obj(
+                "get" => OpenAPI.obj(
+                    "operationId" => "customWatchStream",
+                    "responses" => OpenAPI.obj(
+                        "200" => runtime_response(
+                            "application/json; stream=watch",
+                            event_list_schema,
+                        ),
                     ),
                 ),
             ),
@@ -686,7 +751,12 @@ end
             ],
             "paths" => paths,
             "components" => OpenAPI.obj(
-                "schemas" => OpenAPI.obj("Payload" => payload_schema),
+                "schemas" => OpenAPI.obj(
+                    "Payload" => payload_schema,
+                    "Probe" => probe_schema,
+                    "Pod" => pod_schema,
+                    "PodList" => pod_list_schema,
+                ),
                 "securitySchemes" => OpenAPI.obj(
                     "HeaderKey" => OpenAPI.obj(
                         "type" => "apiKey",
@@ -945,6 +1015,13 @@ end
             @test_throws C.DecodeError call(:badtext; client)
             take_request()
 
+            @test_throws C.SchemaValidationError call(:driftlist; client)
+            take_request()
+            tolerant_client = C.Client(; validate_responses = false)
+            drifted = call(:driftlist; client = tolerant_client)
+            take_request()
+            @test drifted.items[1].probe.lastprobetime === nothing
+
             @test call(:undocumentedstatus, 204; client) === nothing
             take_request()
             undocumented_bytes = call(:undocumentedstatus, 201; client)
@@ -990,7 +1067,13 @@ end
                     while !isempty(readline(socket))
                     end
                     path = split(request_line, ' ')[2]
-                    if startswith(path, "/stream/watch")
+                    if startswith(path, "/stream/custom-watch")
+                        write(socket, chunked_head("application/json; stream=watch"))
+                        flush(socket)
+                        send_chunk(socket, """{"kind":"ADDED","seq":10}\n""")
+                        send_chunk(socket, """{"kind":"DELETED","seq":11}""")
+                        finish_chunks(socket)
+                    elseif startswith(path, "/stream/watch")
                         write(socket, chunked_head("application/json"))
                         flush(socket)
                         # one item split across two chunks, then two more items
@@ -1059,6 +1142,39 @@ end
                 @test watch_info.body === watch_channel
                 watch_items = collect(watch_channel)
                 @test [(item.kind, item.seq) for item in watch_items] ==
+                      [("ADDED", 1), ("MODIFIED", 2), ("DELETED", 3)]
+
+                invalid_custom_channel = Channel{Any}(16)
+                call(
+                    :customwatchstream;
+                    client = raw_client,
+                    stream_to = invalid_custom_channel,
+                )
+                @test_throws C.SchemaValidationError take!(invalid_custom_channel)
+
+                C.codec!(
+                    raw_client,
+                    "Application/JSON; STREAM=watch";
+                    decode = (bytes, media) -> begin
+                        value = JSON.parse(String(bytes))
+                        return (; kind = value["kind"], seq = value["seq"], media)
+                    end,
+                )
+                custom_channel = Channel{Any}(16)
+                call(:customwatchstream; client = raw_client, stream_to = custom_channel)
+                custom_items = collect(custom_channel)
+                @test [(item.kind, item.seq) for item in custom_items] ==
+                      [("ADDED", 10), ("DELETED", 11)]
+                @test all(
+                    item -> item.media == "application/json; stream=watch",
+                    custom_items,
+                )
+
+                # The parameter-specific codec must not replace the normal
+                # application/json decoder.
+                second_watch_channel = Channel{Any}(16)
+                call(:watchstream; client = raw_client, stream_to = second_watch_channel)
+                @test [(item.kind, item.seq) for item in collect(second_watch_channel)] ==
                       [("ADDED", 1), ("MODIFIED", 2), ("DELETED", 3)]
 
                 log_channel = Channel{Any}(16)

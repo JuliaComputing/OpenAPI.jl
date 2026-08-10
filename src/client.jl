@@ -254,23 +254,32 @@ function _decode(::Type{Vector{UInt8}}, value::AbstractString)
 end
 _decode(::Type{Vector{UInt8}}, value::AbstractVector{UInt8}) = copy(value)
 
-function _decode(::Type{T}, value::AbstractVector) where {T<:AbstractVector}
+_decode(::Type{T}, value::AbstractVector) where {T<:AbstractVector} =
+    _decode(T, value, true)
+function _decode(::Type{T}, value::AbstractVector, validate::Bool) where {T<:AbstractVector}
     element = eltype(T)
-    return T([_decode(element, item) for item in value])
+    return T([_decode(element, item, validate) for item in value])
 end
-function _decode(::Type{T}, value::AbstractDict) where {T<:AbstractDict}
+_decode(::Type{T}, value::AbstractDict) where {T<:AbstractDict} =
+    _decode(T, value, true)
+function _decode(::Type{T}, value::AbstractDict, validate::Bool) where {T<:AbstractDict}
     keytype(T) <: AbstractString ||
         throw(DecodeError("only string-key dictionaries are supported, got $T"))
     output = T()
     for (key, item) in value
-        output[convert(keytype(T), key)] = _decode(valtype(T), item)
+        output[convert(keytype(T), key)] = _decode(valtype(T), item, validate)
     end
     return output
 end
-function _decode(::Type{T}, value::AbstractVector) where {T<:Tuple}
+_decode(::Type{T}, value::AbstractVector) where {T<:Tuple} =
+    _decode(T, value, true)
+function _decode(::Type{T}, value::AbstractVector, validate::Bool) where {T<:Tuple}
     length(value) == fieldcount(T) ||
         throw(DecodeError("expected $(fieldcount(T)) tuple items, got $(length(value))"))
-    return T((_decode(fieldtype(T, index), value[index]) for index in 1:fieldcount(T))...)
+    return T((
+        _decode(fieldtype(T, index), value[index], validate) for
+        index in 1:fieldcount(T)
+    )...)
 end
 
 function _direct_union_match(::Type{T}, value) where {T}
@@ -284,7 +293,12 @@ function _direct_union_match(::Type{T}, value) where {T}
     return value isa T
 end
 
-function _decode_union(::Type{T}, value; oneof::Bool = false) where {T}
+function _decode_union(
+    ::Type{T},
+    value;
+    oneof::Bool = false,
+    validate::Bool = true,
+) where {T}
     variants = Base.uniontypes(T)
     if value === nothing && Nothing in variants
         return nothing
@@ -302,7 +316,7 @@ function _decode_union(::Type{T}, value; oneof::Bool = false) where {T}
     for variant in variants
         variant in (Absent, Nothing) && continue
         try
-            decoded = _decode(variant, value)
+            decoded = _decode(variant, value, validate)
             oneof || return decoded
             push!(successes, decoded)
         catch error
@@ -325,6 +339,11 @@ function _decode(::Type{T}, value) where {T}
     catch
         throw(DecodeError("cannot decode $(typeof(value)) as $T"))
     end
+end
+
+function _decode(::Type{T}, value, validate::Bool) where {T}
+    T isa Union && return _decode_union(T, value; validate)
+    return _decode(T, value)
 end
 
 _encode(::Absent) = throw(ArgumentError("ABSENT is only valid as an object field"))
@@ -477,6 +496,29 @@ function _select_media(media, received)
     return selected
 end
 
+function _select_media_codec(codecs, received)
+    selected = nothing
+    score = (0, 0, 0)
+    for (documented, codec) in codecs
+        candidate = _media_selection_score(String(received), documented)
+        if candidate > score
+            selected = codec
+            score = candidate
+        end
+    end
+    return selected
+end
+
+function _store_media_codec!(codecs, media_type, codec)
+    key = strip(String(media_type))
+    parsed = _media_type(key)
+    for existing in collect(keys(codecs))
+        _media_type(existing) == parsed && delete!(codecs, existing)
+    end
+    codecs[key] = codec
+    return codecs
+end
+
 function _select_response(responses, status)
     exact = string(status)
     range = string(div(status, 100), "XX")
@@ -550,6 +592,7 @@ function _decode_schema_header(
     set_cookie::Bool = false,
     direction::Symbol = :output,
     context = "decoding a response header",
+    validate::Bool = true,
 )
     selected = _header_type_variant(type, shape)
     raw = if shape === :array
@@ -595,13 +638,13 @@ function _decode_schema_header(
     else
         _header_scalar(selected, join(values, set_cookie ? '\n' : ','))
     end
-    _validate_schema(
+    validate && _validate_schema(
         schema,
         _encode(raw),
         context;
         direction,
     )
-    return _decode(type, raw)
+    return _decode(type, raw, validate)
 end
 
 _is_json_media(media) = media == "application/json" || endswith(media, "+json")
@@ -811,18 +854,12 @@ mutable struct Client
     validate_responses::Bool
 end
 
-function _normalize_media_codecs(codecs::Dict{String,Function})
+function _normalize_media_codecs(codecs::AbstractDict)
     normalized = Dict{String,Function}()
-    for name in keys(codecs)
-        normalized[_base_media_type(name)] = codecs[name]
+    for (name, codec) in codecs
+        _store_media_codec!(normalized, name, codec)
     end
     return normalized
-end
-
-function _normalize_media_codecs(codecs::AbstractDict)
-    return Dict{String,Function}(
-        _base_media_type(name) => codec for (name, codec) in codecs
-    )
 end
 
 function Client(
@@ -916,9 +953,10 @@ function codec!(
     encode::Union{Nothing,Function} = nothing,
     decode::Union{Nothing,Function} = nothing,
 )
-    key = _base_media_type(media_type)
-    encode === nothing || (client.media_encoders[key] = encode)
-    decode === nothing || (client.media_decoders[key] = decode)
+    encode === nothing ||
+        _store_media_codec!(client.media_encoders, media_type, encode)
+    decode === nothing ||
+        _store_media_codec!(client.media_decoders, media_type, decode)
     return client
 end
 codec!(media_type::AbstractString; kwargs...) =
@@ -1347,8 +1385,9 @@ function _decode_response_headers(client, descriptor, headers)
                 values,
                 header.shape,
                 header.explode,
-                client.validate_responses ? header.schema : nothing,
+                header.schema,
                 set_cookie = lowercase(header.name) == "set-cookie",
+                validate = client.validate_responses,
             )
         else
             entry = first(header.content)
@@ -1368,7 +1407,7 @@ end
 
 function _decode_body(client::Client, type, content_type, body, schema)
     media = _base_media_type(content_type)
-    decoder = get(client.media_decoders, media, nothing)
+    decoder = _select_media_codec(client.media_decoders, content_type)
     if decoder !== nothing
         value = decoder(copy(body), String(content_type))
         lowered = _encode(value)
@@ -1379,7 +1418,7 @@ function _decode_body(client::Client, type, content_type, body, schema)
                 "decoding a custom-media response";
                 direction = :output,
             )
-        return _decode(type, lowered)
+        return _decode(type, lowered, client.validate_responses)
     elseif _is_json_media(media)
         if isempty(body)
             client.validate_responses &&
@@ -1389,7 +1428,7 @@ function _decode_body(client::Client, type, content_type, body, schema)
                     "decoding an empty JSON response";
                     direction = :output,
                 )
-            return _decode(type, nothing)
+            return _decode(type, nothing, client.validate_responses)
         end
         value = _parse_json(body, "decoding a response")
         client.validate_responses &&
@@ -1399,7 +1438,7 @@ function _decode_body(client::Client, type, content_type, body, schema)
                 "decoding a JSON response";
                 direction = :output,
             )
-        return _decode(type, value)
+        return _decode(type, value, client.validate_responses)
     elseif _is_sequential_json_media(media)
         value = _decode_sequential_json(body, media)
         client.validate_responses &&
@@ -1409,7 +1448,7 @@ function _decode_body(client::Client, type, content_type, body, schema)
                 "decoding a sequential JSON response";
                 direction = :output,
             )
-        return _decode(type, value)
+        return _decode(type, value, client.validate_responses)
     elseif startswith(media, "text/") || type === String
         isvalid(String, body) || throw(DecodeError("response text is not UTF-8"))
         value = String(copy(body))
@@ -1420,7 +1459,7 @@ function _decode_body(client::Client, type, content_type, body, schema)
                 "decoding a text response";
                 direction = :output,
             )
-        return _decode(type, value)
+        return _decode(type, value, client.validate_responses)
     elseif type === Vector{UInt8} || type === Any || media == "application/octet-stream"
         client.validate_responses && _validate_schema(
             schema,
@@ -1428,7 +1467,8 @@ function _decode_body(client::Client, type, content_type, body, schema)
             "decoding a binary response",
             ; direction = :output,
         )
-        return type === Any ? copy(body) : _decode(type, body)
+        return type === Any ? copy(body) :
+               _decode(type, body, client.validate_responses)
     end
     throw(UnsupportedMediaType(String(content_type), :response))
 end
@@ -1464,7 +1504,7 @@ function _encoded_media_value(client, value, media_type)
     elseif startswith(media, "text/")
         return _scalar(value)
     end
-    encoder = get(client.media_encoders, media, nothing)
+    encoder = _select_media_codec(client.media_encoders, media_type)
     encoder === nothing || return encoder(value, String(media_type))
     value isa Upload && return value.data
     value isa AbstractVector{UInt8} && return value
@@ -2203,6 +2243,9 @@ end
 # newline-separated JSON documents, e.g. watch-style endpoints); sequential
 # JSON media types split records and decode each to the documented array's
 # element type; `text/*` yields lines; anything else yields raw byte chunks.
+# A registered decoder receives each framed item and its actual Content-Type.
+# Its return value is delivered directly, so it can override an inaccurate
+# response schema such as a Kubernetes List declaration on a watch stream.
 function _stream_plan(media, type, schema)
     if _is_sequential_json_media(media)
         item_type = type <: AbstractVector && type !== Vector{UInt8} ?
@@ -2310,12 +2353,22 @@ function _next_stream_frame!(buffer::Vector{UInt8}, kind::Symbol, final::Bool)
     return _next_stream_line!(buffer, final)
 end
 
-function _decode_stream_item(client::Client, frame::Vector{UInt8}, kind::Symbol, item_type, schema)
+function _decode_stream_item(
+    client::Client,
+    frame::Vector{UInt8},
+    kind::Symbol,
+    item_type,
+    schema,
+    media_type,
+)
+    decoder = _select_media_codec(client.media_decoders, media_type)
+    decoder === nothing || return decoder(copy(frame), String(media_type))
     if kind === :text
         isvalid(String, frame) ||
             throw(DecodeError("streaming text response is not UTF-8"))
-        return _decode(item_type, String(frame))
+        return _decode(item_type, String(frame), client.validate_responses)
     end
+    kind === :bytes && return copy(frame)
     value = _parse_json(frame, "decoding a streaming response item")
     schema === nothing || !client.validate_responses || _validate_schema(
         schema,
@@ -2323,7 +2376,7 @@ function _decode_stream_item(client::Client, frame::Vector{UInt8}, kind::Symbol,
         "decoding a streaming response item";
         direction = :output,
     )
-    return _decode(item_type, value)
+    return _decode(item_type, value, client.validate_responses)
 end
 
 function _drain_stream_buffer!(
@@ -2333,12 +2386,16 @@ function _drain_stream_buffer!(
     kind::Symbol,
     item_type,
     schema,
+    media_type,
     final::Bool,
 )
     while true
         frame = _next_stream_frame!(buffer, kind, final)
         frame === nothing && break
-        put!(channel, _decode_stream_item(client, frame, kind, item_type, schema))
+        put!(
+            channel,
+            _decode_stream_item(client, frame, kind, item_type, schema, media_type),
+        )
     end
     final && kind === :json && !all(_stream_whitespace, buffer) &&
         throw(DecodeError("streaming response ended with a truncated item"))
@@ -2352,6 +2409,7 @@ function _pump_stream!(
     kind::Symbol,
     item_type,
     schema,
+    media_type,
     finished,
 )
     buffer = UInt8[]
@@ -2360,7 +2418,17 @@ function _pump_stream!(
             chunk = readavailable(stream)
             isempty(chunk) && continue
             if kind === :bytes
-                put!(channel, chunk)
+                put!(
+                    channel,
+                    _decode_stream_item(
+                        client,
+                        chunk,
+                        kind,
+                        item_type,
+                        schema,
+                        media_type,
+                    ),
+                )
             else
                 append!(buffer, chunk)
                 _drain_stream_buffer!(
@@ -2370,6 +2438,7 @@ function _pump_stream!(
                     kind,
                     item_type,
                     schema,
+                    media_type,
                     false,
                 )
             end
@@ -2381,6 +2450,7 @@ function _pump_stream!(
             kind,
             item_type,
             schema,
+            media_type,
             true,
         )
         finished[] = true
@@ -2470,11 +2540,12 @@ function _stream_request(
             with_http_info,
         )
     end
-    local descriptor, decoded_headers, kind, item_type, schema
+    local descriptor, decoded_headers, kind, item_type, schema, actual_media
     try
         descriptor = _select_response(operation.responses, status)
         decoded_headers = _decode_response_headers(client, descriptor, response_headers)
         if descriptor === nothing || isempty(descriptor.media)
+            actual_media = isempty(received) ? "application/octet-stream" : String(received)
             kind, item_type, schema = :bytes, Vector{UInt8}, nothing
         else
             selected, actual_media =
@@ -2497,6 +2568,7 @@ function _stream_request(
         kind,
         item_type,
         schema,
+        actual_media,
         finished,
     ))
     errormonitor(@async _abort_stream_on_close!(stream, stream_to, producer, finished))
@@ -2723,9 +2795,18 @@ function _emit_model(
             model.name,
             ", value)",
         )
-        println(io, "function _decode(::Type{", model.name, "}, value)")
-        println(io, "    _validate_schema(", schema, ", value, ", repr("decoding " * model.name), "; direction = ", direction, ")")
-        println(io, "    return ", model.name, "(_decode(", type, ", value))")
+        model.name in abstract_targets && println(
+            io,
+            "_decode(::Type{Abstract",
+            model.name,
+            "}, value, validate::Bool) = _decode(",
+            model.name,
+            ", value, validate)",
+        )
+        println(io, "_decode(::Type{", model.name, "}, value) = _decode(", model.name, ", value, true)")
+        println(io, "function _decode(::Type{", model.name, "}, value, _openapi_validate::Bool)")
+        println(io, "    _openapi_validate && _validate_schema(", schema, ", value, ", repr("decoding " * model.name), "; direction = ", direction, ")")
+        println(io, "    return ", model.name, "(_decode(", type, ", value, _openapi_validate))")
         println(io, "end")
         println(io, "function _encode(value::", model.name, ")")
         println(io, "    output = _encode(value.value)")
@@ -2752,9 +2833,18 @@ function _emit_model(
             model.name,
             ", value)",
         )
-        println(io, "function _decode(::Type{", model.name, "}, value)")
-        println(io, "    _validate_schema(", schema, ", value, ", repr("decoding " * model.name), "; direction = ", direction, ")")
-        println(io, "    return ", model.name, "(_decode(", model.alias, ", value))")
+        model.name in abstract_targets && println(
+            io,
+            "_decode(::Type{Abstract",
+            model.name,
+            "}, value, validate::Bool) = _decode(",
+            model.name,
+            ", value, validate)",
+        )
+        println(io, "_decode(::Type{", model.name, "}, value) = _decode(", model.name, ", value, true)")
+        println(io, "function _decode(::Type{", model.name, "}, value, _openapi_validate::Bool)")
+        println(io, "    _openapi_validate && _validate_schema(", schema, ", value, ", repr("decoding " * model.name), "; direction = ", direction, ")")
+        println(io, "    return ", model.name, "(_decode(", model.alias, ", value, _openapi_validate))")
         println(io, "end")
         println(io, "function _encode(value::", model.name, ")")
         println(io, "    output = _encode(value.value)")
@@ -2776,10 +2866,19 @@ function _emit_model(
             model.name,
             ", value)",
         )
+        model.name in abstract_targets && println(
+            io,
+            "_decode(::Type{Abstract",
+            model.name,
+            "}, value, validate::Bool) = _decode(",
+            model.name,
+            ", value, validate)",
+        )
         if model.discriminator !== nothing &&
            (!isempty(model.discriminator_mapping) || model.discriminator_default !== nothing)
-            println(io, "function _decode(::Type{", model.name, "}, value)")
-            println(io, "    _validate_schema(", schema, ", value, ", repr("decoding " * model.name), "; direction = ", direction, ")")
+            println(io, "_decode(::Type{", model.name, "}, value) = _decode(", model.name, ", value, true)")
+            println(io, "function _decode(::Type{", model.name, "}, value, _openapi_validate::Bool)")
+            println(io, "    _openapi_validate && _validate_schema(", schema, ", value, ", repr("decoding " * model.name), "; direction = ", direction, ")")
             println(io, "    object = _object(value, ", repr(model.name), ")")
             println(io, "    tag = get(object, ", repr(model.discriminator), ", ABSENT)")
             println(io, "    tag isa Absent || tag isa AbstractString || throw(DecodeError(\"discriminator value must be a string for ", model.name, "\"))")
@@ -2810,12 +2909,13 @@ function _emit_model(
                 )
             end
             println(io, "    selected === nothing && throw(DecodeError(\"unknown discriminator value \$(repr(tag)) for ", model.name, "\"))")
-            println(io, "    _schema_valid(selected[2], value; direction = ", direction, ") || throw(DecodeError(\"discriminator-selected schema did not validate for ", model.name, "\"))")
-            println(io, "    return ", model.name, "(_decode(selected[1], value))")
+            println(io, "    !_openapi_validate || _schema_valid(selected[2], value; direction = ", direction, ") || throw(DecodeError(\"discriminator-selected schema did not validate for ", model.name, "\"))")
+            println(io, "    return ", model.name, "(_decode(selected[1], value, _openapi_validate))")
             println(io, "end")
         else
-            println(io, "function _decode(::Type{", model.name, "}, value)")
-            println(io, "    _validate_schema(", schema, ", value, ", repr("decoding " * model.name), "; direction = ", direction, ")")
+            println(io, "_decode(::Type{", model.name, "}, value) = _decode(", model.name, ", value, true)")
+            println(io, "function _decode(::Type{", model.name, "}, value, _openapi_validate::Bool)")
+            println(io, "    _openapi_validate && _validate_schema(", schema, ", value, ", repr("decoding " * model.name), "; direction = ", direction, ")")
             "Nothing" in model.values && println(
                 io,
                 "    value === nothing && return ",
@@ -2825,8 +2925,12 @@ function _emit_model(
             println(io, "    matches = Any[]")
             for (node, type) in model.variants
                 descriptor = _schema_descriptor(node)
-                println(io, "    if _schema_valid(", descriptor, ", value; direction = ", direction, ")")
-                println(io, "        push!(matches, _decode(", type, ", value))")
+                println(io, "    if !_openapi_validate || _schema_valid(", descriptor, ", value; direction = ", direction, ")")
+                println(io, "        try")
+                println(io, "            push!(matches, _decode(", type, ", value, _openapi_validate))")
+                println(io, "        catch error")
+                println(io, "            error isa DecodeError || rethrow()")
+                println(io, "        end")
                 println(io, "    end")
             end
             if model.kind === :oneof
@@ -2877,8 +2981,17 @@ function _emit_model(
         model.name,
         ", value)",
     )
-    println(io, "function _decode(::Type{", model.name, "}, _openapi_raw)")
-    println(io, "    _validate_schema(", schema, ", _openapi_raw, ", repr("decoding " * model.name), "; direction = ", direction, ")")
+    model.name in abstract_targets && println(
+        io,
+        "_decode(::Type{Abstract",
+        model.name,
+        "}, value, validate::Bool) = _decode(",
+        model.name,
+        ", value, validate)",
+    )
+    println(io, "_decode(::Type{", model.name, "}, value) = _decode(", model.name, ", value, true)")
+    println(io, "function _decode(::Type{", model.name, "}, _openapi_raw, _openapi_validate::Bool)")
+    println(io, "    _openapi_validate && _validate_schema(", schema, ", _openapi_raw, ", repr("decoding " * model.name), "; direction = ", direction, ")")
     println(io, "    _openapi_object = _object(_openapi_raw, ", repr(model.name), ")")
     for field in model.fields
         type = _rewrite_forward(field.type, index, indices, abstract_targets)
@@ -2894,7 +3007,7 @@ function _emit_model(
                 repr(field.wire_name),
                 ", ",
                 repr(model.name),
-                "))",
+                "), _openapi_validate)",
             )
         else
             println(
@@ -2907,7 +3020,7 @@ function _emit_model(
                 type,
                 ", _openapi_object[",
                 repr(field.wire_name),
-                "]) : ABSENT",
+                "], _openapi_validate) : ABSENT",
             )
         end
     end
@@ -2917,11 +3030,11 @@ function _emit_model(
         println(io, "    _openapi_additional_properties = Dict{String,", additional_type, "}()")
         println(io, "    for (_openapi_key, _openapi_item) in _openapi_object")
         println(io, "        String(_openapi_key) in ", _julia_literal(known), " && continue")
-        println(io, "        _openapi_additional_properties[String(_openapi_key)] = _decode(", additional_type, ", _openapi_item)")
+        println(io, "        _openapi_additional_properties[String(_openapi_key)] = _decode(", additional_type, ", _openapi_item, _openapi_validate)")
         println(io, "    end")
     else
         println(io, "    _openapi_unknown = setdiff(String.(collect(keys(_openapi_object))), collect(", _julia_literal(known), "))")
-        println(io, "    isempty(_openapi_unknown) || throw(DecodeError(\"unknown fields while decoding ", model.name, ": \" * join(_openapi_unknown, \", \")))")
+        println(io, "    !_openapi_validate || isempty(_openapi_unknown) || throw(DecodeError(\"unknown fields while decoding ", model.name, ": \" * join(_openapi_unknown, \", \")))")
     end
     print(io, "    return ", model.name, "(")
     assignments = String[

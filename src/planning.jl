@@ -846,13 +846,20 @@ function _plan_object!(context, view, suggested, mode)
         count > 1 && (field_name = string(field_name, '_', count))
         base = _type_for!(context, child, name * _type_identifier(wire_name), mode)
         nullable = _nullable(context, child)
+        # Response validation can be disabled to tolerate deployed APIs that
+        # return explicit null for an optional, non-nullable property. Models
+        # without readOnly/writeOnly properties are shared by input and output
+        # planning, so every optional model field must be able to represent the
+        # response value. Keep `Absent` for missing and `Nothing` for present
+        # null; normal boundary validation still enforces the schema.
+        decodable_null = nullable || !required
         default = required ? nothing : "ABSENT"
         push!(
             fields,
             ModelFieldPlan(
                 field_name,
                 wire_name,
-                _field_type(base, required, nullable),
+                _field_type(base, required, decodable_null),
                 required,
                 nullable,
                 default,
