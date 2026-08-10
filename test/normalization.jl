@@ -81,9 +81,9 @@ end
         client_module = Base.invokelatest(getfield, host, :NullableClient)
         response = only(client_module._OP_getnullable.responses)
         media = only(response.media)
-        @test Base.invokelatest(client_module._schema_valid, media[3], nothing)
+        @test Base.invokelatest(client_module._schema_valid, client_module._SPEC, media[3], nothing)
         @test Base.invokelatest(
-            client_module._decode_body,
+            OpenAPI.Runtime._decode_body,
             client_module.DEFAULT_CLIENT,
             Union{Nothing,String},
             "application/json",
@@ -226,15 +226,15 @@ end
         )
         rules = Base.invokelatest(getfield, constrained_host, :NullableRulesClient)
         descriptor(name) = only(only(getfield(rules, Symbol("_OP_", name)).responses).media)[3]
-        @test Base.invokelatest(rules._schema_valid, descriptor("direct"), nothing)
+        @test Base.invokelatest(rules._schema_valid, rules._SPEC, descriptor("direct"), nothing)
         @test !Base.invokelatest(
-            rules._schema_valid,
+            rules._schema_valid, rules._SPEC,
             descriptor("constrained"),
             nothing,
         )
-        @test !Base.invokelatest(rules._schema_valid, descriptor("composed"), nothing)
+        @test !Base.invokelatest(rules._schema_valid, rules._SPEC, descriptor("composed"), nothing)
         instance = Dict("type" => "string", "nullable" => true)
-        @test Base.invokelatest(rules._schema_valid, descriptor("instance"), instance)
+        @test Base.invokelatest(rules._schema_valid, rules._SPEC, descriptor("instance"), instance)
         @test Nothing <: rules.DirectNullable
         @test !(Nothing <: rules.Constrained)
         @test !(Nothing <: rules.Composed)
@@ -261,7 +261,7 @@ end
             only(permissive._OP_composed.responses).media,
         )[3]
         @test Base.invokelatest(
-            permissive._schema_valid,
+            permissive._schema_valid, permissive._SPEC,
             composed_descriptor,
             nothing,
         )
@@ -269,7 +269,7 @@ end
             only(permissive._OP_constrained.responses).media,
         )[3]
         @test !Base.invokelatest(
-            permissive._schema_valid,
+            permissive._schema_valid, permissive._SPEC,
             constrained_descriptor,
             nothing,
         )
@@ -282,7 +282,7 @@ end
         ).value === nothing
         choice_descriptor = only(only(permissive._OP_choice.responses).media)[3]
         @test Base.invokelatest(
-            permissive._schema_valid,
+            permissive._schema_valid, permissive._SPEC,
             choice_descriptor,
             nothing,
         )
@@ -484,7 +484,7 @@ end
         )
         response_media = only(only(client_module._OP_roundtrip.responses).media)
         output = Base.invokelatest(
-            client_module._decode_body,
+            OpenAPI.Runtime._decode_body,
             client_module.DEFAULT_CLIENT,
             client_module.DirectionalOutput,
             "application/json",

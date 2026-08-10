@@ -18,8 +18,12 @@
     Base.include_string(host, source, "RuntimeUnitClient.jl")
     C = Base.invokelatest(getfield, host, :RuntimeUnitClient)
 
-    invoke(function_name, args...; kwargs...) =
-        Base.invokelatest(getfield(C, function_name), args...; kwargs...)
+    invoke(function_name, args...; kwargs...) = Base.invokelatest(
+        isdefined(C, function_name) ? getfield(C, function_name) :
+        getfield(OpenAPI.Runtime, function_name),
+        args...;
+        kwargs...,
+    )
 
     @testset "path styles" begin
         @test invoke(:_path_parameter, "id", ["a", "b"], :simple, false) == "a,b"

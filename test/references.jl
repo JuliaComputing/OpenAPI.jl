@@ -144,8 +144,8 @@
         name_media = only(only(Strict._OP_getexternalname.responses).media)
         legacy_media = only(only(Strict._OP_getexternallegacy.responses).media)
         @test name_media[2] == Union{Nothing,String}
-        @test Base.invokelatest(Strict._schema_valid, name_media[3], nothing)
-        @test !Base.invokelatest(Strict._schema_valid, legacy_media[3], nothing)
+        @test Base.invokelatest(Strict._schema_valid, Strict._SPEC, name_media[3], nothing)
+        @test !Base.invokelatest(Strict._schema_valid, Strict._SPEC, legacy_media[3], nothing)
 
         permissive = OpenAPI.normalize(root_path; strict = false)
         @test any(
@@ -172,7 +172,7 @@
         )
         @test Nothing <: permissive_media[2]
         @test Base.invokelatest(
-            Permissive._schema_valid,
+            Permissive._schema_valid, Permissive._SPEC,
             permissive_media[3],
             nothing,
         )

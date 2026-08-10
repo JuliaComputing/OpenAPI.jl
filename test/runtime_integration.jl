@@ -799,7 +799,12 @@ end
         C = Base.invokelatest(getfield, host, :RuntimeHTTPClient)
 
         call(name, args...; kwargs...) =
-            Base.invokelatest(getfield(C, name), args...; kwargs...)
+            Base.invokelatest(
+                isdefined(C, name) ? getfield(C, name) :
+                getfield(OpenAPI.Runtime, name),
+                args...;
+                kwargs...,
+            )
         take_request() = take!(captures)
         client = C.Client()
 

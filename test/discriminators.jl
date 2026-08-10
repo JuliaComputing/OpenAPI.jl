@@ -81,7 +81,7 @@
         response_media = only(only(client_module._OP_getpet.responses).media)
 
         decode_pet(json) = Base.invokelatest(
-            client_module._decode_body,
+            OpenAPI.Runtime._decode_body,
             client_module.DEFAULT_CLIENT,
             client_module.Pet,
             "application/json",

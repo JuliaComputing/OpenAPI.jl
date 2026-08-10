@@ -1,7 +1,34 @@
 # Server-stub generation. The framework-neutral request engine below is pasted
-# into generated server modules after GENERATED_RUNTIME_COMMON; framework
-# packages (HTTP.jl through OpenAPIHTTPExt, Servo.jl through ServoOpenAPIExt)
-# add `OpenAPI.server_source` methods that wrap it with router glue.
+# into generated server modules, which import the shared decode/validate
+# machinery from OpenAPI.Runtime; framework packages (HTTP.jl through
+# OpenAPIHTTPExt, Servo.jl through ServoOpenAPIExt) add `OpenAPI.server_source`
+# methods that wrap it with router glue.
+
+# Emitted at the top of every generated server module.
+const GENERATED_SERVER_IMPORTS = raw"""
+const Runtime = OpenAPI.Runtime
+const SchemaEngine = OpenAPI.SchemaEngine
+import OpenAPI.Runtime:
+    ABSENT, Absent, DecodeError, MultipartPartHeaders, SchemaValidationError,
+    UnsupportedMediaType, Upload,
+    _base_media_type, _decode, _decode_schema_header, _decode_sequential_json,
+    _encode, _encode_sequential_json, _form_fields, _header_atom, _header_scalar,
+    _header_type_variant, _header_values, _is_json_media, _is_sequential_json_media,
+    _media_type, _object, _parse_json, _required, _safe_header, _schema_valid,
+    _select_media, _validate_schema
+"""
+
+# Emitted after the schema data constants; packages the document-specific
+# validation data for the shared runtime.
+const GENERATED_SERVER_SPEC = raw"""
+const _SPEC = Runtime.Spec(;
+    security_schemes = _SECURITY_SCHEMES,
+    resources = _SCHEMA_RESOURCE_DATA,
+    roots = _SCHEMA_ROOT_DATA,
+    dialects = _SCHEMA_DIALECT_DATA,
+    directional_required = _SCHEMA_DIRECTIONAL_REQUIRED,
+)
+"""
 
 const GENERATED_RUNTIME_SERVER = raw"""
 struct _RequestFailure <: Exception
@@ -102,7 +129,7 @@ function _object_from_alternating(tokens, context; decode::Bool = false)
 end
 
 function _finish_parameter(descriptor, value, context)
-    _validate_schema(descriptor.schema, _encode(value), context; direction = :input)
+    _validate_schema(_SPEC, descriptor.schema, _encode(value), context; direction = :input)
     return _decode(descriptor.type, value)
 end
 
@@ -111,10 +138,10 @@ function _decode_parameter_content(descriptor, text, context)
     media = _base_media_type(entry[1])
     if _is_json_media(media)
         value = _parse_json(text, context)
-        _validate_schema(entry[3], value, context; direction = :input)
+        _validate_schema(_SPEC, entry[3], value, context; direction = :input)
         return _decode(descriptor.type, value)
     end
-    _validate_schema(entry[3], text, context; direction = :input)
+    _validate_schema(_SPEC, entry[3], text, context; direction = :input)
     return _decode(descriptor.type, text)
 end
 
@@ -331,7 +358,7 @@ function _decode_header_parameter(descriptor, headers)
     context = string("decoding header parameter ", descriptor.name)
     isempty(descriptor.content) ||
         return _decode_parameter_content(descriptor, join(values, ','), context)
-    return _decode_schema_header(
+    return _decode_schema_header(_SPEC, 
         descriptor.type,
         values,
         descriptor.shape,
@@ -486,11 +513,11 @@ function _decode_request_body(operation, headers, body, parts)
         parts === nothing &&
             throw(_RequestFailure(400, "invalid multipart request body"))
         value = _multipart_body_object(parts, encodings, fields)
-        _validate_schema(schema, _encode(value), context; direction = :input)
+        _validate_schema(_SPEC, schema, _encode(value), context; direction = :input)
         return (true, _decode(type, value))
     elseif media == "application/x-www-form-urlencoded"
         value = _form_body_object(body, encodings, fields)
-        _validate_schema(schema, value, context; direction = :input)
+        _validate_schema(_SPEC, schema, value, context; direction = :input)
         return (true, _decode(type, value))
     elseif _is_json_media(media)
         if isempty(body)
@@ -499,20 +526,20 @@ function _decode_request_body(operation, headers, body, parts)
             return (false, nothing)
         end
         value = _parse_json(body, context)
-        _validate_schema(schema, value, context; direction = :input)
+        _validate_schema(_SPEC, schema, value, context; direction = :input)
         return (true, _decode(type, value))
     elseif _is_sequential_json_media(media)
         value = _decode_sequential_json(body, media)
-        _validate_schema(schema, value, context; direction = :input)
+        _validate_schema(_SPEC, schema, value, context; direction = :input)
         return (true, _decode(type, value))
     elseif startswith(media, "text/") || type === String
         isvalid(String, body) ||
             throw(_RequestFailure(400, "text request body is not valid UTF-8"))
         value = String(copy(body))
-        _validate_schema(schema, value, context; direction = :input)
+        _validate_schema(_SPEC, schema, value, context; direction = :input)
         return (true, _decode(type, value))
     end
-    _validate_schema(schema, Base64.base64encode(body), context; direction = :input)
+    _validate_schema(_SPEC, schema, Base64.base64encode(body), context; direction = :input)
     return (true, type === Any ? copy(body) : _decode(type, copy(body)))
 end
 
@@ -670,11 +697,11 @@ function _server_response(operation, result)
     context = string("encoding the ", operation.id, " response body")
     if _is_json_media(media)
         lowered = _encode(result)
-        _validate_schema(entry[3], lowered, context; direction = :output)
+        _validate_schema(_SPEC, entry[3], lowered, context; direction = :output)
         payload = Vector{UInt8}(codeunits(JSON.json(lowered)))
     elseif _is_sequential_json_media(media)
         lowered = _encode(result)
-        _validate_schema(entry[3], lowered, context; direction = :output)
+        _validate_schema(_SPEC, entry[3], lowered, context; direction = :output)
         payload = Vector{UInt8}(codeunits(_encode_sequential_json(result, media)))
     elseif startswith(media, "text/")
         result isa AbstractString || throw(ArgumentError(string(
@@ -682,7 +709,7 @@ function _server_response(operation, result)
             operation.id,
             " documents a text response; return an AbstractString or a framework response",
         )))
-        _validate_schema(entry[3], String(result), context; direction = :output)
+        _validate_schema(_SPEC, entry[3], String(result), context; direction = :output)
         payload = Vector{UInt8}(codeunits(String(result)))
     else
         bytes = result isa AbstractVector{UInt8} ? Vector{UInt8}(result) :
@@ -692,7 +719,7 @@ function _server_response(operation, result)
                     operation.id,
                     " documents a binary response; return bytes, a string, or a framework response",
                 )))
-        _validate_schema(entry[3], Base64.base64encode(bytes), context; direction = :output)
+        _validate_schema(_SPEC, entry[3], Base64.base64encode(bytes), context; direction = :output)
         payload = bytes
     end
     headers = Pair{String,String}[_safe_header("Content-Type", entry[1])]
@@ -820,11 +847,10 @@ function server_module_source(
     println(io, "module ", plan.module_name, "\n")
     println(io, imports)
     plan.datetime === :zoned && println(io, "using TimeZones")
-    println(io, "const SchemaEngine = OpenAPI.SchemaEngine\n")
+    print(io, GENERATED_SERVER_IMPORTS, '\n')
     _emit_security(io, plan)
     _emit_schema_data(io, plan)
-    print(io, GENERATED_RUNTIME_COMMON, '\n')
-    plan.datetime === :zoned && print(io, GENERATED_ZONED_RUNTIME, '\n')
+    print(io, GENERATED_SERVER_SPEC, '\n')
     print(io, GENERATED_RUNTIME_SERVER, '\n')
     indices = _model_indices(plan)
     wrapped_aliases = _cyclic_aliases(plan)

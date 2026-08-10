@@ -7,22 +7,29 @@ authors = ["JuliaHub Inc."]
 version = "1.0.0"
 
 [deps]
+Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 URIs = "5c2747f8-b7ea-4ff2-ba2e-563bfd36b1d4"
+UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 YAML = "ddb6d928-2868-570f-bddf-ab3f9cf99eb6"
 
 [weakdeps]
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
+TimeZones = "f269a46b-ccf7-5d73-abea-4c690281aa53"
 
 [extensions]
 OpenAPIHTTPExt = "HTTP"
+OpenAPITimeZonesExt = "TimeZones"
 
 [compat]
+Base64 = "1.11"
 Dates = "1.11"
 HTTP = "2"
 JSON = "1.7"
+TimeZones = "1"
 URIs = "1"
+UUIDs = "1.11"
 YAML = "0.4"
 julia = "1.11"
