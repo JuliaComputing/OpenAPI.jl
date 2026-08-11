@@ -5,6 +5,7 @@
 module OpenAPIHTTPExt
 
 using OpenAPI, HTTP
+using PrecompileTools: @compile_workload
 
 struct _ResponseTooLarge <: Exception end
 
@@ -536,6 +537,23 @@ function _stream_request(
     return with_http_info ?
            ApiResponse(status, response_headers, decoded_headers, stream_to) :
            stream_to
+end
+
+# HTTP adds methods to OpenAPI's transport seams after the core package image
+# is loaded. Re-run the small client workload in this final method world so the
+# extension does not leave loading and generation work for the first request.
+precompile(
+    OpenAPI.fetchresource,
+    (OpenAPI.Resources.ResourceId, Int),
+)
+
+@compile_workload begin
+    precompile_source = OpenAPI.read(
+        OpenAPI._PRECOMPILE_CLIENT_DOCUMENT;
+        base_uri = "https://precompile.openapi.invalid/openapi.json",
+    )
+    null_path = Sys.iswindows() ? "NUL" : "/dev/null"
+    OpenAPI.client(precompile_source; name = "PrecompileHTTPClient", path = null_path)
 end
 
 end # module

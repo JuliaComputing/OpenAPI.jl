@@ -40,6 +40,7 @@ include("read.jl")
 include("runtime.jl")
 include("client.jl")
 include("servergen.jl")
+include("precompile.jl")
 
 # ── extension seams ─────────────────────────────────────────────────────────
 

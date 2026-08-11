@@ -182,7 +182,13 @@ function _emit_security(io::IO, plan::GenerationPlan)
 end
 
 function _model_indices(plan::GenerationPlan)
-    return Dict(model.name => index for (index, model) in enumerate(plan.models))
+    indices = Dict{String,Int}()
+    index = 0
+    for model in plan.models
+        index += 1
+        indices[model.name] = index
+    end
+    return indices
 end
 
 function _model_references(type::String, names)
@@ -196,11 +202,16 @@ function _model_references(type::String, names)
 end
 
 function _cyclic_aliases(plan::GenerationPlan)
-    aliases = Set(model.name for model in plan.models if model.kind === :alias)
-    edges = Dict(
-        model.name => _model_references(something(model.alias, ""), aliases) for
-        model in plan.models if model.kind === :alias
-    )
+    aliases = Set{String}()
+    for model in plan.models
+        model.kind === :alias && push!(aliases, model.name)
+    end
+    edges = Dict{String,Vector{String}}()
+    for model in plan.models
+        model.kind === :alias || continue
+        edges[model.name] =
+            _model_references(something(model.alias, ""), aliases)
+    end
     function reaches(start, current, seen)
         current in seen && return false
         push!(seen, current)
@@ -210,12 +221,23 @@ function _cyclic_aliases(plan::GenerationPlan)
         end
         return false
     end
-    return Set(name for name in aliases if reaches(name, name, Set{String}()))
+    cyclic = Set{String}()
+    for name in aliases
+        reaches(name, name, Set{String}()) && push!(cyclic, name)
+    end
+    return cyclic
 end
 
 function _model_types(model::ModelPlan, wrapped_aliases)
     if model.kind === :object
-        types = String[field.type for field in model.fields]
+        types = String[]
+        sizehint!(
+            types,
+            length(model.fields) + (model.additional_type === nothing ? 0 : 1),
+        )
+        for field in model.fields
+            push!(types, field.type)
+        end
         model.additional_type === nothing || push!(types, model.additional_type)
         return types
     elseif model.kind in (:oneof, :anyof)
@@ -228,12 +250,19 @@ end
 
 function _forward_abstracts(plan::GenerationPlan, wrapped_aliases)
     indices = _model_indices(plan)
-    concrete = Set(model.name for model in plan.models if model.kind !== :alias)
+    concrete = Set{String}()
+    for model in plan.models
+        model.kind === :alias || push!(concrete, model.name)
+    end
     union!(concrete, wrapped_aliases)
     targets = copy(wrapped_aliases)
-    for (index, model) in enumerate(plan.models)
-        for type in _model_types(model, wrapped_aliases), target in _model_references(type, concrete)
-            get(indices, target, 0) > index && push!(targets, target)
+    index = 0
+    for model in plan.models
+        index += 1
+        for type in _model_types(model, wrapped_aliases)
+            for target in _model_references(type, concrete)
+                get(indices, target, 0) > index && push!(targets, target)
+            end
         end
     end
     return targets
@@ -501,7 +530,11 @@ function _emit_model(
             )
         end
     end
-    known = Tuple(field.wire_name for field in model.fields)
+    known = String[]
+    sizehint!(known, length(model.fields))
+    for field in model.fields
+        push!(known, field.wire_name)
+    end
     if model.additional_type !== nothing
         additional_type = _rewrite_forward(model.additional_type, index, indices, abstract_targets)
         println(io, "    _openapi_additional_properties = Dict{String,", additional_type, "}()")
@@ -514,9 +547,14 @@ function _emit_model(
         println(io, "    !_openapi_validate || isempty(_openapi_unknown) || throw(DecodeError(\"unknown fields while decoding ", model.name, ": \" * join(_openapi_unknown, \", \")))")
     end
     print(io, "    return ", model.name, "(")
-    assignments = String[
-        string(field.name, " = _openapi_field_", field.name) for field in model.fields
-    ]
+    assignments = String[]
+    sizehint!(
+        assignments,
+        length(model.fields) + (model.additional_type === nothing ? 0 : 1),
+    )
+    for field in model.fields
+        push!(assignments, string(field.name, " = _openapi_field_", field.name))
+    end
     model.additional_type === nothing || push!(assignments, "additional_properties = _openapi_additional_properties")
     println(io, "; ", join(assignments, ", "), ")")
     println(io, "end")
@@ -1215,7 +1253,9 @@ function _generate(plan::ClientPlan)
         println(io, "abstract type Abstract", target, " end")
     end
     isempty(abstract_targets) || println(io)
-    for (index, model) in enumerate(plan.models)
+    index = 0
+    for model in plan.models
+        index += 1
         _emit_model(
             io,
             model,

@@ -1555,20 +1555,31 @@ end
 function _plan_components!(context::PlanningContext)
     api = context.api
     # Reserve stable component names before recursive planning starts.
-    for (component_name, handle) in sort(collect(api.schemas); by = first)
+    schemas = Pair{String,SchemaHandle}[]
+    sizehint!(schemas, length(api.schemas))
+    for schema in api.schemas
+        push!(schemas, schema)
+    end
+    sort!(schemas; by = first)
+    for (component_name, handle) in schemas
         view = SchemaView(handle)
         resolved = _resolved_view(view)
         key = (resolved.node, :neutral)
         haskey(context.names, key) ||
             (context.names[key] = _allocate_name!(context, component_name))
     end
-    for (component_name, handle) in sort(collect(api.schemas); by = first)
+    for (component_name, handle) in schemas
         _type_for!(context, SchemaView(handle), component_name, :neutral)
     end
     operations = OperationPlan[]
     used_functions = Dict{String,Int}()
-    ordered = sort(
-        [operation for operation in api.operations if operation.direction === :request];
+    ordered = NormalizedOperation[]
+    sizehint!(ordered, length(api.operations))
+    for operation in api.operations
+        operation.direction === :request && push!(ordered, operation)
+    end
+    sort!(
+        ordered;
         by = operation -> (operation.path, String(operation.method), operation.id),
     )
     for operation in ordered
