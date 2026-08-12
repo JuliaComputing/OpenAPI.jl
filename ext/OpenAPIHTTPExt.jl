@@ -203,6 +203,7 @@ import OpenAPI.Runtime:
     _selected_media_entry,
     _server_for,
     _set_header!,
+    _stream_codec_media,
     _stream_plan,
     _validate_schema
 import OpenAPI.Runtime: _request, _stream_request, _pump_stream!, _abort_stream_on_close!
@@ -340,6 +341,7 @@ function _request(
         headers,
         payload,
         options,
+        accept,
         stream_to,
         with_http_info,
     )
@@ -461,6 +463,7 @@ function _stream_request(
     headers,
     payload::Vector{UInt8},
     options,
+    accept,
     stream_to::Channel,
     with_http_info::Bool,
 )
@@ -530,7 +533,7 @@ function _stream_request(
         kind,
         item_type,
         schema,
-        actual_media,
+        _stream_codec_media(client, actual_media, accept),
         finished,
     ))
     errormonitor(@async _abort_stream_on_close!(stream, stream_to, producer, finished))

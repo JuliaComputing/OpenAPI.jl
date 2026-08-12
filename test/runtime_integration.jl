@@ -608,6 +608,24 @@ end
                     ),
                 ),
             ),
+            "/stream/k8s-watch" => OpenAPI.obj(
+                "get" => OpenAPI.obj(
+                    "operationId" => "k8sWatchStream",
+                    "responses" => OpenAPI.obj(
+                        "200" => OpenAPI.obj(
+                            "description" => "response",
+                            "content" => OpenAPI.obj(
+                                "application/json" => OpenAPI.obj(
+                                    "schema" => event_list_schema,
+                                ),
+                                "application/json;stream=watch" => OpenAPI.obj(
+                                    "schema" => event_list_schema,
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
             "/stream/logs" => OpenAPI.obj(
                 "get" => OpenAPI.obj(
                     "operationId" => "logStream",
@@ -1088,6 +1106,15 @@ end
                         sleep(0.05)
                         send_chunk(socket, """{"kind":"DELETED","seq":3}""")
                         finish_chunks(socket)
+                    elseif startswith(path, "/stream/k8s-watch")
+                        # The Kubernetes apiserver replies with the bare media
+                        # type even when the request selected the parameterized
+                        # stream=watch variant.
+                        write(socket, chunked_head("application/json"))
+                        flush(socket)
+                        send_chunk(socket, """{"kind":"ADDED","seq":21}\n""")
+                        send_chunk(socket, """{"kind":"DELETED","seq":22}""")
+                        finish_chunks(socket)
                     elseif startswith(path, "/stream/logs")
                         write(socket, chunked_head("application/x-ndjson"))
                         flush(socket)
@@ -1181,6 +1208,30 @@ end
                 call(:watchstream; client = raw_client, stream_to = second_watch_channel)
                 @test [(item.kind, item.seq) for item in collect(second_watch_channel)] ==
                       [("ADDED", 1), ("MODIFIED", 2), ("DELETED", 3)]
+
+                # A deployed watch server replies with the bare media type, so
+                # the parameterized codec fires for the calls that selected the
+                # variant via `accept` ...
+                k8s_channel = Channel{Any}(16)
+                call(
+                    :k8swatchstream;
+                    client = raw_client,
+                    stream_to = k8s_channel,
+                    accept = "application/json;stream=watch",
+                )
+                k8s_items = collect(k8s_channel)
+                @test [(item.kind, item.seq) for item in k8s_items] ==
+                      [("ADDED", 21), ("DELETED", 22)]
+                @test all(
+                    item -> item.media == "application/json;stream=watch",
+                    k8s_items,
+                )
+
+                # ... and not for calls that did not, which decode against the
+                # documented List schema as before.
+                bare_k8s_channel = Channel{Any}(16)
+                call(:k8swatchstream; client = raw_client, stream_to = bare_k8s_channel)
+                @test_throws C.SchemaValidationError take!(bare_k8s_channel)
 
                 log_channel = Channel{Any}(16)
                 @test call(:logstream; client = raw_client, stream_to = log_channel) ===

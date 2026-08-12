@@ -2118,9 +2118,10 @@ end
 # newline-separated JSON documents, e.g. watch-style endpoints); sequential
 # JSON media types split records and decode each to the documented array's
 # element type; `text/*` yields lines; anything else yields raw byte chunks.
-# A registered decoder receives each framed item and its actual Content-Type.
-# Its return value is delivered directly, so it can override an inaccurate
-# response schema such as a Kubernetes List declaration on a watch stream.
+# A registered decoder receives each framed item and the media type it was
+# selected for. Its return value is delivered directly, so it can override an
+# inaccurate response schema such as a Kubernetes List declaration on a watch
+# stream.
 function _stream_plan(media, type, schema)
     if _is_sequential_json_media(media)
         item_type = type <: AbstractVector && type !== Vector{UInt8} ?
@@ -2252,6 +2253,28 @@ function _decode_stream_item(
         direction = :output,
     )
     return _decode(item_type, value, client.validate_responses)
+end
+
+# Deployed watch-style servers reply with the bare media type — the Kubernetes
+# apiserver sends `Content-Type: application/json` even when the request
+# selected `application/json;stream=watch` — which never matches a codec
+# registered for the parameterized variant. When no decoder matches the
+# received media type, fall back to the media type the caller explicitly
+# requested via `accept`, so a parameterized registration fires for exactly
+# the calls that asked for that variant.
+function _stream_codec_media(client::Client, media_type, accept)
+    media = String(media_type)
+    accept === nothing && return media
+    _select_media_codec(client.media_decoders, media) === nothing || return media
+    base = first(_media_type(media))
+    for option in split(String(accept), ',')
+        candidate = String(strip(option))
+        isempty(candidate) && continue
+        first(_media_type(candidate)) == base || continue
+        _select_media_codec(client.media_decoders, candidate) === nothing ||
+            return candidate
+    end
+    return media
 end
 
 function _drain_stream_buffer!(

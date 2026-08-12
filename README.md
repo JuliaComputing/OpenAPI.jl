@@ -328,7 +328,7 @@ A registered response decoder also applies to streaming calls. The runtime
 calls it once for each framed item and puts its return value directly on the
 channel. This is an escape hatch for deployed APIs whose streaming wire format
 does not match the response schema. Register the full parameterized media type
-to limit the override to that stream:
+and select it with `accept` to limit the override to those calls:
 
 ```julia
 ExampleClient.codec!(
@@ -336,9 +336,20 @@ ExampleClient.codec!(
     "application/json;stream=watch";
     decode = (bytes, media_type) -> JSON.parse(String(bytes)),
 )
+events = Channel{Any}(16)
+ExampleClient.watch_pods(;
+    client,
+    accept = "application/json;stream=watch",
+    stream_to = events,
+)
 ```
 
 This decoder does not replace the decoder for plain `application/json`.
+Codecs are matched against the received Content-Type first, and streaming
+calls fall back to the media type the call requested via `accept`: deployed
+servers such as the Kubernetes apiserver reply with the bare
+`application/json` even when the request selected the parameterized variant,
+so passing `accept` is what scopes the override to the watch calls.
 
 For a custom media type, register an encoder or decoder:
 
