@@ -7,6 +7,7 @@ from declared Julia endpoints.
 The client pipeline supports OpenAPI 3.0.x, 3.1.x, and 3.2.x. It parses JSON
 and YAML, resolves references, validates the document, normalizes version
 differences, plans Julia types, and emits deterministic source code.
+OpenAPI.jl supports Julia 1.10 LTS and later Julia 1.x releases.
 
 Generated schema graphs use content-derived resource identifiers. Local paths,
 source URL userinfo, and source URL query strings are not embedded in generated

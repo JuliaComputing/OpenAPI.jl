@@ -43,7 +43,10 @@ getschema(reg, T) = OpenAPI.schemaof(reg, T)
             :serverplan,
             :validate,
         )
-            @test Base.ispublic(OpenAPI, name)
+            @test isdefined(OpenAPI, name)
+            @static if VERSION >= v"1.11"
+                @test Base.ispublic(OpenAPI, name)
+            end
             @test !Base.isexported(OpenAPI, name)
         end
     end

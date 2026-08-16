@@ -112,7 +112,7 @@ Run the package tests on both supported Julia minor lines:
 
 ```sh
 julia +1.12 --project=. -e 'using Pkg; Pkg.test()'
-julia +1.11 --project=. -e 'using Pkg; Pkg.test()'
+julia +1.10 --project=. -e 'using Pkg; Pkg.test()'
 ```
 
 The focused files separate concerns:
@@ -150,7 +150,7 @@ Do not couple its internals to OpenAPI normalization or planning.
 3. Add runtime or live HTTP coverage when bytes, headers, security, or response
    selection change.
 4. Run focused tests.
-5. Run the full Julia 1.12 and 1.11 suites.
+5. Run the full Julia 1.12 and 1.10 suites.
 6. Run the small corpus. Run the full corpus for reference, planning, naming,
    schema, or generation changes.
 7. Check `git diff --check` and inspect generated source for deterministic
