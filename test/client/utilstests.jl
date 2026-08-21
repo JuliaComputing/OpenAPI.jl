@@ -54,6 +54,9 @@ function test_date()
     for tz in timezones
         @test OpenAPI.str2date("2017-11-14"*tz) == Date(2017, 11, 14)
     end
+
+    @test_throws OpenAPI.OpenAPIException OpenAPI.str2datetime("not-a-datetime")
+    @test_throws OpenAPI.OpenAPIException OpenAPI.str2date("not-a-date")
 end
 
 function as_taskfailedexception(ex)

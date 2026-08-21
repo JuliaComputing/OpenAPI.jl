@@ -19,6 +19,23 @@ const DATETIME_FORMATS = [
     Dates.DateFormat("yyyy-mm-ddTHH:MM:SS.sz"),
 ]
 
+# The subset of `DATETIME_FORMATS` that can ever construct a `ZonedDateTime`.
+# `ZonedDateTime(str, fmt)` (unlike `DateTime`/`Date`) requires the format to
+# carry a `z` specifier *and* the string to supply real offset characters, so
+# every format without a `z` is guaranteed to fail for every input and is
+# dropped here rather than being tried and discarded on each call.
+const ZONED_DATETIME_FORMATS = [
+    Dates.DateFormat("yyyy-mm-ddTHH:MM:SSz"),
+    Dates.DateFormat("yyyy-mm-ddTHH:MM:SS.sssz"),
+    Dates.DateFormat("yyyy-mm-ddz"),
+    Dates.DateFormat("yyyy-mm-dd HH:MM:SSz"),
+    Dates.DateFormat("yyyy-mm-dd HH:MM:SS.sssz"),
+    Dates.DateFormat("yyyy-mm-dd HH:MM:SS.ssz"),
+    Dates.DateFormat("yyyy-mm-ddTHH:MM:SS.ssz"),
+    Dates.DateFormat("yyyy-mm-dd HH:MM:SS.sz"),
+    Dates.DateFormat("yyyy-mm-ddTHH:MM:SS.sz"),
+]
+
 const rxdatetime =
     r"([0-9]{4}-[0-9]{2}-[0-9]{2}[T\s][0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,3})?)[0-9]*([+\-Z][:\.0-9]*)?"
 function reduce_to_ms_precision(datetimestr::String)
@@ -35,12 +52,9 @@ end
 str2zoneddatetime(bytes::Vector{UInt8}) = str2zoneddatetime(String(bytes))
 function str2zoneddatetime(str::String)
     str = reduce_to_ms_precision(str)
-    for fmt in DATETIME_FORMATS
-        try
-            return ZonedDateTime(str, fmt)
-        catch
-            # try next format
-        end
+    for fmt in ZONED_DATETIME_FORMATS
+        zdt = tryparse(ZonedDateTime, str, fmt)
+        zdt === nothing || return zdt
     end
     return ZonedDateTime(str2datetime(str), localzone())
 end
@@ -50,11 +64,8 @@ str2datetime(bytes::Vector{UInt8}) = str2datetime(String(bytes))
 function str2datetime(str::String)
     str = reduce_to_ms_precision(str)
     for fmt in DATETIME_FORMATS
-        try
-            return DateTime(str, fmt)
-        catch
-            # try next format
-        end
+        dt = tryparse(DateTime, str, fmt)
+        dt === nothing || return dt
     end
     throw(OpenAPIException("Unsupported DateTime format: $str"))
 end
@@ -63,11 +74,8 @@ str2datetime(datetime::DateTime) = datetime
 str2date(bytes::Vector{UInt8}) = str2date(String(bytes))
 function str2date(str::String)
     for fmt in DATETIME_FORMATS
-        try
-            return Date(str, fmt)
-        catch
-            # try next format
-        end
+        d = tryparse(Date, str, fmt)
+        d === nothing || return d
     end
     throw(OpenAPIException("Unsupported Date format: $str"))
 end
