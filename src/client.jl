@@ -1217,6 +1217,19 @@ function _emit_operation(io, operation::OperationPlan, const_name)
     isempty(summary) || (doc *= "\n" * summary * "\n")
     doc *= "\n`" * String(operation.operation.method) * " " *
            operation.operation.path * "`"
+    documented = [
+        parameter.name => parameter.parameter.description
+        for parameter in operation.parameters
+        if parameter.parameter.description !== nothing
+    ]
+    if operation.request_body !== nothing &&
+       operation.request_body.body.description !== nothing
+        push!(documented, "body" => operation.request_body.body.description)
+    end
+    isempty(documented) || (doc *= "\n\n" * join(
+        ("- `" * name * "`: " * description for (name, description) in documented),
+        "\n",
+    ))
     println(io, "@doc ", repr(doc))
     println(
         io,

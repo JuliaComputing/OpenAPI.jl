@@ -8,6 +8,7 @@
                         "name" => "petId",
                         "in" => "path",
                         "required" => true,
+                        "description" => "Numeric pet identifier.",
                         "schema" => OpenAPI.obj("type" => "integer"),
                     ),
                 ],
@@ -114,6 +115,10 @@
         @test occursin("@doc " * repr(pet_doc), client_source)
         @test occursin("@doc " * repr("    Status\n\nAdoption status."), client_source)
         @test occursin("@doc " * repr(pet_doc), server_source)
+
+        operation_doc = "    getpet(...)\n\n`GET /pets/{petId}`\n\n" *
+                        "- `petid`: Numeric pet identifier."
+        @test occursin("@doc " * repr(operation_doc), client_source)
 
         host = Module(:ContractDocsHost)
         Base.include_string(host, client_source, "ContractClient.jl")
