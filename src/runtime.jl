@@ -14,6 +14,43 @@ import ..SchemaEngine
 using JSON, Base64, Dates, UUIDs
 
 """
+Version of the contract between this runtime and generated modules: the names
+generated code imports, the shapes of the data it bakes ([`Spec`](@ref)
+keywords, operation tables, schema descriptors, dialect literals), and their
+semantics. Bump this whenever any of those change so previously generated
+modules fail loudly at load time instead of misbehaving; see
+[`require_contract`](@ref).
+"""
+const CONTRACT_VERSION = 1
+
+"""
+    Runtime.require_contract(version::Integer, generator::AbstractString)
+
+Called at load time by every generated module to assert that the loaded
+runtime still provides the contract the module was generated against;
+`generator` records the OpenAPI.jl version that produced the module. Throws
+with regeneration guidance on mismatch. This function and
+[`CONTRACT_VERSION`](@ref) are permanently stable names: renaming either would
+make old generated modules fail with a bare `UndefVarError` instead of this
+error.
+"""
+function require_contract(version::Integer, generator::AbstractString)
+    version == CONTRACT_VERSION && return nothing
+    runtime = something(pkgversion(@__MODULE__), "unknown")
+    return error(
+        "this generated module was produced by OpenAPI.jl v",
+        generator,
+        " against generated-code contract ",
+        version,
+        ", but the loaded OpenAPI.jl v",
+        runtime,
+        " provides contract ",
+        CONTRACT_VERSION,
+        "; regenerate the module with `OpenAPI.client` or `OpenAPI.server`.",
+    )
+end
+
+"""
 Document-specific data a generated module supplies to the shared runtime:
 schema resources for validation, security schemes, and server defaults.
 Mutable runtime state (the module-wide server override and the compiled
@@ -140,17 +177,17 @@ function _schema_graph(spec::Spec, direction::Symbol = :neutral)
             root => entry.dialect for (root, entry) in zip(roots, spec.roots)
         )
         dialect_aliases = Dict(
-            entry.uri => SchemaEngine.Dialect(
-                entry.name,
-                entry.uri,
-                entry.id_keyword,
-                entry.ref_siblings,
-                entry.modern_items,
-                entry.unevaluated,
-                entry.dynamic_refs,
-                entry.recursive_refs,
-                entry.applicator,
-                entry.validation,
+            entry.uri => SchemaEngine.Dialect(;
+                name = entry.name,
+                uri = entry.uri,
+                id_keyword = entry.id_keyword,
+                ref_siblings = entry.ref_siblings,
+                modern_items = entry.modern_items,
+                unevaluated = entry.unevaluated,
+                dynamic_refs = entry.dynamic_refs,
+                recursive_refs = entry.recursive_refs,
+                applicator = entry.applicator,
+                validation = entry.validation,
             ) for entry in spec.dialects
         )
         graph = SchemaEngine.CompiledSchemas(

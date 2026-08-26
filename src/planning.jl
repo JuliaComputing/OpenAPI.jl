@@ -5,6 +5,7 @@ struct ModelFieldPlan
     required::Bool
     nullable::Bool
     default::Union{Nothing,String}
+    description::Union{Nothing,String}
 end
 
 struct ModelPlan
@@ -22,6 +23,7 @@ struct ModelPlan
     variants::Tuple{Vararg{Pair{Resources.NodeId,String}}}
     direction::Symbol
     provenance::Provenance
+    description::Union{Nothing,String}
 end
 
 struct ParameterPlan
@@ -293,6 +295,21 @@ function _resolved_view(view::SchemaView)
     siblings = String[String(key) for key in keys(view.value) if key != "\$ref"]
     all(key -> key in NON_APPLICATIVE_SCHEMA_SIBLINGS, siblings) && return target
     return view
+end
+
+# The spec `description` for a schema, preferring one written next to a `$ref`
+# over the referenced schema's own; carried into generated docstrings.
+function _schema_description(view::SchemaView)
+    if view.value isa AbstractDict
+        raw = get(view.value, "description", nothing)
+        raw isa AbstractString && !isempty(raw) && return String(raw)
+    end
+    resolved = _resolved_view(view)
+    if resolved !== view && resolved.value isa AbstractDict
+        raw = get(resolved.value, "description", nothing)
+        raw isa AbstractString && !isempty(raw) && return String(raw)
+    end
+    return nothing
 end
 
 function _keyword_owner(
@@ -822,6 +839,7 @@ function _plan_enum!(context, view, suggested, mode, values)
             (),
             key[2],
             Provenance(resolved.node),
+            _schema_description(view),
         ),
     )
     delete!(context.planning, key)
@@ -863,6 +881,7 @@ function _plan_object!(context, view, suggested, mode)
                 required,
                 nullable,
                 default,
+                _schema_description(child),
             ),
         )
     end
@@ -897,6 +916,7 @@ function _plan_object!(context, view, suggested, mode)
             (),
             key[2],
             Provenance(resolved.node),
+            _schema_description(view),
         ),
     )
     delete!(context.planning, key)
@@ -1053,6 +1073,7 @@ function _plan_union!(context, view, suggested, mode, keyword)
             Tuple(variants),
             key[2],
             Provenance(resolved.node),
+            _schema_description(view),
         ),
     )
     delete!(context.planning, key)
@@ -1215,6 +1236,7 @@ function _type_for!(
                 (),
                 key[2],
                 Provenance(resolved.node),
+                _schema_description(view),
             ),
         )
         delete!(context.planning, key)

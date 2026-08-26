@@ -25,6 +25,35 @@ struct Dialect
     validation::Bool
 end
 
+# Generated modules and the runtime reconstruct dialects through keywords so a
+# change to the struct's field order can never silently reassign the trailing
+# Bool flags; the positional constructor stays for the standard constants below.
+function Dialect(;
+    name::Symbol,
+    uri::AbstractString,
+    id_keyword::AbstractString,
+    ref_siblings::Bool,
+    modern_items::Bool,
+    unevaluated::Bool,
+    dynamic_refs::Bool,
+    recursive_refs::Bool,
+    applicator::Bool,
+    validation::Bool,
+)
+    return Dialect(
+        name,
+        uri,
+        id_keyword,
+        ref_siblings,
+        modern_items,
+        unevaluated,
+        dynamic_refs,
+        recursive_refs,
+        applicator,
+        validation,
+    )
+end
+
 const DRAFT4 = Dialect(
     :draft4,
     "http://json-schema.org/draft-04/schema",

@@ -26,6 +26,10 @@ import YAML
 
 const OPENAPI_VERSION = "3.2.0"
 
+# Stamped into every generated module's banner and contract guard so a broken
+# generated file in the wild records which OpenAPI.jl release produced it.
+const PACKAGE_VERSION = string(something(pkgversion(@__MODULE__), "unknown"))
+
 include("schema_engine/SchemaEngine.jl")
 
 include("schemas.jl")

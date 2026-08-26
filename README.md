@@ -17,6 +17,10 @@ rule.
 
 OpenAPI.jl does not export names. Use its API through the `OpenAPI` namespace.
 
+Upgrading from 0.2.x — the runtime library used by openapi-generator's
+`julia-client`/`julia-server` targets — is a breaking change; see
+[MIGRATION.md](MIGRATION.md).
+
 ## Generate a client
 
 Load `HTTP` before reading a URL. Local files and inline JSON or YAML do not
@@ -262,6 +266,31 @@ properties are ignored, and an explicit null on an optional response property
 decodes to `nothing` even when the document marks that property non-nullable.
 Missing optional properties still decode to `ABSENT`. Values that cannot fit
 the generated Julia type can still raise `DecodeError`.
+
+## Generated modules are baked artifacts
+
+A generated module is coupled to the OpenAPI.jl release that produced it. It
+imports internal `OpenAPI.Runtime` machinery and bakes runtime data shapes —
+operation tables, `Runtime.Spec` keywords, schema descriptors, and dialect
+references — directly into its source. That coupling is deliberate: it is what
+makes a generated file a single self-contained artifact. But it means the file
+is a build product of a specific OpenAPI.jl version, not version-independent
+user code, and the internals it touches are not covered by semantic versioning.
+
+Every generated module therefore records and checks its provenance:
+
+- the first line stamps the OpenAPI.jl version that produced the file, and
+- immediately after its imports, the module calls
+  `Runtime.require_contract(N, version)` at load time, where `N` is the
+  generated-code contract version (`OpenAPI.Runtime.CONTRACT_VERSION`) current
+  at generation time.
+
+A release that changes any part of the generated-code contract bumps
+`CONTRACT_VERSION`, so a previously generated module fails at load time with
+an error naming the release that generated it and asking for regeneration —
+instead of failing mysteriously, or worse silently, inside the runtime.
+Regeneration is the supported upgrade path: rerun `OpenAPI.client` or
+`OpenAPI.server` against your document and commit the new file.
 
 ## HTTP behavior
 

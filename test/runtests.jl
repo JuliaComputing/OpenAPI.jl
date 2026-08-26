@@ -272,6 +272,7 @@ if get(ENV, "OPENAPI_SCHEMA_SUITE", "") == "all"
 end
 include("normalization.jl")
 include("models.jl")
+include("generated_contract.jl")
 include("discriminators.jl")
 include("references.jl")
 include("semantics.jl")
