@@ -21,7 +21,7 @@ semantics. Bump this whenever any of those change so previously generated
 modules fail loudly at load time instead of misbehaving; see
 [`require_contract`](@ref).
 """
-const CONTRACT_VERSION = 1
+const CONTRACT_VERSION = 2
 
 """
     Runtime.require_contract(version::Integer, generator::AbstractString)
@@ -67,27 +67,32 @@ struct Spec
     server::Base.RefValue{String}
     graphs::Dict{Symbol,Any}
     graph_lock::ReentrantLock
-end
-
-function Spec(;
-    security_schemes::Dict{String,NamedTuple} = Dict{String,NamedTuple}(),
-    resources::Vector{Any} = Any[],
-    roots::Vector{Any} = Any[],
-    dialects::Vector{Any} = Any[],
-    directional_required::Vector{Any} = Any[],
-    default_server::AbstractString = "",
-)
-    return Spec(
-        security_schemes,
-        resources,
-        roots,
-        dialects,
-        directional_required,
-        String(default_server),
-        Ref(String(default_server)),
-        Dict{Symbol,Any}(),
-        ReentrantLock(),
+    # Generated data is required and name-mapped so an omitted keyword or a
+    # declaration reorder cannot silently substitute an empty or adjacent
+    # Vector{Any} field.
+    function Spec(;
+        security_schemes::Dict{String,NamedTuple},
+        resources::Vector{Any},
+        roots::Vector{Any},
+        dialects::Vector{Any},
+        directional_required::Vector{Any},
+        default_server::AbstractString,
     )
+        normalized_server = String(default_server)
+        values = (;
+            security_schemes,
+            resources,
+            roots,
+            dialects,
+            directional_required,
+            default_server = normalized_server,
+            server = Ref(normalized_server),
+            graphs = Dict{Symbol,Any}(),
+            graph_lock = ReentrantLock(),
+        )
+        ordered = map(field -> getproperty(values, field), fieldnames(Spec))
+        return new(ordered...)
+    end
 end
 
 struct Absent end
@@ -205,7 +210,9 @@ end
 function _schema_at(spec::Spec, descriptor, direction::Symbol = :neutral)
     descriptor === nothing && return nothing
     graph = _schema_graph(spec, direction)
-    graph === nothing && return nothing
+    graph === nothing && throw(ArgumentError(
+        "generated schema metadata has a descriptor but no schema roots; regenerate the module",
+    ))
     node = SchemaEngine.Resources.NodeId(
         SchemaEngine.Resources.ResourceId(descriptor.resource),
         SchemaEngine.Resources.JSONPointer(descriptor.pointer),
@@ -1402,6 +1409,13 @@ function _security!(client, requirements, query, headers, cookies, base_options)
                     push!(query, (scheme.name, credential.value, false, false))
                 elseif scheme.location === :cookie
                     push!(cookies, (scheme.name, credential.value, false, false))
+                else
+                    throw(ArgumentError(string(
+                        "security scheme ",
+                        name,
+                        " has unsupported API key location ",
+                        repr(scheme.location),
+                    )))
                 end
             elseif scheme.type === :http_basic
                 credential isa BasicCredential ||

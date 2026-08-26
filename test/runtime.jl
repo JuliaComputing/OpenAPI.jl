@@ -25,6 +25,76 @@
         kwargs...,
     )
 
+    @testset "generated contract metadata fails closed" begin
+        Runtime = OpenAPI.Runtime
+        @test_throws UndefKeywordError Runtime.Spec()
+
+        function empty_spec(; security_schemes = Dict{String,NamedTuple}())
+            return Runtime.Spec(;
+                security_schemes,
+                resources = Any[],
+                roots = Any[],
+                dialects = Any[],
+                directional_required = Any[],
+                default_server = "",
+            )
+        end
+
+        descriptor = (
+            resource = "https://example.test/missing-schema",
+            pointer = "",
+        )
+        schema_error = try
+            invoke(
+                :_validate_schema,
+                empty_spec(),
+                descriptor,
+                Dict("wrong" => true),
+                "checking malformed generated metadata",
+            )
+            nothing
+        catch error
+            error
+        end
+        @test schema_error isa ArgumentError
+        @test occursin("no schema roots", sprint(showerror, schema_error))
+
+        broken_scheme = (
+            type = :apikey,
+            name = "X-Broken-Key",
+            location = :bogus,
+        )
+        client = Runtime.Client(
+            empty_spec(;
+                security_schemes = Dict{String,NamedTuple}(
+                    "BrokenKey" => broken_scheme,
+                ),
+            );
+            credentials = Dict(
+                "BrokenKey" => Runtime.ApiKeyCredential("secret"),
+            ),
+        )
+        security_error = try
+            invoke(
+                :_security!,
+                client,
+                ((("BrokenKey", ()),),),
+                Tuple{String,String,Bool,Bool}[],
+                Pair{String,String}[],
+                Tuple{String,String,Bool,Bool}[],
+                NamedTuple(),
+            )
+            nothing
+        catch error
+            error
+        end
+        @test security_error isa ArgumentError
+        @test occursin(
+            "unsupported API key location :bogus",
+            sprint(showerror, security_error),
+        )
+    end
+
     @testset "path styles" begin
         @test invoke(:_path_parameter, "id", ["a", "b"], :simple, false) == "a,b"
         @test invoke(

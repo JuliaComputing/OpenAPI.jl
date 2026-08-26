@@ -6,7 +6,6 @@
 
 # Emitted at the top of every generated server module.
 const GENERATED_SERVER_IMPORTS = raw"""
-const Runtime = OpenAPI.Runtime
 const SchemaEngine = OpenAPI.SchemaEngine
 import OpenAPI.Runtime:
     ABSENT, Absent, DecodeError, MultipartPartHeaders, SchemaValidationError,
@@ -27,6 +26,7 @@ const _SPEC = Runtime.Spec(;
     roots = _SCHEMA_ROOT_DATA,
     dialects = _SCHEMA_DIALECT_DATA,
     directional_required = _SCHEMA_DIRECTIONAL_REQUIRED,
+    default_server = "",
 )
 """
 
@@ -543,6 +543,33 @@ function _decode_request_body(operation, headers, body, parts)
     return (true, type === Any ? copy(body) : _decode(type, copy(body)))
 end
 
+function _validate_parameter_descriptor(descriptor)
+    styles = if descriptor.location === :path
+        (:simple, :label, :matrix)
+    elseif descriptor.location === :query
+        (:form, :spaceDelimited, :pipeDelimited, :deepObject)
+    elseif descriptor.location === :header
+        (:simple,)
+    elseif descriptor.location === :cookie
+        (:form, :cookie)
+    else
+        throw(ArgumentError(
+            "unsupported parameter location $(repr(descriptor.location)) in generated descriptor",
+        ))
+    end
+    isempty(descriptor.content) || return nothing
+    descriptor.shape in (:scalar, :array, :object) || throw(ArgumentError(
+        "unsupported parameter shape $(repr(descriptor.shape)) in generated descriptor",
+    ))
+    descriptor.style in styles || throw(ArgumentError(
+        "unsupported $(descriptor.location) parameter style $(repr(descriptor.style)) in generated descriptor",
+    ))
+    descriptor.explode isa Bool || throw(ArgumentError(
+        "unsupported parameter explode value $(repr(descriptor.explode)) in generated descriptor",
+    ))
+    return nothing
+end
+
 function _operation_arguments(entry, path_params, query_string, headers, body, parts)
     operation = entry.operation
     query = _query_pairs(query_string)
@@ -553,6 +580,7 @@ function _operation_arguments(entry, path_params, query_string, headers, body, p
     exploded_query = nothing
     exploded_cookie = nothing
     for descriptor in operation.parameters
+        _validate_parameter_descriptor(descriptor)
         decoded = try
             if descriptor.location === :path
                 raw = get(path_params, descriptor.name, nothing)
@@ -560,7 +588,8 @@ function _operation_arguments(entry, path_params, query_string, headers, body, p
                 throw(_RequestFailure(400, string("missing path parameter ", descriptor.name))) :
                 _decode_path_parameter(descriptor, raw)
             elseif descriptor.location === :query
-                if isempty(descriptor.content) && descriptor.style === :form &&
+                if isempty(descriptor.content) &&
+                   descriptor.style === :form &&
                    descriptor.explode === true && descriptor.shape === :object
                     exploded_query = descriptor
                     continue
@@ -573,7 +602,8 @@ function _operation_arguments(entry, path_params, query_string, headers, body, p
                     cookies = _cookie_pairs(headers)
                     cookie_consumed = falses(length(cookies))
                 end
-                if isempty(descriptor.content) && descriptor.style === :form &&
+                if isempty(descriptor.content) &&
+                   descriptor.style in (:form, :cookie) &&
                    descriptor.explode === true && descriptor.shape === :object
                     exploded_cookie = descriptor
                     continue
@@ -849,8 +879,8 @@ function server_module_source(
     println(io, "module ", plan.module_name, "\n")
     println(io, imports)
     plan.datetime === :zoned && println(io, "using TimeZones")
-    print(io, GENERATED_SERVER_IMPORTS, '\n')
     _emit_contract_guard(io)
+    print(io, GENERATED_SERVER_IMPORTS, '\n')
     _emit_security(io, plan)
     _emit_schema_data(io, plan)
     print(io, GENERATED_SERVER_SPEC, '\n')

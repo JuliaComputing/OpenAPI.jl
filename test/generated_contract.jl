@@ -69,21 +69,40 @@
         @test startswith(server_source, banner)
         @test occursin(guard, client_source)
         @test occursin(guard, server_source)
+        for source in (client_source, server_source)
+            guard_position = findfirst(guard, source)
+            import_position = findfirst("import OpenAPI.Runtime:", source)
+            @test guard_position !== nothing
+            @test import_position !== nothing
+            @test first(guard_position) < first(import_position)
+        end
+
+        direct_server_source = OpenAPI.server_module_source(
+            OpenAPI.serverplan(document; name = "DirectContractServer");
+            imports = "using OpenAPI, JSON",
+            glue = "",
+        )
+        @test occursin(guard, direct_server_source)
+        @test first(findfirst(guard, direct_server_source)) <
+              first(findfirst("import OpenAPI.Runtime:", direct_server_source))
 
         current = OpenAPI.Runtime.CONTRACT_VERSION
+        @test current == 2
         @test OpenAPI.Runtime.require_contract(current, OpenAPI.PACKAGE_VERSION) === nothing
-        mismatch = try
-            OpenAPI.Runtime.require_contract(current + 1, "0.0.0")
-            nothing
-        catch error
-            error
+        for generated_contract in (1, current + 1)
+            mismatch = try
+                OpenAPI.Runtime.require_contract(generated_contract, "0.0.0")
+                nothing
+            catch error
+                error
+            end
+            @test mismatch isa ErrorException
+            message = sprint(showerror, mismatch)
+            @test occursin("produced by OpenAPI.jl v0.0.0", message)
+            @test occursin("contract $generated_contract", message)
+            @test occursin("provides contract $current", message)
+            @test occursin("regenerate", message)
         end
-        @test mismatch isa ErrorException
-        message = sprint(showerror, mismatch)
-        @test occursin("produced by OpenAPI.jl v0.0.0", message)
-        @test occursin("contract $(current + 1)", message)
-        @test occursin("provides contract $current", message)
-        @test occursin("regenerate", message)
     end
 
     @testset "dialects are emitted by name, never positionally" begin

@@ -3,7 +3,6 @@
 # operations use, extending only _decode/_encode/_form_fields with methods on
 # their own (module-local) model types.
 const GENERATED_CLIENT_IMPORTS = raw"""
-const Runtime = OpenAPI.Runtime
 const SchemaEngine = OpenAPI.SchemaEngine
 import OpenAPI.Runtime:
     ABSENT, Absent, AbstractCredential, ApiError, ApiKeyCredential, ApiResponse,
@@ -1263,6 +1262,7 @@ end
 # mismatch fails at load time with regeneration guidance instead of erroring
 # (or silently misbehaving) deep inside the runtime.
 function _emit_contract_guard(io::IO)
+    println(io, "const Runtime = OpenAPI.Runtime")
     println(
         io,
         "Runtime.require_contract(",
@@ -1288,8 +1288,8 @@ function _generate(plan::ClientPlan)
     println(io, "module ", plan.module_name, "\n")
     println(io, "using HTTP, JSON, OpenAPI, Base64, Dates, UUIDs")
     plan.datetime === :zoned && println(io, "using TimeZones")
-    print(io, GENERATED_CLIENT_IMPORTS, '\n')
     _emit_contract_guard(io)
+    print(io, GENERATED_CLIENT_IMPORTS, '\n')
     _emit_security(io, plan)
     _emit_schema_data(io, plan)
     println(io, "const _SPEC = Runtime.Spec(;")

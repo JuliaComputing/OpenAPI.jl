@@ -414,6 +414,116 @@ nullout(req) = nothing
     sregister(args...; kwargs...) =
         Base.invokelatest(getfield(S, :register!), args...; kwargs...)
 
+    @testset "malformed parameter descriptors fail closed" begin
+        entry = only(filter(
+            item -> item.operation.id == "styles",
+            Base.invokelatest(getfield, S, :_SERVER_OPS),
+        ))
+        descriptor = only(filter(
+            item -> item.name == "label",
+            entry.operation.parameters,
+        ))
+        function malformed_entry(changed)
+            malformed = merge(descriptor, changed)
+            operation = merge(
+                entry.operation,
+                (parameters = (malformed,), request = nothing),
+            )
+            return merge(
+                entry,
+                (
+                    operation = operation,
+                    path_args = (malformed.arg,),
+                    required_body = false,
+                ),
+            )
+        end
+        function decode_arguments(malformed, raw)
+            return Base.invokelatest(
+                getfield(S, :_operation_arguments),
+                malformed,
+                Dict("label" => raw),
+                "",
+                Pair{String,String}[],
+                UInt8[],
+                nothing,
+            )
+        end
+
+        validate_descriptor = getfield(S, :_validate_parameter_descriptor)
+        content_descriptor = merge(
+            descriptor,
+            (
+                style = :none,
+                shape = :content,
+                explode = nothing,
+                content = (("application/json", Any, nothing),),
+            ),
+        )
+        @test Base.invokelatest(validate_descriptor, content_descriptor) === nothing
+
+        style_error = try
+            decode_arguments(malformed_entry((style = :bogus,)), "abc")
+            nothing
+        catch error
+            error
+        end
+        @test style_error isa ArgumentError
+        @test occursin("unsupported path parameter style :bogus", style_error.msg)
+
+        shape_error = try
+            decode_arguments(malformed_entry((shape = :bogus,)), ".abc")
+            nothing
+        catch error
+            error
+        end
+        @test shape_error isa ArgumentError
+        @test occursin("unsupported parameter shape :bogus", shape_error.msg)
+
+        explode_error = try
+            decode_arguments(malformed_entry((explode = :bogus,)), ".abc")
+            nothing
+        catch error
+            error
+        end
+        @test explode_error isa ArgumentError
+        @test occursin("unsupported parameter explode value :bogus", explode_error.msg)
+
+        object_descriptor = only(filter(
+            item -> item.name == "deep",
+            entry.operation.parameters,
+        ))
+        cookie_descriptor = merge(
+            object_descriptor,
+            (location = :cookie, style = :cookie),
+        )
+        cookie_operation = merge(
+            entry.operation,
+            (parameters = (cookie_descriptor,), request = nothing),
+        )
+        cookie_entry = merge(
+            entry,
+            (
+                operation = cookie_operation,
+                path_args = (),
+                required_body = false,
+            ),
+        )
+        _, cookie_kwargs = Base.invokelatest(
+            getfield(S, :_operation_arguments),
+            cookie_entry,
+            Dict{String,String}(),
+            "",
+            ["Cookie" => "a=alpha; b=2"],
+            UInt8[],
+            nothing,
+        )
+        @test length(cookie_kwargs) == 1
+        @test only(cookie_kwargs).first == cookie_descriptor.arg
+        @test only(cookie_kwargs).second.a == "alpha"
+        @test only(cookie_kwargs).second.b == 2
+    end
+
     impl = Module(:ServerGenImpl)
     Base.include_string(impl, SERVER_IMPL_SOURCE, "ServerGenImpl.jl")
 
