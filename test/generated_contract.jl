@@ -32,6 +32,7 @@
                 "operationId" => "createPet",
                 "requestBody" => OpenAPI.obj(
                     "required" => true,
+                    "description" => "Pet to create.",
                     "content" => OpenAPI.obj(
                         "application/json" => OpenAPI.obj(
                             "schema" => OpenAPI.obj(
@@ -217,6 +218,9 @@
         operation_doc = "    getpet(...)\n\n`GET /pets/{petId}`\n\n" *
                         "- `petid`: Numeric pet identifier."
         @test occursin("@doc " * repr(operation_doc), client_source)
+        create_doc = "    createpet(...)\n\n`POST /pets`\n\n" *
+                     "- `body`: Pet to create."
+        @test occursin("@doc " * repr(create_doc), client_source)
 
         host = Module(:ContractDocsHost)
         Base.include_string(host, client_source, "ContractClient.jl")

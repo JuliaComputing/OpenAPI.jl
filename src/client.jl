@@ -1220,7 +1220,7 @@ function _emit_operation(io, operation::OperationPlan, const_name)
     isempty(summary) || (doc *= "\n" * summary * "\n")
     doc *= "\n`" * String(operation.operation.method) * " " *
            operation.operation.path * "`"
-    documented = [
+    documented = Pair{String,String}[
         parameter.name => parameter.parameter.description
         for parameter in operation.parameters
         if parameter.parameter.description !== nothing
