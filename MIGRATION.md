@@ -19,9 +19,9 @@ Pin the runtime in your project's compat section:
 OpenAPI = "0.2"
 ```
 
-0.2.x maintenance continues on the `release-0.2` branch. Bug fixes to the
-legacy runtime are backported there; the openapi-generator `julia-client` and
-`julia-server` templates keep tracking 0.2.x.
+The 1.0 line does not provide a compatibility bridge for these generated
+packages. Check the repository's current release policy before you depend on
+future 0.2.x backports.
 
 ## If you migrate to the native generator
 
@@ -38,7 +38,7 @@ OpenAPI.server("openapi.json"; name = "MyServer", path = "MyServer.jl")
 
 | 0.2.x (openapi-generator) | 1.0 (native) |
 | --- | --- |
-| Package with `api_<name>.jl`, `model_<name>.jl` files | One self-contained module file |
+| Package with `api_<name>.jl`, `model_<name>.jl` files | One generated module file that uses `OpenAPI.Runtime` |
 | `OpenAPI.Clients.Client(root; kwargs...)` | `MyClient.Client(server; kwargs...)`, or the module-wide `MyClient.DEFAULT_CLIENT` configured via `MyClient.server!` |
 | API-set structs: `getOrderById(api::StoreApi, orderId)` | Flat module functions, lowercase of `operationId`: `MyClient.getorderbyid(orderId; client = c)` |
 | Returns `(result, http_response)` tuple | Returns the decoded value; pass `with_http_info = true` for an `ApiResponse` (status, headers, body) |
@@ -69,7 +69,11 @@ Julia type or a full `HTTP.Response` for custom behavior.
 - **Per-model / per-API file layout and markdown docs.** Output is a single
   file. Operations and models carry Julia docstrings generated from the
   document's `summary`/`description` fields instead of `docs/*.md`.
-- **Runtime-fix-without-regeneration.** Generated modules are baked artifacts
-  version-coupled to the OpenAPI.jl release that produced them (see
-  "Generated modules are baked artifacts" in the README). Picking up fixes
-  means regenerating — which is a fast, pure-Julia step.
+
+### Generated artifact compatibility
+
+Each native generated module records both its generator version and its
+generated-code contract version. It can use compatible runtime fixes without
+regeneration while the contract version stays the same. Regenerate when the
+load-time guard reports a contract mismatch, or when a fix changes generated
+source.
