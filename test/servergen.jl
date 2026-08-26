@@ -457,7 +457,13 @@ nullout(req) = nothing
                 style = :none,
                 shape = :content,
                 explode = nothing,
-                content = (("application/json", Any, nothing),),
+                content = ((
+                    media_type = "application/json",
+                    type = Any,
+                    schema = nothing,
+                    encodings = (),
+                    fields = (),
+                ),),
             ),
         )
         @test Base.invokelatest(validate_descriptor, content_descriptor) === nothing

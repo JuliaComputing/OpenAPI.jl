@@ -59,6 +59,69 @@
         @test schema_error isa ArgumentError
         @test occursin("no schema roots", sprint(showerror, schema_error))
 
+        resource = "https://example.test/directional-schema"
+        function directional_spec(document, rule)
+            return Runtime.Spec(;
+                security_schemes = Dict{String,NamedTuple}(),
+                resources = Any[(
+                    id = resource,
+                    retrieval = resource,
+                    media_type = "application/schema+json",
+                    json = JSON.json(document),
+                )],
+                roots = Any[(
+                    resource = resource,
+                    pointer = "",
+                    dialect = SchemaEngine.DRAFT202012,
+                )],
+                dialects = Any[],
+                directional_required = Any[rule],
+                default_server = "",
+            )
+        end
+        directional_cases = (
+            (
+                OpenAPI.obj("type" => "object", "required" => Any["x"]),
+                (
+                    resource = resource * "/missing",
+                    pointer = "",
+                    input = ("x",),
+                    output = (),
+                ),
+                "missing schema resource",
+            ),
+            (
+                OpenAPI.obj("value" => 1),
+                (
+                    resource,
+                    pointer = "/value",
+                    input = ("x",),
+                    output = (),
+                ),
+                "does not resolve to an object",
+            ),
+            (
+                OpenAPI.obj("type" => "object"),
+                (
+                    resource,
+                    pointer = "",
+                    input = ("x",),
+                    output = (),
+                ),
+                "has no required array",
+            ),
+        )
+        for (schema, rule, message) in directional_cases
+            error = try
+                invoke(:_schema_graph, directional_spec(schema, rule), :input)
+                nothing
+            catch caught
+                caught
+            end
+            @test error isa ArgumentError
+            @test occursin(message, sprint(showerror, error))
+        end
+
         broken_scheme = (
             type = :apikey,
             name = "X-Broken-Key",
@@ -78,7 +141,7 @@
             invoke(
                 :_security!,
                 client,
-                ((("BrokenKey", ()),),),
+                (((name = "BrokenKey", scopes = ()),),),
                 Tuple{String,String,Bool,Bool}[],
                 Pair{String,String}[],
                 Tuple{String,String,Bool,Bool}[],
@@ -287,6 +350,23 @@
         )
 
         @test invoke(:_header_parameter, ["a", "b"], false) == "a,b"
+        malformed_header = (
+            location = :header,
+            style = :bogus,
+            explode = false,
+            content = (),
+            name = "X-Test",
+        )
+        @test_throws ArgumentError invoke(
+            :_append_parameter!,
+            C.DEFAULT_CLIENT,
+            "/",
+            Tuple{String,String,Bool,Bool}[],
+            Pair{String,String}[],
+            Tuple{String,String,Bool,Bool}[],
+            malformed_header,
+            "value",
+        )
         @test invoke(:_cookie_parameter, "id", ["a", "b"], :form, true, false) ==
               [("id=a&id=b", "", true, true)]
         @test invoke(:_cookie_parameter, "id", ["a", "b"], :cookie, false, false) ==
@@ -341,8 +421,8 @@
             "application/json;charset=utf-8",
         )
 
-        plain = ("application/json", :plain)
-        watch = ("application/json;stream=watch", :watch)
+        plain = (media_type = "application/json", value = :plain)
+        watch = (media_type = "application/json;stream=watch", value = :watch)
         @test invoke(
             :_select_media,
             (plain, watch),
@@ -353,7 +433,10 @@
             (watch, plain),
             "application/json",
         ) == plain
-        quoted = ("application/json;profile=\"a;b\"", :quoted)
+        quoted = (
+            media_type = "application/json;profile=\"a;b\"",
+            value = :quoted,
+        )
         @test invoke(
             :_select_media,
             (plain, quoted),
@@ -399,6 +482,17 @@
         @test decoded["Set-Cookie"]["foo"] ==
               "bar; Expires=Wed, 09 Jun 2021 10:18:14 GMT"
 
+        header = only(schema_descriptor.headers)
+        for changed in ((shape = :bogus,), (explode = :bogus,))
+            malformed = (headers = (merge(header, changed),),)
+            @test_throws ArgumentError invoke(
+                :_decode_response_headers,
+                C.DEFAULT_CLIENT,
+                malformed,
+                headers,
+            )
+        end
+
         content_descriptor = (
             headers = (
                 (
@@ -408,7 +502,13 @@
                     shape = :scalar,
                     explode = false,
                     schema = nothing,
-                    content = (("text/plain", String, nothing, ()),),
+                    content = ((
+                        media_type = "text/plain",
+                        type = String,
+                        schema = nothing,
+                        encodings = (),
+                        fields = (),
+                    ),),
                 ),
             ),
         )

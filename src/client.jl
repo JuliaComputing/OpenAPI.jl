@@ -1026,9 +1026,12 @@ function _media_descriptor(media, normalized)
         end
         push!(
             items,
-            "(" * repr(entry.first) * ", " * entry.second * ", " *
-            _schema_descriptor(_schema_node(source.schema)) * ", " * encoded *
-            ", " * fields * ")",
+            "(media_type = " * repr(entry.first) *
+            ", type = " * entry.second *
+            ", schema = " *
+            _schema_descriptor(_schema_node(source.schema)) *
+            ", encodings = " * encoded *
+            ", fields = " * fields * ")",
         )
     end
     return "(" * join(items, ',') * (length(items) == 1 ? "," : "") * ")"
@@ -1072,7 +1075,8 @@ function _security_descriptor(requirements)
     alternatives = String[]
     for requirement in requirements
         entries = String[
-            "(" * repr(name) * ", " * _julia_literal(scopes) * ")" for
+            "(name = " * repr(name) *
+            ", scopes = " * _julia_literal(scopes) * ")" for
             (name, scopes) in requirement.alternatives
         ]
         push!(alternatives, "(" * join(entries, ',') * (length(entries) == 1 ? "," : "") * ")")

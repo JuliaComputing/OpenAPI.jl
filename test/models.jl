@@ -140,12 +140,12 @@
     call(name, args...) = Base.invokelatest(getfield(C, name), args...)
 
     media(name) = only(only(getfield(C, Symbol("_OP_", name)).responses).media)
-    @test call(:_schema_valid, C._SPEC, media("truevalue")[3], Dict("anything" => 1))
-    @test !call(:_schema_valid, C._SPEC, media("falsevalue")[3], nothing)
-    @test call(:_schema_valid, C._SPEC, media("constseven")[3], 7)
-    @test !call(:_schema_valid, C._SPEC, media("constseven")[3], 8)
-    @test call(:_schema_valid, C._SPEC, media("forbiddenstring")[3], 1)
-    @test !call(:_schema_valid, C._SPEC, media("forbiddenstring")[3], "no")
+    @test call(:_schema_valid, C._SPEC, media("truevalue").schema, Dict("anything" => 1))
+    @test !call(:_schema_valid, C._SPEC, media("falsevalue").schema, nothing)
+    @test call(:_schema_valid, C._SPEC, media("constseven").schema, 7)
+    @test !call(:_schema_valid, C._SPEC, media("constseven").schema, 8)
+    @test call(:_schema_valid, C._SPEC, media("forbiddenstring").schema, 1)
+    @test !call(:_schema_valid, C._SPEC, media("forbiddenstring").schema, "no")
 
     @test call(:_decode, C.MixedEnum, "x").value == "x"
     @test call(:_decode, C.MixedEnum, nothing).value === nothing

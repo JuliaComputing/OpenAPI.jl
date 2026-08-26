@@ -135,13 +135,13 @@ end
 
 function _decode_parameter_content(descriptor, text, context)
     entry = first(descriptor.content)
-    media = _base_media_type(entry[1])
+    media = _base_media_type(entry.media_type)
     if _is_json_media(media)
         value = _parse_json(text, context)
-        _validate_schema(_SPEC, entry[3], value, context; direction = :input)
+        _validate_schema(_SPEC, entry.schema, value, context; direction = :input)
         return _decode(descriptor.type, value)
     end
-    _validate_schema(_SPEC, entry[3], text, context; direction = :input)
+    _validate_schema(_SPEC, entry.schema, text, context; direction = :input)
     return _decode(descriptor.type, text)
 end
 
@@ -503,11 +503,13 @@ function _decode_request_body(operation, headers, body, parts)
             _select_media(request.media, content_type)
     entry === nothing &&
         throw(UnsupportedMediaType(String(content_type), :request))
-    media = _base_media_type(isempty(content_type) ? entry[1] : content_type)
-    type = entry[2]
-    schema = entry[3]
-    encodings = entry[4]
-    fields = entry[5]
+    media = _base_media_type(
+        isempty(content_type) ? entry.media_type : content_type,
+    )
+    type = entry.type
+    schema = entry.schema
+    encodings = entry.encodings
+    fields = entry.fields
     context = "decoding the request body"
     if media == "multipart/form-data"
         parts === nothing &&
@@ -709,7 +711,7 @@ function _server_response(operation, result)
         return (status, Pair{String,String}[], UInt8[])
     end
     if result === nothing && all(
-        entry -> !_is_json_media(_base_media_type(entry[1])),
+        entry -> !_is_json_media(_base_media_type(entry.media_type)),
         descriptor.media,
     )
         throw(ArgumentError(string(
@@ -719,19 +721,22 @@ function _server_response(operation, result)
         )))
     end
     index = something(
-        findfirst(entry -> _is_json_media(_base_media_type(entry[1])), descriptor.media),
+        findfirst(
+            entry -> _is_json_media(_base_media_type(entry.media_type)),
+            descriptor.media,
+        ),
         1,
     )
     entry = descriptor.media[index]
-    media = _base_media_type(entry[1])
+    media = _base_media_type(entry.media_type)
     context = string("encoding the ", operation.id, " response body")
     if _is_json_media(media)
         lowered = _encode(result)
-        _validate_schema(_SPEC, entry[3], lowered, context; direction = :output)
+        _validate_schema(_SPEC, entry.schema, lowered, context; direction = :output)
         payload = Vector{UInt8}(codeunits(JSON.json(lowered)))
     elseif _is_sequential_json_media(media)
         lowered = _encode(result)
-        _validate_schema(_SPEC, entry[3], lowered, context; direction = :output)
+        _validate_schema(_SPEC, entry.schema, lowered, context; direction = :output)
         payload = Vector{UInt8}(codeunits(_encode_sequential_json(result, media)))
     elseif startswith(media, "text/")
         result isa AbstractString || throw(ArgumentError(string(
@@ -739,7 +744,7 @@ function _server_response(operation, result)
             operation.id,
             " documents a text response; return an AbstractString or a framework response",
         )))
-        _validate_schema(_SPEC, entry[3], String(result), context; direction = :output)
+        _validate_schema(_SPEC, entry.schema, String(result), context; direction = :output)
         payload = Vector{UInt8}(codeunits(String(result)))
     else
         bytes = result isa AbstractVector{UInt8} ? Vector{UInt8}(result) :
@@ -749,10 +754,18 @@ function _server_response(operation, result)
                     operation.id,
                     " documents a binary response; return bytes, a string, or a framework response",
                 )))
-        _validate_schema(_SPEC, entry[3], Base64.base64encode(bytes), context; direction = :output)
+        _validate_schema(
+            _SPEC,
+            entry.schema,
+            Base64.base64encode(bytes),
+            context;
+            direction = :output,
+        )
         payload = bytes
     end
-    headers = Pair{String,String}[_safe_header("Content-Type", entry[1])]
+    headers = Pair{String,String}[
+        _safe_header("Content-Type", entry.media_type),
+    ]
     return (status, headers, payload)
 end
 

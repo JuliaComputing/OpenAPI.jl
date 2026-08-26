@@ -870,7 +870,7 @@ end
         end
 
         @testset "JSON, form, multipart, sequential, and custom bodies" begin
-            payload_type = first(C._OP_submitjson.request.media)[2]
+            payload_type = first(C._OP_submitjson.request.media).type
             payload = call(:_decode, payload_type, Dict("name" => "Ada", "count" => 2))
             decoded = call(
                 :submitjson,
@@ -883,7 +883,7 @@ end
             @test decoded.name == "Ada"
             @test decoded.count == 2
 
-            form_type = first(C._OP_submitform.request.media)[2]
+            form_type = first(C._OP_submitform.request.media).type
             form = Base.invokelatest(form_type; tags = ["a", "b"], flag = true)
             @test call(:submitform, form; client) == "accepted"
             request = take_request()
@@ -894,7 +894,7 @@ end
             @test captured_header(request, "Content-Type") ==
                   "application/x-www-form-urlencoded"
 
-            multipart_type = first(C._OP_submitmultipart.request.media)[2]
+            multipart_type = first(C._OP_submitmultipart.request.media).type
             upload = C.Upload(
                 UInt8[0x00, 0x01, 0xff];
                 filename = "data.bin",

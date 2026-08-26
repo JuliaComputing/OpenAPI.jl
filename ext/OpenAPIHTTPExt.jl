@@ -301,7 +301,7 @@ function _request(
             ArgumentError("unsupported request Content-Type $(repr(content_type)) for $(operation.id)"),
         )
         client.validate_requests && _validate_schema(client.spec, 
-            entry[3],
+            entry.schema,
             _encode(body),
             "encoding the $(operation.id) request body";
             direction = :input,
@@ -310,8 +310,8 @@ function _request(
             _encode_body(
                 client,
                 body,
-                entry[1],
-                entry[4];
+                entry.media_type,
+                entry.encodings;
                 multipart_headers,
             )
         _set_header!(headers, "Content-Type", actual_content_type)
@@ -319,7 +319,7 @@ function _request(
         throw(ArgumentError("required request body is missing for $(operation.id)"))
     end
     documented_accept = String[
-        entry[1] for response in operation.responses for entry in response.media
+        entry.media_type for response in operation.responses for entry in response.media
         if startswith(uppercase(response.selector), "2") ||
            uppercase(response.selector) == "DEFAULT"
     ]
@@ -516,7 +516,11 @@ function _stream_request(
             selected, actual_media =
                 _selected_media_entry(operation.id, status, descriptor, received)
             kind, item_type, schema =
-                _stream_plan(_base_media_type(actual_media), selected[2], selected[3])
+                _stream_plan(
+                    _base_media_type(actual_media),
+                    selected.type,
+                    selected.schema,
+                )
         end
     catch
         try

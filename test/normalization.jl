@@ -81,14 +81,19 @@ end
         client_module = Base.invokelatest(getfield, host, :NullableClient)
         response = only(client_module._OP_getnullable.responses)
         media = only(response.media)
-        @test Base.invokelatest(client_module._schema_valid, client_module._SPEC, media[3], nothing)
+        @test Base.invokelatest(
+            client_module._schema_valid,
+            client_module._SPEC,
+            media.schema,
+            nothing,
+        )
         @test Base.invokelatest(
             OpenAPI.Runtime._decode_body,
             client_module.DEFAULT_CLIENT,
             Union{Nothing,String},
             "application/json",
             Vector{UInt8}(codeunits("null")),
-            media[3],
+            media.schema,
         ) === nothing
 
         constrained = minimal_openapi(
@@ -225,7 +230,9 @@ end
             "NullableRulesClient.jl",
         )
         rules = Base.invokelatest(getfield, constrained_host, :NullableRulesClient)
-        descriptor(name) = only(only(getfield(rules, Symbol("_OP_", name)).responses).media)[3]
+        descriptor(name) = only(
+            only(getfield(rules, Symbol("_OP_", name)).responses).media,
+        ).schema
         @test Base.invokelatest(rules._schema_valid, rules._SPEC, descriptor("direct"), nothing)
         @test !Base.invokelatest(
             rules._schema_valid, rules._SPEC,
@@ -259,7 +266,7 @@ end
         )
         composed_descriptor = only(
             only(permissive._OP_composed.responses).media,
-        )[3]
+        ).schema
         @test Base.invokelatest(
             permissive._schema_valid, permissive._SPEC,
             composed_descriptor,
@@ -267,7 +274,7 @@ end
         )
         constrained_descriptor = only(
             only(permissive._OP_constrained.responses).media,
-        )[3]
+        ).schema
         @test !Base.invokelatest(
             permissive._schema_valid, permissive._SPEC,
             constrained_descriptor,
@@ -280,7 +287,9 @@ end
             permissive.Composed,
             nothing,
         ).value === nothing
-        choice_descriptor = only(only(permissive._OP_choice.responses).media)[3]
+        choice_descriptor = only(
+            only(permissive._OP_choice.responses).media,
+        ).schema
         @test Base.invokelatest(
             permissive._schema_valid, permissive._SPEC,
             choice_descriptor,
@@ -493,7 +502,7 @@ end
                     "{\"id\":7,\"name\":\"Ada\",\"choice\":{\"kind\":\"a\",\"output_id\":9}}",
                 ),
             ),
-            response_media[3],
+            response_media.schema,
         )
         @test output.id == 7
         @test output.name == "Ada"

@@ -86,7 +86,7 @@
             client_module.Pet,
             "application/json",
             Vector{UInt8}(codeunits(json)),
-            response_media[3],
+            response_media.schema,
         )
         cat = decode_pet("{\"kind\":\"feline\",\"meows\":true}")
         dog = decode_pet("{\"kind\":\"canine\",\"barks\":true}")

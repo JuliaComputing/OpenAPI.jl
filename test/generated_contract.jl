@@ -3,6 +3,7 @@
         "/pets/{petId}" => OpenAPI.obj(
             "get" => OpenAPI.obj(
                 "operationId" => "getPet",
+                "security" => Any[OpenAPI.obj("ApiKey" => Any[])],
                 "parameters" => Any[
                     OpenAPI.obj(
                         "name" => "petId",
@@ -23,6 +24,24 @@
                             ),
                         ),
                     ),
+                ),
+            ),
+        ),
+        "/pets" => OpenAPI.obj(
+            "post" => OpenAPI.obj(
+                "operationId" => "createPet",
+                "requestBody" => OpenAPI.obj(
+                    "required" => true,
+                    "content" => OpenAPI.obj(
+                        "application/json" => OpenAPI.obj(
+                            "schema" => OpenAPI.obj(
+                                "\$ref" => "#/components/schemas/Pet",
+                            ),
+                        ),
+                    ),
+                ),
+                "responses" => OpenAPI.obj(
+                    "204" => OpenAPI.obj("description" => "created"),
                 ),
             ),
         ),
@@ -49,6 +68,13 @@
                 "type" => "string",
                 "description" => "Adoption status.",
                 "enum" => Any["available", "adopted"],
+            ),
+        ),
+        "securitySchemes" => OpenAPI.obj(
+            "ApiKey" => OpenAPI.obj(
+                "type" => "apiKey",
+                "name" => "X-Api-Key",
+                "in" => "header",
             ),
         ),
     )
@@ -87,9 +113,9 @@
               first(findfirst("import OpenAPI.Runtime:", direct_server_source))
 
         current = OpenAPI.Runtime.CONTRACT_VERSION
-        @test current == 2
+        @test current == 3
         @test OpenAPI.Runtime.require_contract(current, OpenAPI.PACKAGE_VERSION) === nothing
-        for generated_contract in (1, current + 1)
+        for generated_contract in (1, 2, current + 1)
             mismatch = try
                 OpenAPI.Runtime.require_contract(generated_contract, "0.0.0")
                 nothing
@@ -195,6 +221,15 @@
         host = Module(:ContractDocsHost)
         Base.include_string(host, client_source, "ContractClient.jl")
         C = Base.invokelatest(getfield, host, :ContractClient)
+        response_media = only(only(C._OP_getpet.responses).media)
+        request_media = only(C._OP_createpet.request.media)
+        @test propertynames(response_media) ==
+              (:media_type, :type, :schema, :encodings, :fields)
+        @test propertynames(request_media) == propertynames(response_media)
+        security = only(only(C._OP_getpet.security))
+        @test propertynames(security) == (:name, :scopes)
+        @test security.name == "ApiKey"
+        @test security.scopes == ()
         binding = Base.invokelatest(Base.Docs.Binding, C, :Pet)
         meta = Base.invokelatest(Base.Docs.meta, C)
         @test haskey(meta, binding)

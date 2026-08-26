@@ -21,7 +21,7 @@ semantics. Bump this whenever any of those change so previously generated
 modules fail loudly at load time instead of misbehaving; see
 [`require_contract`](@ref).
 """
-const CONTRACT_VERSION = 2
+const CONTRACT_VERSION = 3
 
 """
     Runtime.require_contract(version::Integer, generator::AbstractString)
@@ -143,14 +143,26 @@ function _schema_graph(spec::Spec, direction::Symbol = :neutral)
                 removed = direction === :input ? rule.input : rule.output
                 isempty(removed) && continue
                 document = get(documents, rule.resource, nothing)
-                document === nothing && continue
+                document === nothing && throw(ArgumentError(string(
+                    "generated directional-required rule references missing schema resource ",
+                    repr(rule.resource),
+                    "; regenerate the module",
+                )))
                 schema = SchemaEngine.Resources.resolve(
                     document,
                     SchemaEngine.Resources.JSONPointer(rule.pointer),
                 )
-                schema isa AbstractDict || continue
+                schema isa AbstractDict || throw(ArgumentError(string(
+                    "generated directional-required rule at ",
+                    repr(rule.resource * rule.pointer),
+                    " does not resolve to an object; regenerate the module",
+                )))
                 required = get(schema, "required", nothing)
-                required isa AbstractVector || continue
+                required isa AbstractVector || throw(ArgumentError(string(
+                    "generated directional-required rule at ",
+                    repr(rule.resource * rule.pointer),
+                    " has no required array; regenerate the module",
+                )))
                 retained = Any[
                     name for name in required if String(name) ∉ removed
                 ]
@@ -583,7 +595,10 @@ function _select_media(media, received)
     selected = nothing
     score = (0, 0, 0)
     for entry in media
-        candidate = _media_selection_score(String(received), String(entry[1]))
+        candidate = _media_selection_score(
+            String(received),
+            String(entry.media_type),
+        )
         if candidate > score
             selected = entry
             score = candidate
@@ -691,6 +706,12 @@ function _decode_schema_header(
     context = "decoding a response header",
     validate::Bool = true,
 )
+    shape in (:scalar, :array, :object) || throw(ArgumentError(
+        "unsupported header shape $(repr(shape)) in generated descriptor",
+    ))
+    explode isa Bool || throw(ArgumentError(
+        "unsupported header explode value $(repr(explode)) in generated descriptor",
+    ))
     selected = _header_type_variant(type, shape)
     raw = if shape === :array
         items = if set_cookie
@@ -1290,7 +1311,7 @@ function _escape(value; allow_reserved::Bool = false)
 end
 
 function _parameter_content_value(client, entry, value)
-    encoded = _encoded_media_value(client, value, entry[1])
+    encoded = _encoded_media_value(client, value, entry.media_type)
     encoded isa Upload && (encoded = encoded.data)
     if encoded isa AbstractVector{UInt8}
         isvalid(String, encoded) && return String(copy(encoded)), false
@@ -1347,6 +1368,8 @@ function _append_parameter!(client, path, query, headers, cookies, descriptor, v
             push!(query, (name, item, descriptor.allow_reserved, preencoded))
         end
     elseif location === :header
+        style === :simple ||
+            throw(ArgumentError("unsupported header parameter style $style"))
         _set_header!(headers, descriptor.name, _header_parameter(value, explode))
     elseif location === :cookie
         append!(
@@ -1390,14 +1413,15 @@ function _security!(client, requirements, query, headers, cookies, base_options)
     for requirement in requirements
         isempty(requirement) && return base_options
         all(requirement) do entry
-            credential = get(client.credentials, entry[1], nothing)
+            credential = get(client.credentials, entry.name, nothing)
             credential === nothing && return false
-            scheme = get(client.spec.security_schemes, entry[1], nothing)
+            scheme = get(client.spec.security_schemes, entry.name, nothing)
             return scheme !== nothing &&
-                   _credential_satisfies(scheme, credential, entry[2])
+                   _credential_satisfies(scheme, credential, entry.scopes)
         end || continue
         options = base_options
-        for (name, _) in requirement
+        for entry in requirement
+            name = entry.name
             scheme = client.spec.security_schemes[name]
             credential = client.credentials[name]
             if scheme.type === :apikey
@@ -1444,7 +1468,13 @@ function _security!(client, requirements, query, headers, cookies, base_options)
         end
         return options
     end
-    names = join((join(first.(requirement), " + ") for requirement in requirements), " or ")
+    names = join(
+        (
+            join((entry.name for entry in requirement), " + ") for
+            requirement in requirements
+        ),
+        " or ",
+    )
     client.require_credentials && throw(
         ArgumentError("no configured credentials satisfy operation security: " * names),
     )
@@ -1478,9 +1508,9 @@ function _decode_response_headers(client, descriptor, headers)
             _decode_body(
                 client,
                 header.type,
-                entry[1],
+                entry.media_type,
                 Vector{UInt8}(codeunits(join(values, separator))),
-                entry[3],
+                entry.schema,
             )
         end
         output[header.name] = decoded
@@ -2084,14 +2114,14 @@ function _selected_media_entry(operation_id, status, descriptor, received)
     selected === nothing || return selected, String(received)
     if isempty(received) || length(descriptor.media) == 1
         entry = first(descriptor.media)
-        return entry, entry[1]
+        return entry, entry.media_type
     end
     throw(
         UnexpectedContentType(
             operation_id,
             status,
             received,
-            Tuple(first.(descriptor.media)),
+            Tuple(entry.media_type for entry in descriptor.media),
         ),
     )
 end
@@ -2122,10 +2152,10 @@ function _finish_buffered_response(
                     _selected_media_entry(operation.id, status, descriptor, received)
                 decoded = _decode_body(
                     client,
-                    selected[2],
+                    selected.type,
                     actual_media,
                     bytes,
-                    selected[3],
+                    selected.schema,
                 )
             end
         else
