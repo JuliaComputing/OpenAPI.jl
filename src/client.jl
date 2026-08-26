@@ -1262,9 +1262,9 @@ function _emit_operation(io, operation::OperationPlan, const_name)
     println(io, "end\n")
 end
 
-# Emitted after the Runtime imports of every generated module so a contract
-# mismatch fails at load time with regeneration guidance instead of erroring
-# (or silently misbehaving) deep inside the runtime.
+# Emitted before the private Runtime imports of every generated module so a
+# contract mismatch fails at load time with regeneration guidance instead of
+# erroring (or silently misbehaving) deep inside the runtime.
 function _emit_contract_guard(io::IO)
     println(io, "const Runtime = OpenAPI.Runtime")
     println(
