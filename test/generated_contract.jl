@@ -206,4 +206,69 @@
         @test occursin("A pet in the store.", attached)
         @test occursin("The pet's display name.", attached)
     end
+
+    @testset "hostile description text is deterministic Julia source" begin
+        hostile = "quote \"; dollar \$; backslash \\; triple \"\"\"; " *
+                  "unicode λ ☃ 😀\nsecond line"
+        hostile_document = minimal_openapi("3.1.1", OpenAPI.obj())
+        hostile_document["components"] = OpenAPI.obj(
+            "schemas" => OpenAPI.obj(
+                "Alias" => OpenAPI.obj(
+                    "type" => "string",
+                    "description" => hostile,
+                ),
+                "Record" => OpenAPI.obj(
+                    "type" => "object",
+                    "description" => hostile,
+                    "required" => Any["value"],
+                    "properties" => OpenAPI.obj(
+                        "alias" => OpenAPI.obj(
+                            "\$ref" => "#/components/schemas/Alias",
+                        ),
+                        "value" => OpenAPI.obj(
+                            "type" => "string",
+                            "description" => hostile,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        client = OpenAPI.client(hostile_document; name = "HostileDocClient")
+        server = OpenAPI.server(hostile_document; name = "HostileDocServer")
+        @test client == OpenAPI.client(hostile_document; name = "HostileDocClient")
+        @test server == OpenAPI.server(hostile_document; name = "HostileDocServer")
+
+        alias_doc = "    Alias\n\n" * hostile
+        record_doc = "    Record\n\n" * hostile * "\n\n" *
+                     "- `alias`: " * hostile * "\n- `value`: " * hostile
+        for (source, module_name) in (
+            (client, :HostileDocClient),
+            (server, :HostileDocServer),
+        )
+            @test Meta.parseall(source) isa Expr
+            @test occursin(
+                "@doc " * repr(alias_doc) * "\nconst Alias = String",
+                source,
+            )
+            @test occursin(
+                "@doc " * repr(record_doc) * "\nBase.@kwdef struct Record",
+                source,
+            )
+
+            host = Module(Symbol(module_name, :Host))
+            Base.include_string(host, source, string(module_name, ".jl"))
+            generated_module = Base.invokelatest(getfield, host, module_name)
+            meta = Base.invokelatest(Base.Docs.meta, generated_module)
+            for name in (:Alias, :Record)
+                binding = Base.invokelatest(Base.Docs.Binding, generated_module, name)
+                @test haskey(meta, binding)
+                attached = join(
+                    (string(text) for docstr in values(meta[binding].docs)
+                     for text in docstr.text),
+                    "\n",
+                )
+                @test occursin(hostile, attached)
+            end
+        end
+    end
 end
