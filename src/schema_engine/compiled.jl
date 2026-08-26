@@ -415,15 +415,15 @@ function _custom_dialect!(
             )
         end
     end
-    custom = Dialect(
-        base.name,
-        normalized,
-        base.id_keyword,
-        base.ref_siblings,
-        base.modern_items,
+    custom = Dialect(;
+        name = base.name,
+        uri = normalized,
+        id_keyword = base.id_keyword,
+        ref_siblings = base.ref_siblings,
+        modern_items = base.modern_items,
         unevaluated,
-        base.dynamic_refs,
-        base.recursive_refs,
+        dynamic_refs = base.dynamic_refs,
+        recursive_refs = base.recursive_refs,
         applicator,
         validation,
     )

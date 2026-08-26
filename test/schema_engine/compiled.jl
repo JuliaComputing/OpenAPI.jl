@@ -27,6 +27,38 @@ function Resources.retrieve(retriever::SuiteRetriever, id::Resources.ResourceId)
     return throw(Resources.RetrievalError(id, "HTTP retrieval failed"))
 end
 
+@testset "Dialect construction is name-based" begin
+    for name in sort!(collect(keys(SchemaEngine.DIALECTS)))
+        dialect = SchemaEngine.dialect(name)
+        reconstructed = SchemaEngine.Dialect(;
+            validation = dialect.validation,
+            applicator = dialect.applicator,
+            recursive_refs = dialect.recursive_refs,
+            dynamic_refs = dialect.dynamic_refs,
+            unevaluated = dialect.unevaluated,
+            modern_items = dialect.modern_items,
+            ref_siblings = dialect.ref_siblings,
+            id_keyword = dialect.id_keyword,
+            uri = dialect.uri,
+            name = dialect.name,
+        )
+        @test reconstructed === dialect
+        positional = (
+            dialect.name,
+            dialect.uri,
+            dialect.id_keyword,
+            dialect.ref_siblings,
+            dialect.modern_items,
+            dialect.unevaluated,
+            dialect.dynamic_refs,
+            dialect.recursive_refs,
+            dialect.applicator,
+            dialect.validation,
+        )
+        @test !applicable(SchemaEngine.Dialect, positional...)
+    end
+end
+
 @testset "Compiled schema resources" begin
     source = Dict(
         "\$schema" => "https://json-schema.org/draft/2020-12/schema",

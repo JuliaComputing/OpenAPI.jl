@@ -23,96 +23,97 @@ struct Dialect
     recursive_refs::Bool
     applicator::Bool
     validation::Bool
-end
-
-# Generated modules and the runtime reconstruct dialects through keywords so a
-# change to the struct's field order can never silently reassign the trailing
-# Bool flags; the positional constructor stays for the standard constants below.
-function Dialect(;
-    name::Symbol,
-    uri::AbstractString,
-    id_keyword::AbstractString,
-    ref_siblings::Bool,
-    modern_items::Bool,
-    unevaluated::Bool,
-    dynamic_refs::Bool,
-    recursive_refs::Bool,
-    applicator::Bool,
-    validation::Bool,
-)
-    return Dialect(
-        name,
-        uri,
-        id_keyword,
-        ref_siblings,
-        modern_items,
-        unevaluated,
-        dynamic_refs,
-        recursive_refs,
-        applicator,
-        validation,
+    # Keep construction name-based at the type boundary. Mapping through
+    # `fieldnames` makes a declaration reorder safe, and defining only this
+    # inner constructor makes old positional generated literals fail loudly.
+    function Dialect(;
+        name::Symbol,
+        uri::AbstractString,
+        id_keyword::AbstractString,
+        ref_siblings::Bool,
+        modern_items::Bool,
+        unevaluated::Bool,
+        dynamic_refs::Bool,
+        recursive_refs::Bool,
+        applicator::Bool,
+        validation::Bool,
     )
+        values = (;
+            name,
+            uri = String(uri),
+            id_keyword = String(id_keyword),
+            ref_siblings,
+            modern_items,
+            unevaluated,
+            dynamic_refs,
+            recursive_refs,
+            applicator,
+            validation,
+        )
+        ordered = map(field -> getproperty(values, field), fieldnames(Dialect))
+        return new(ordered...)
+    end
 end
 
-const DRAFT4 = Dialect(
-    :draft4,
-    "http://json-schema.org/draft-04/schema",
-    "id",
-    false,
-    false,
-    false,
-    false,
-    false,
-    true,
-    true,
+const DRAFT4 = Dialect(;
+    name = :draft4,
+    uri = "http://json-schema.org/draft-04/schema",
+    id_keyword = "id",
+    ref_siblings = false,
+    modern_items = false,
+    unevaluated = false,
+    dynamic_refs = false,
+    recursive_refs = false,
+    applicator = true,
+    validation = true,
 )
-const DRAFT6 = Dialect(
-    :draft6,
-    "http://json-schema.org/draft-06/schema",
-    "\$id",
-    false,
-    false,
-    false,
-    false,
-    false,
-    true,
-    true,
+const DRAFT6 = Dialect(;
+    name = :draft6,
+    uri = "http://json-schema.org/draft-06/schema",
+    id_keyword = "\$id",
+    ref_siblings = false,
+    modern_items = false,
+    unevaluated = false,
+    dynamic_refs = false,
+    recursive_refs = false,
+    applicator = true,
+    validation = true,
 )
-const DRAFT7 = Dialect(
-    :draft7,
-    "http://json-schema.org/draft-07/schema",
-    "\$id",
-    false,
-    false,
-    false,
-    false,
-    false,
-    true,
-    true,
+const DRAFT7 = Dialect(;
+    name = :draft7,
+    uri = "http://json-schema.org/draft-07/schema",
+    id_keyword = "\$id",
+    ref_siblings = false,
+    modern_items = false,
+    unevaluated = false,
+    dynamic_refs = false,
+    recursive_refs = false,
+    applicator = true,
+    validation = true,
 )
-const DRAFT201909 = Dialect(
-    :draft201909,
-    "https://json-schema.org/draft/2019-09/schema",
-    "\$id",
-    true,
-    false,
-    true,
-    false,
-    true,
-    true,
-    true,
+const DRAFT201909 = Dialect(;
+    name = :draft201909,
+    uri = "https://json-schema.org/draft/2019-09/schema",
+    id_keyword = "\$id",
+    ref_siblings = true,
+    modern_items = false,
+    unevaluated = true,
+    dynamic_refs = false,
+    recursive_refs = true,
+    applicator = true,
+    validation = true,
 )
-const DRAFT202012 = Dialect(
-    :draft202012,
-    "https://json-schema.org/draft/2020-12/schema",
-    "\$id",
-    true,
-    true,
-    true,
-    true,
-    false,
-    true,
-    true,
+const DRAFT202012 = Dialect(;
+    name = :draft202012,
+    uri = "https://json-schema.org/draft/2020-12/schema",
+    id_keyword = "\$id",
+    ref_siblings = true,
+    modern_items = true,
+    unevaluated = true,
+    dynamic_refs = true,
+    recursive_refs = false,
+    applicator = true,
+    validation = true,
 )
 
 const DIALECTS = Dict(

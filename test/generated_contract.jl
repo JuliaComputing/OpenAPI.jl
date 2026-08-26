@@ -87,26 +87,79 @@
     end
 
     @testset "dialects are emitted by name, never positionally" begin
+        for name in sort!(collect(keys(SchemaEngine.DIALECTS)))
+            @test OpenAPI._dialect_literal(SchemaEngine.dialect(name)) ==
+                  "SchemaEngine.dialect(" * repr(name) * ")"
+        end
         @test occursin("SchemaEngine.dialect(:", client_source)
-        @test !occursin("SchemaEngine.Dialect(", client_source)
+        @test !occursin(r"SchemaEngine\.Dialect\((?!;)", client_source)
         @test occursin("SchemaEngine.dialect(:", server_source)
-        @test !occursin("SchemaEngine.Dialect(", server_source)
+        @test !occursin(r"SchemaEngine\.Dialect\((?!;)", server_source)
+    end
 
-        # the keyword constructor used for vocabulary-customized dialects
-        # reconstructs a dialect exactly
-        d = SchemaEngine.DRAFT202012
-        @test SchemaEngine.Dialect(;
-            name = d.name,
-            uri = d.uri,
-            id_keyword = d.id_keyword,
-            ref_siblings = d.ref_siblings,
-            modern_items = d.modern_items,
-            unevaluated = d.unevaluated,
-            dynamic_refs = d.dynamic_refs,
-            recursive_refs = d.recursive_refs,
-            applicator = d.applicator,
-            validation = d.validation,
-        ) === d
+    @testset "custom vocabulary dialects round-trip through generated modules" begin
+        dialect_uri = "https://example.test/dialect/no-validation"
+        metaschema = OpenAPI.obj(
+            "\$schema" => SchemaEngine.DRAFT202012.uri,
+            "\$id" => dialect_uri,
+            "\$vocabulary" => OpenAPI.obj(
+                "https://json-schema.org/draft/2020-12/vocab/core" => true,
+            ),
+        )
+        custom_document = minimal_openapi(
+            "3.1.1",
+            OpenAPI.obj(
+                "/value" => OpenAPI.obj(
+                    "get" => OpenAPI.obj(
+                        "operationId" => "getValue",
+                        "responses" => OpenAPI.obj(
+                            "200" => OpenAPI.obj(
+                                "description" => "value",
+                                "content" => OpenAPI.obj(
+                                    "application/json" => OpenAPI.obj(
+                                        "schema" => OpenAPI.obj(
+                                            "type" => "integer",
+                                            "minimum" => 10,
+                                        ),
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        custom_document["jsonSchemaDialect"] = dialect_uri
+        retriever = OpenAPI.Resources.MemoryRetriever(
+            Dict(dialect_uri => JSON.json(metaschema)),
+        )
+        generated = (
+            OpenAPI.client(
+                custom_document;
+                name = "CustomDialectClient",
+                allow_remote_refs = true,
+                retriever,
+            ) => :CustomDialectClient,
+            OpenAPI.server(
+                custom_document;
+                name = "CustomDialectServer",
+                allow_remote_refs = true,
+                retriever,
+            ) => :CustomDialectServer,
+        )
+        for (source, module_name) in generated
+            @test occursin("SchemaEngine.Dialect(;", source)
+            @test !occursin(r"SchemaEngine\.Dialect\((?!;)", source)
+            host = Module(Symbol(module_name, :Host))
+            Base.include_string(host, source, string(module_name, ".jl"))
+            generated_module = Base.invokelatest(getfield, host, module_name)
+            spec = Base.invokelatest(getfield, generated_module, :_SPEC)
+            graph = Base.invokelatest(OpenAPI.Runtime._schema_graph, spec)
+            dialects = collect(values(getfield(graph.template, :dialects)))
+            custom = only(filter(dialect -> dialect.uri == dialect_uri, dialects))
+            @test custom.validation === false
+            @test custom.applicator === false
+        end
     end
 
     @testset "model and field docstrings from spec descriptions" begin
