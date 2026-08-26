@@ -100,6 +100,7 @@ function fetchresource end
             :register!,
             :schemaof,
             :server,
+            :server_module_source,
             :server_source,
             :serverplan,
             :validate,

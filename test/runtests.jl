@@ -39,6 +39,7 @@ getschema(reg, T) = OpenAPI.schemaof(reg, T)
             :normalize,
             :plan,
             :server,
+            :server_module_source,
             :server_source,
             :serverplan,
             :validate,

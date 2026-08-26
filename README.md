@@ -100,8 +100,11 @@ OpenAPI.server(
 `framework = :HTTP` (the default, available when HTTP.jl is loaded) targets
 `HTTP.Router`. Server framework packages add their own emitters through the
 `OpenAPI.server_source` extension seam — loading Servo.jl enables
-`framework = :Servo`. `OpenAPI.serverplan` is the staged sibling of
-`OpenAPI.plan` and rejects documents whose requests cannot be decoded
+`framework = :Servo`. An extension must assemble its generated module through
+`OpenAPI.server_module_source`; this keeps the runtime data, pasted server
+code, and generated-code contract guard together. `OpenAPI.serverplan` is the
+staged sibling of `OpenAPI.plan` and rejects documents whose requests cannot
+be decoded
 faithfully (for example `multipart/mixed` request bodies, or two exploded
 object query parameters whose wire names cannot be told apart).
 

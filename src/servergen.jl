@@ -852,8 +852,9 @@ end
 Assemble a generated server module for a framework extension: the shared
 generated runtime, models, operation descriptors, and the `_SERVER_OPS` route
 table, wrapped between the extension's `imports` line and its router `glue`
-source. Framework extensions call this from their `OpenAPI.server_source`
-methods; it is not intended for direct use.
+source. Framework extensions must call this from their `OpenAPI.server_source`
+methods so the generated module includes the current contract guard. Most
+applications call [`OpenAPI.server`](@ref) instead.
 """
 function server_module_source(
     plan::ServerPlan;
