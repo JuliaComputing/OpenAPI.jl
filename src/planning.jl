@@ -274,6 +274,15 @@ function _reference_target(view::SchemaView)
     return SchemaView(value, target, view.version, view.compiled)
 end
 
+function _ref_siblings_apply(view::SchemaView)
+    compiled = view.compiled
+    compiled === nothing && return view.version.minor != 0
+    node = Resources.canonical(compiled.registry, view.node)
+    dialects = getfield(compiled, :dialects)
+    schema_dialect = get(dialects, node, getfield(compiled, :dialect))
+    return schema_dialect.ref_siblings
+end
+
 const NON_APPLICATIVE_SCHEMA_SIBLINGS = Set([
     "\$comment",
     "title",
@@ -291,23 +300,23 @@ const NON_APPLICATIVE_SCHEMA_SIBLINGS = Set([
 function _resolved_view(view::SchemaView)
     target = _reference_target(view)
     target === nothing && return view
-    view.version.minor == 0 && return target
+    _ref_siblings_apply(view) || return target
     siblings = String[String(key) for key in keys(view.value) if key != "\$ref"]
     all(key -> key in NON_APPLICATIVE_SCHEMA_SIBLINGS, siblings) && return target
     return view
 end
 
 # The spec `description` for a schema, preferring one written next to a `$ref`
-# over the referenced schema's own in OAS 3.1 and later. OAS 3.0 ignores all
-# `$ref` siblings. Walk reference chains directly because `_resolved_view`
-# deliberately keeps schemas that have applicative siblings unresolved.
+# when the selected JSON Schema dialect applies reference siblings. Walk
+# reference chains directly because `_resolved_view` deliberately keeps
+# schemas that have applicative siblings unresolved.
 function _schema_description(view::SchemaView)
     seen = Set{Resources.NodeId}()
     current = view
     while !(current.node in seen)
         push!(seen, current.node)
         target = _reference_target(current)
-        if target === nothing || current.version.minor != 0
+        if target === nothing || _ref_siblings_apply(current)
             if current.value isa AbstractDict &&
                haskey(current.value, "description")
                 raw = current.value["description"]
@@ -330,8 +339,11 @@ function _keyword_owner(
     push!(seen, view.node)
     try
         view.value isa AbstractDict || return nothing
-        haskey(view.value, keyword) && return view
         target = _reference_target(view)
+        if target !== nothing && !_ref_siblings_apply(view)
+            return _keyword_owner(target, keyword, seen)
+        end
+        haskey(view.value, keyword) && return view
         if target !== nothing
             owner = _keyword_owner(target, keyword, seen)
             owner === nothing || return owner
@@ -375,7 +387,7 @@ const DIRECTIONAL_OBJECT_SCHEMA_KEYS = (
 
 function _directional_view(view::SchemaView)
     target = _reference_target(view)
-    return view.version.minor == 0 && target !== nothing ? target : view
+    return target !== nothing && !_ref_siblings_apply(view) ? target : view
 end
 
 function _directional_children(view::SchemaView)
@@ -563,8 +575,11 @@ function _effective_types(
     try
         value = view.value
         value isa AbstractDict || return String[]
-        types = _schema_types(value)
         target = _reference_target(view)
+        if target !== nothing && !_ref_siblings_apply(view)
+            return _effective_types(target, seen)
+        end
+        types = _schema_types(value)
         target === nothing ||
             (types = _intersect_types(types, _effective_types(target, seen)))
         allof = get(value, "allOf", nothing)
@@ -593,6 +608,10 @@ function _structural_nullable(view::SchemaView, seen = Set{Resources.NodeId}())
     push!(seen, view.node)
     value = view.value
     try
+        target = _reference_target(view)
+        if target !== nothing && !_ref_siblings_apply(view)
+            return _structural_nullable(target, seen)
+        end
         view.version.minor == 0 && get(value, "nullable", false) === true && return true
         "null" in _effective_types(view) && return true
         for keyword in ("oneOf", "anyOf")
@@ -608,7 +627,6 @@ function _structural_nullable(view::SchemaView, seen = Set{Resources.NodeId}())
                        _structural_nullable(alternative, seen)
             end && return true
         end
-        target = _reference_target(view)
         target === nothing || return _structural_nullable(target, seen)
         return false
     finally
@@ -696,6 +714,10 @@ function _is_object_schema(
     try
         value = view.value
         value isa AbstractDict || return false
+        target = _reference_target(view)
+        if target !== nothing && !_ref_siblings_apply(view)
+            return _is_object_schema(target, seen)
+        end
         types = _schema_types(value)
         "object" in types && return true
         isempty(types) && any(
@@ -706,7 +728,6 @@ function _is_object_schema(
                 "unevaluatedProperties",
             )
         ) && return true
-        target = _reference_target(view)
         target === nothing || _is_object_schema(target, seen) && return true
         allof = get(value, "allOf", nothing)
         allof isa AbstractVector || return false
@@ -764,7 +785,7 @@ function _object_members(view::SchemaView, seen = Set{Resources.NodeId}())
             target_members, target_additional = _object_members(target, seen)
             append!(members, target_members)
             additional = _combine_additional(additional, target_additional)
-            view.version.minor == 0 && return target_members, target_additional
+            _ref_siblings_apply(view) || return target_members, target_additional
         end
         value isa AbstractDict || return members, additional
         required = Set(String.(get(value, "required", String[])))

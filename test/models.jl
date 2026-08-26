@@ -201,8 +201,9 @@
 end
 
 @testset "schema descriptions follow reference semantics" begin
-    function referenced_field_description(version, property)
+    function referenced_field(version, property; dialect = nothing)
         document = minimal_openapi(version, OpenAPI.obj())
+        dialect === nothing || (document["jsonSchemaDialect"] = dialect)
         document["components"] = OpenAPI.obj(
             "schemas" => OpenAPI.obj(
                 "BaseDescription" => OpenAPI.obj(
@@ -223,8 +224,10 @@ end
             item -> item.name == "DescriptionContainer",
             generated.models,
         ))
-        return only(model.fields).description
+        return only(model.fields)
     end
+    referenced_field_description(args...; kwargs...) =
+        referenced_field(args...; kwargs...).description
 
     local_description = OpenAPI.obj(
         "\$ref" => "#/components/schemas/IntermediateDescription",
@@ -234,6 +237,23 @@ end
           "Description from the reference target."
     @test referenced_field_description("3.1.1", local_description) ==
           "Description next to the reference."
+    @test referenced_field_description(
+        "3.1.1",
+        local_description;
+        dialect = OpenAPI.SchemaEngine.DRAFT7.uri,
+    ) == "Description from the reference target."
+    legacy_field = referenced_field(
+        "3.1.1",
+        OpenAPI.obj(
+            "\$ref" => "#/components/schemas/IntermediateDescription",
+            "type" => "object",
+            "properties" => OpenAPI.obj(
+                "ignored" => OpenAPI.obj("type" => "integer"),
+            ),
+        );
+        dialect = OpenAPI.SchemaEngine.DRAFT7.uri,
+    )
+    @test legacy_field.type == "Union{Absent,BaseDescription,Nothing}"
     @test referenced_field_description(
         "3.1.1",
         OpenAPI.obj(
