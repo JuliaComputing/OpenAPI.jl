@@ -298,16 +298,25 @@ function _resolved_view(view::SchemaView)
 end
 
 # The spec `description` for a schema, preferring one written next to a `$ref`
-# over the referenced schema's own; carried into generated docstrings.
+# over the referenced schema's own in OAS 3.1 and later. OAS 3.0 ignores all
+# `$ref` siblings. Walk reference chains directly because `_resolved_view`
+# deliberately keeps schemas that have applicative siblings unresolved.
 function _schema_description(view::SchemaView)
-    if view.value isa AbstractDict
-        raw = get(view.value, "description", nothing)
-        raw isa AbstractString && !isempty(raw) && return String(raw)
-    end
-    resolved = _resolved_view(view)
-    if resolved !== view && resolved.value isa AbstractDict
-        raw = get(resolved.value, "description", nothing)
-        raw isa AbstractString && !isempty(raw) && return String(raw)
+    seen = Set{Resources.NodeId}()
+    current = view
+    while !(current.node in seen)
+        push!(seen, current.node)
+        target = _reference_target(current)
+        if target === nothing || current.version.minor != 0
+            if current.value isa AbstractDict &&
+               haskey(current.value, "description")
+                raw = current.value["description"]
+                raw isa AbstractString || return nothing
+                return isempty(raw) ? nothing : String(raw)
+            end
+        end
+        target === nothing && return nothing
+        current = target
     end
     return nothing
 end

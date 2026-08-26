@@ -199,3 +199,53 @@
     )
     @test_throws ArgumentError call(:_encode, conflicting)
 end
+
+@testset "schema descriptions follow reference semantics" begin
+    function referenced_field_description(version, property)
+        document = minimal_openapi(version, OpenAPI.obj())
+        document["components"] = OpenAPI.obj(
+            "schemas" => OpenAPI.obj(
+                "BaseDescription" => OpenAPI.obj(
+                    "type" => "string",
+                    "description" => "Description from the reference target.",
+                ),
+                "IntermediateDescription" => OpenAPI.obj(
+                    "\$ref" => "#/components/schemas/BaseDescription",
+                ),
+                "DescriptionContainer" => OpenAPI.obj(
+                    "type" => "object",
+                    "properties" => OpenAPI.obj("value" => property),
+                ),
+            ),
+        )
+        generated = OpenAPI.plan(document; name = "DescriptionClient")
+        model = only(filter(
+            item -> item.name == "DescriptionContainer",
+            generated.models,
+        ))
+        return only(model.fields).description
+    end
+
+    local_description = OpenAPI.obj(
+        "\$ref" => "#/components/schemas/IntermediateDescription",
+        "description" => "Description next to the reference.",
+    )
+    @test referenced_field_description("3.0.3", local_description) ==
+          "Description from the reference target."
+    @test referenced_field_description("3.1.1", local_description) ==
+          "Description next to the reference."
+    @test referenced_field_description(
+        "3.1.1",
+        OpenAPI.obj(
+            "\$ref" => "#/components/schemas/IntermediateDescription",
+            "maxLength" => 64,
+        ),
+    ) == "Description from the reference target."
+    @test referenced_field_description(
+        "3.1.1",
+        OpenAPI.obj(
+            "\$ref" => "#/components/schemas/IntermediateDescription",
+            "description" => "",
+        ),
+    ) === nothing
+end
