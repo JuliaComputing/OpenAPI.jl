@@ -114,6 +114,7 @@
               first(findfirst("import OpenAPI.Runtime:", direct_server_source))
 
         current = OpenAPI.Runtime.CONTRACT_VERSION
+        # Deliberate tripwire: update alongside every CONTRACT_VERSION bump.
         @test current == 3
         @test OpenAPI.Runtime.require_contract(current, OpenAPI.PACKAGE_VERSION) === nothing
         for generated_contract in (1, 2, current + 1)
