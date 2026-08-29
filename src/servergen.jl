@@ -129,8 +129,12 @@ function _object_from_alternating(tokens, context; decode::Bool = false)
 end
 
 function _finish_parameter(descriptor, value, context)
-    _validate_schema(_SPEC, descriptor.schema, _encode(value), context; direction = :input)
-    return _decode(descriptor.type, value)
+    # _typed_scalar/_typed_array already construct generated value types (via
+    # _header_scalar), so decode from the encoded wire form: decoding the typed
+    # value itself would validate a Julia struct against its raw JSON schema.
+    encoded = _encode(value)
+    _validate_schema(_SPEC, descriptor.schema, encoded, context; direction = :input)
+    return _decode(descriptor.type, encoded)
 end
 
 function _decode_parameter_content(descriptor, text, context)
@@ -735,8 +739,22 @@ function _server_response(operation, result)
         _validate_schema(_SPEC, entry.schema, lowered, context; direction = :output)
         payload = Vector{UInt8}(codeunits(JSON.json(lowered)))
     elseif _is_sequential_json_media(media)
+        # Sequential media is documented either with an array schema covering
+        # the whole sequence (planned as a vector type) or with the schema of
+        # one record (planned as the item type); validate accordingly.
         lowered = _encode(result)
-        _validate_schema(_SPEC, entry.schema, lowered, context; direction = :output)
+        lowered isa AbstractVector || lowered isa Tuple || throw(ArgumentError(string(
+            "operation ",
+            operation.id,
+            " documents a sequential JSON response; return an array or tuple of items",
+        )))
+        if entry.type <: AbstractVector && entry.type !== Vector{UInt8}
+            _validate_schema(_SPEC, entry.schema, lowered, context; direction = :output)
+        else
+            for item in lowered
+                _validate_schema(_SPEC, entry.schema, item, context; direction = :output)
+            end
+        end
         payload = Vector{UInt8}(codeunits(_encode_sequential_json(result, media)))
     elseif startswith(media, "text/")
         result isa AbstractString || throw(ArgumentError(string(
