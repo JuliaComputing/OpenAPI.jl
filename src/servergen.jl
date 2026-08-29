@@ -700,11 +700,18 @@ end
 
 function _server_response(operation, result)
     descriptor = _success_response(operation.responses)
-    descriptor === nothing && throw(ArgumentError(string(
-        "operation ",
-        operation.id,
-        " documents no success response",
-    )))
+    if descriptor === nothing
+        # The OAS Responses Object is non-exhaustive documentation, and some
+        # documents cover only error codes (flagged at planning time as
+        # :missing_success_response). Answer `nothing` with an empty 200; a
+        # typed value has no documented media to encode against.
+        result === nothing && return (200, Pair{String,String}[], UInt8[])
+        throw(ArgumentError(string(
+            "operation ",
+            operation.id,
+            " documents no success response; return `nothing` for an empty 200 or a framework response",
+        )))
+    end
     status = _selector_status(descriptor.selector)
     if isempty(descriptor.media)
         result === nothing || throw(ArgumentError(string(
