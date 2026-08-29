@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Documents from Julia code · OpenAPI.jl</title><meta name="title" content="Documents from Julia code · OpenAPI.jl"/><meta property="og:title" content="Documents from Julia code · OpenAPI.jl"/><meta property="twitter:title" content="Documents from Julia code · OpenAPI.jl"/><meta name="description" content="Documentation for OpenAPI.jl."/><meta property="og:description" content="Documentation for OpenAPI.jl."/><meta property="twitter:description" content="Documentation for OpenAPI.jl."/><meta property="og:url" content="https://juliacomputing.github.io/OpenAPI.jl/documents/"/><meta property="twitter:url" content="https://juliacomputing.github.io/OpenAPI.jl/documents/"/><link rel="canonical" href="https://juliacomputing.github.io/OpenAPI.jl/documents/"/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">OpenAPI.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../migration/">Migrating from 0.2.x</a></li><li><span class="tocitem">Manual</span><ul><li><a class="tocitem" href="../clients/">Generating clients</a></li><li><a class="tocitem" href="../streaming/">Streaming and codecs</a></li><li><a class="tocitem" href="../security/">Security</a></li><li><a class="tocitem" href="../servers/">Generating servers</a></li><li class="is-active"><a class="tocitem" href>Documents from Julia code</a></li><li><a class="tocitem" href="../pipeline/">Pipeline and diagnostics</a></li><li><a class="tocitem" href="../models/">Generated models</a></li><li><a class="tocitem" href="../artifacts/">Generated modules and the runtime contract</a></li><li><a class="tocitem" href="../boundary/">Support boundary</a></li></ul></li><li><a class="tocitem" href="../reference/">API reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Manual</a></li><li class="is-active"><a href>Documents from Julia code</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Documents from Julia code</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/JuliaComputing/OpenAPI.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/JuliaComputing/OpenAPI.jl/blob/main/docs/src/documents.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Documents-from-Julia-code"><a class="docs-heading-anchor" href="#Documents-from-Julia-code">Documents from Julia code</a><a id="Documents-from-Julia-code-1"></a><a class="docs-heading-anchor-permalink" href="#Documents-from-Julia-code" title="Permalink"></a></h1><p>The authoring API is intentionally smaller than the ingestion and client pipeline. It maps common Julia endpoint declarations to an OpenAPI 3.2.0 document: describe each endpoint as an <a href="../reference/#OpenAPI.Operation"><code>OpenAPI.Operation</code></a> and pass the collection to <a href="../reference/#OpenAPI.document"><code>OpenAPI.document</code></a>.</p><pre><code class="language-julia hljs">using OpenAPI, JSON
+
+struct Widget
+    id::Int
+    tags::Vector{String}
+end
+
+operations = [
+    OpenAPI.Operation(
+        id = &quot;get_widget&quot;,
+        method = :GET,
+        path = &quot;/v1/widgets/{id}&quot;,
+        params = [
+            OpenAPI.Param(&quot;id&quot;, :path, Int),
+            OpenAPI.Param(&quot;verbose&quot;, :query, Bool; required = false),
+        ],
+        responsetype = Widget,
+    ),
+]
+
+document = OpenAPI.document(
+    operations;
+    title = &quot;Widgets&quot;,
+    version = &quot;1.0.0&quot;,
+)
+
+println(JSON.json(document; pretty = 2))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">{
+  &quot;openapi&quot;: &quot;3.2.0&quot;,
+  &quot;info&quot;: {
+    &quot;title&quot;: &quot;Widgets&quot;,
+    &quot;version&quot;: &quot;1.0.0&quot;
+  },
+  &quot;paths&quot;: {
+    &quot;/v1/widgets/{id}&quot;: {
+      &quot;get&quot;: {
+        &quot;operationId&quot;: &quot;get_widget&quot;,
+        &quot;parameters&quot;: [
+          {
+            &quot;name&quot;: &quot;id&quot;,
+            &quot;in&quot;: &quot;path&quot;,
+            &quot;required&quot;: true,
+            &quot;schema&quot;: {
+              &quot;type&quot;: &quot;integer&quot;,
+              &quot;format&quot;: &quot;int64&quot;
+            }
+          },
+          {
+            &quot;name&quot;: &quot;verbose&quot;,
+            &quot;in&quot;: &quot;query&quot;,
+            &quot;required&quot;: false,
+            &quot;schema&quot;: {
+              &quot;type&quot;: &quot;boolean&quot;
+            }
+          }
+        ],
+        &quot;responses&quot;: {
+          &quot;200&quot;: {
+            &quot;description&quot;: &quot;success&quot;,
+            &quot;content&quot;: {
+              &quot;application/json&quot;: {
+                &quot;schema&quot;: {
+                  &quot;$ref&quot;: &quot;#/components/schemas/Widget&quot;
+                }
+              }
+            }
+          },
+          &quot;default&quot;: {
+            &quot;description&quot;: &quot;unexpected error&quot;,
+            &quot;content&quot;: {
+              &quot;application/json&quot;: {
+                &quot;schema&quot;: {
+                  &quot;type&quot;: &quot;object&quot;,
+                  &quot;properties&quot;: {
+                    &quot;error&quot;: {
+                      &quot;type&quot;: &quot;object&quot;,
+                      &quot;properties&quot;: {
+                        &quot;message&quot;: {
+                          &quot;type&quot;: &quot;string&quot;
+                        },
+                        &quot;code&quot;: {
+                          &quot;type&quot;: &quot;integer&quot;
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  &quot;components&quot;: {
+    &quot;schemas&quot;: {
+      &quot;Widget&quot;: {
+        &quot;type&quot;: &quot;object&quot;,
+        &quot;properties&quot;: {
+          &quot;id&quot;: {
+            &quot;type&quot;: &quot;integer&quot;,
+            &quot;format&quot;: &quot;int64&quot;
+          },
+          &quot;tags&quot;: {
+            &quot;type&quot;: &quot;array&quot;,
+            &quot;items&quot;: {
+              &quot;type&quot;: &quot;string&quot;
+            }
+          }
+        },
+        &quot;additionalProperties&quot;: false,
+        &quot;required&quot;: [
+          &quot;id&quot;,
+          &quot;tags&quot;
+        ]
+      }
+    }
+  }
+}</code></pre><p>Named struct types encountered in parameter, body, and response types are collected under <code>components/schemas</code> and referenced by <code>$ref</code>; <a href="../reference/#OpenAPI.schemaof"><code>OpenAPI.schemaof</code></a> documents the exact Julia-type-to-schema mapping.</p><p>The result is a plain JSON object, so the same document can be served by an application, written to a file, or fed straight back into the generation pipeline (<a href="../reference/#OpenAPI.client"><code>OpenAPI.client</code></a> accepts in-memory documents).</p><p>OpenAPI.jl does not depend on a server framework. Framework packages can add optional <a href="../reference/#OpenAPI.operations"><code>OpenAPI.operations</code></a> and <a href="../reference/#OpenAPI.register!"><code>OpenAPI.register!</code></a> methods to expose their routes as <code>Operation</code>s and serve the generated document. Servo.jl provides its OpenAPI adapter from a downstream package extension.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../servers/">« Generating servers</a><a class="docs-footer-nextpage" href="../pipeline/">Pipeline and diagnostics »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Saturday 29 August 2026 13:07">Saturday 29 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
