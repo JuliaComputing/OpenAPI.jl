@@ -1748,12 +1748,32 @@ function _validate_security_references!(context, requirements, schemes)
                 end
             end
             scheme === nothing && begin
-                _reference_error!(
-                    context.resolver,
-                    :unknown_security_scheme,
-                    "security requirement refers to unknown scheme $(repr(name))",
-                    requirement.provenance.node,
-                )
+                # Strict mode enforces the Security Requirement Object's MUST
+                # (the name corresponds to a declared scheme). Permissive mode
+                # supports the specification's multi-document pattern, where a
+                # referenced document names schemes its entry document
+                # declares: the scheme is treated as externally declared, and
+                # generation excludes it from credential enforcement.
+                if context.resolver.strict
+                    _reference_error!(
+                        context.resolver,
+                        :unknown_security_scheme,
+                        "security requirement refers to unknown scheme $(repr(name))",
+                        requirement.provenance.node,
+                    )
+                else
+                    _warning!(
+                        context.resolver.bag,
+                        :unknown_security_scheme,
+                        "security requirement refers to unknown scheme $(repr(name)); " *
+                        "treating it as externally declared and excluding it from " *
+                        "generated credential enforcement",
+                        SourceLocation(
+                            requirement.provenance.node.resource,
+                            requirement.provenance.node.pointer,
+                        ),
+                    )
+                end
                 continue
             end
             if version.minor < 2 &&

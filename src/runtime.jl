@@ -1553,15 +1553,32 @@ function _decode_body(client::Client, type, content_type, body, schema)
             )
         return _decode(type, value, client.validate_responses)
     elseif _is_sequential_json_media(media)
+        # Sequential media is documented either with an array schema covering
+        # the whole sequence (planned as a vector type) or with the schema of
+        # one record (planned as the item type); mirror _stream_plan and
+        # support both.
         value = _decode_sequential_json(body, media)
-        client.validate_responses &&
-            _validate_schema(client.spec, 
-                schema,
-                value,
-                "decoding a sequential JSON response";
-                direction = :output,
-            )
-        return _decode(type, value, client.validate_responses)
+        if type <: AbstractVector && type !== Vector{UInt8}
+            client.validate_responses &&
+                _validate_schema(client.spec,
+                    schema,
+                    value,
+                    "decoding a sequential JSON response";
+                    direction = :output,
+                )
+            return _decode(type, value, client.validate_responses)
+        end
+        if client.validate_responses
+            for item in value
+                _validate_schema(client.spec,
+                    schema,
+                    item,
+                    "decoding a sequential JSON response";
+                    direction = :output,
+                )
+            end
+        end
+        return [_decode(type, item, client.validate_responses) for item in value]
     elseif startswith(media, "text/") || type === String
         isvalid(String, body) || throw(DecodeError("response text is not UTF-8"))
         value = String(copy(body))

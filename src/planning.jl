@@ -1682,6 +1682,27 @@ end
 function _check_server_generation_support!(context::PlanningContext, strict::Bool)
     for operation in context.api.operations
         operation.direction === :request || continue
+        # The OAS Responses Object SHOULD cover a successful operation
+        # response; documents regularly violate that (petstore's addPet lists
+        # only 405). Handlers of such operations answer `nothing` with an
+        # empty 200 at runtime — surface that here instead of per-request.
+        if !any(operation.responses) do response
+            selector = uppercase(response.selector)
+            (!isempty(selector) && all(isdigit, selector) && startswith(selector, '2')) ||
+                selector == "2XX" || selector == "DEFAULT"
+        end
+            _warning!(
+                context.bag,
+                :missing_success_response,
+                "operation $(repr(operation.id)) documents no success response; " *
+                "handlers returning `nothing` are answered with an empty 200, " *
+                "and any other response needs an explicit framework response",
+                SourceLocation(
+                    operation.provenance.node.resource,
+                    operation.provenance.node.pointer,
+                ),
+            )
+        end
         # A form-style exploded object query or cookie parameter consumes
         # arbitrary wire names. One such parameter per location decodes from the
         # pairs no other declared parameter claimed; two or more are ambiguous.
