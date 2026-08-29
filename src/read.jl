@@ -17,6 +17,12 @@ function read(source::AbstractString; kwargs...)
     end
 end
 
+"""
+    OpenAPI.parse(source; options...) -> AbstractDict
+
+Behaves exactly like [`OpenAPI.read`](@ref); kept for callers that expect a
+`parse` name in the namespace.
+"""
 function parse(source::AbstractString; kwargs...)
     try
         return load(source; kwargs...).resource.contents

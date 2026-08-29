@@ -158,6 +158,13 @@ struct NormalizedOperation
     provenance::Provenance
 end
 
+"""
+The immutable, version-neutral result of [`OpenAPI.normalize`](@ref): resolved
+references, a frozen resource registry, and normalized servers, security
+schemes, schemas, and operations, together with the diagnostics produced while
+normalizing. [`OpenAPI.plan`](@ref) and [`OpenAPI.serverplan`](@ref) consume
+this value.
+"""
 struct NormalizedAPI
     source::SourceDocument
     registry::Resources.FrozenRegistry

@@ -62,6 +62,11 @@ struct OperationPlan
     return_type::String
 end
 
+"""
+The result of [`OpenAPI.plan`](@ref): the deterministic Julia model and
+operation plans for one generated client module, plus the diagnostics produced
+while planning. Pass it to [`OpenAPI.client`](@ref) to emit source.
+"""
 struct ClientPlan
     api::NormalizedAPI
     module_name::String
@@ -74,6 +79,11 @@ struct ClientPlan
     datetime::Symbol
 end
 
+"""
+The result of [`OpenAPI.serverplan`](@ref): the deterministic Julia model and
+operation plans for one generated server-stub module, plus the diagnostics
+produced while planning. Pass it to [`OpenAPI.server`](@ref) to emit source.
+"""
 struct ServerPlan
     api::NormalizedAPI
     module_name::String
