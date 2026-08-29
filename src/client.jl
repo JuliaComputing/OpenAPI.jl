@@ -1070,14 +1070,19 @@ function _header_descriptor(header::NormalizedHeader, type::String)
            ", content = " * content * ")"
 end
 
-function _security_descriptor(requirements)
+function _security_descriptor(requirements, known_schemes)
     Base.@nospecialize requirements
     alternatives = String[]
     for requirement in requirements
+        # Permissive normalization keeps requirements naming schemes declared
+        # outside this document (warned as :unknown_security_scheme). The
+        # runtime cannot construct credentials for a scheme it cannot see, so
+        # exclude them; a group left empty is an anonymous alternative and the
+        # caller supplies external auth explicitly.
         entries = String[
             "(name = " * repr(name) *
             ", scopes = " * _julia_literal(scopes) * ")" for
-            (name, scopes) in requirement.alternatives
+            (name, scopes) in requirement.alternatives if name in known_schemes
         ]
         push!(alternatives, "(" * join(entries, ',') * (length(entries) == 1 ? "," : "") * ")")
     end
@@ -1131,7 +1136,8 @@ function _emit_operation_descriptor(io, operation::OperationPlan, api::Normalize
         )
     end
     println(io, "    ),")
-    println(io, "    security = ", _security_descriptor(operation.operation.security), ",")
+    known_schemes = Set{String}(scheme.name for scheme in api.security_schemes)
+    println(io, "    security = ", _security_descriptor(operation.operation.security, known_schemes), ",")
     println(
         io,
         "    servers = ",

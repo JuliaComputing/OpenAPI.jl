@@ -470,4 +470,68 @@ end
         @test :unknown_oauth_scope in codes
         @test :duplicate_server_name in codes
     end
+
+    @testset "externally declared security schemes" begin
+        # The Security Requirement Object's names MUST correspond to declared
+        # schemes, but the specification's multi-document pattern lets a
+        # referenced document name schemes its entry document declares. Strict
+        # mode enforces the MUST; permissive mode warns and generation excludes
+        # the unknown scheme from credential enforcement.
+        document = minimal_openapi(
+            "3.0.3",
+            OpenAPI.obj(
+                "/things" => OpenAPI.obj(
+                    "get" => semantic_operation(
+                        "listThings";
+                        responses = OpenAPI.obj(
+                            "200" => OpenAPI.obj(
+                                "description" => "ok",
+                                "content" => OpenAPI.obj(
+                                    "application/json" => OpenAPI.obj(
+                                        "schema" => OpenAPI.obj("type" => "string"),
+                                    ),
+                                ),
+                            ),
+                        ),
+                        security = Any[
+                            OpenAPI.obj("gatewayAuth" => Any[]),
+                            OpenAPI.obj("localKey" => Any[]),
+                        ],
+                    ),
+                ),
+            ),
+        )
+        document["components"] = OpenAPI.obj(
+            "securitySchemes" => OpenAPI.obj(
+                "localKey" => OpenAPI.obj(
+                    "type" => "apiKey",
+                    "name" => "X-Key",
+                    "in" => "header",
+                ),
+            ),
+        )
+
+        strict_error = @test_throws OpenAPI.OpenAPIError OpenAPI.normalize(document)
+        @test any(
+            diagnostic -> diagnostic.code === :unknown_security_scheme,
+            strict_error.value.diagnostics,
+        )
+
+        permissive = OpenAPI.normalize(document; strict = false)
+        warning = only(
+            diagnostic for diagnostic in permissive.diagnostics if
+            diagnostic.code === :unknown_security_scheme
+        )
+        @test warning.severity === :warning
+
+        # the unknown scheme is excluded from the generated operation security:
+        # its alternative becomes anonymous, and the declared scheme survives
+        source = OpenAPI.client(permissive; name = "ExternalAuthClient", strict = false)
+        @test occursin("security = ((),((name = \"localKey\", scopes = ()),)),", source)
+        # the unknown scheme survives only inside the embedded raw document,
+        # never as an enforceable descriptor or scheme entry
+        @test !occursin("name = \"gatewayAuth\"", source)
+        @test !occursin("\"gatewayAuth\" =>", source)
+        @test occursin("\"localKey\" => (type = :apikey", source)
+    end
 end
