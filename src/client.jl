@@ -136,6 +136,23 @@ function set_param(params::Dict{String,String}, name::String, value; collection_
     end
 end
 
+# Escape one query parameter value for the URL. The OAS `form` style keeps the
+# list separator comma literal (`?color=blue,black,brown` in the specification's
+# Style Examples, per RFC6570 form-style expansion) while percent-encoding the
+# items themselves. `set_param` joins collections before the item boundaries
+# reach this point, so escaping each comma-separated segment individually
+# preserves the separators. The spaceDelimited and pipeDelimited separators are
+# percent-encoded to `%20`/`%7C`, which is what the specification requires for
+# those styles. A comma inside a scalar value stays literal, which is valid in
+# query strings (RFC3986 sub-delim) and percent-decodes identically.
+escape_query_param_value(value::AbstractString) =
+    join((escapeuri(part) for part in split(value, ','; keepempty=true)), ",")
+
+query_string(query::Dict{String,String}) = join(
+    (string(escapeuri(name), "=", escape_query_param_value(value)) for (name, value) in query),
+    "&",
+)
+
 prep_args(ctx::Ctx) = prep_args(Val(ctx.client.httplib), ctx)
 
 response(::Type{Nothing}, resp::HTTPLibResponse, body) = nothing::Nothing
@@ -178,7 +195,7 @@ function do_request(ctx::Ctx, stream::Bool=false; stream_to::Union{Channel,Nothi
     end
     # append query params if needed
     if !isempty(ctx.query)
-        resource_path = string(URIs.URI(URIs.URI(resource_path); query=escapeuri(ctx.query)))
+        resource_path = string(URIs.URI(URIs.URI(resource_path); query=query_string(ctx.query)))
     end
 
     body, kwargs = prep_args(ctx)

@@ -128,3 +128,52 @@ end
     end
 
 end
+
+@testset "Query parameter serialization" begin
+    # The OAS `form` style (RFC6570) keeps the collection separator comma
+    # literal — `?color=blue,black,brown` in the specification's Style
+    # Examples — while percent-encoding the items. Previously the whole query
+    # value was escaped, turning separators into `%2C`, which spec-compliant
+    # servers read as a single item containing commas.
+    import OpenAPI.Clients: set_param, query_string
+
+    @testset "form-style csv keeps literal separators" begin
+        params = Dict{String,String}()
+        set_param(params, "status", ["pending", "sold"]; style="form", is_explode=false)
+        @test params["status"] == "pending,sold"
+        @test query_string(params) == "status=pending,sold"
+    end
+
+    @testset "items are percent-encoded individually" begin
+        params = Dict{String,String}()
+        set_param(params, "tags", ["a b", "c/d", "x&y"]; style="form", is_explode=false)
+        @test query_string(params) == "tags=a%20b,c%2Fd,x%26y"
+    end
+
+    @testset "space and pipe separators are percent-encoded" begin
+        # per the specification's Style Examples, spaceDelimited and
+        # pipeDelimited separators must be percent-encoded (%20 / %7C)
+        params = Dict{String,String}()
+        set_param(params, "s", ["blue", "black"]; collection_format="ssv")
+        set_param(params, "p", ["blue", "black"]; collection_format="pipes")
+        query = query_string(params)
+        @test occursin("s=blue%20black", query)
+        @test occursin("p=blue%7Cblack", query)
+    end
+
+    @testset "scalar values" begin
+        params = Dict{String,String}()
+        set_param(params, "q", "a b&c")
+        @test query_string(params) == "q=a%20b%26c"
+        # a comma in a scalar stays literal: valid per RFC3986 and
+        # percent-decodes identically on the server
+        params = Dict{String,String}()
+        set_param(params, "note", "a,b")
+        @test query_string(params) == "note=a,b"
+    end
+
+    @testset "keys are escaped" begin
+        params = Dict{String,String}("a key" => "v")
+        @test query_string(params) == "a%20key=v"
+    end
+end
