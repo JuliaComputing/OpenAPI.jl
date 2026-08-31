@@ -2,6 +2,13 @@
 # Named struct types are registered once under #/components/schemas and
 # referenced by $ref everywhere they appear.
 
+"""
+    obj(pairs::Pair...) -> JSON.Object{String,Any}
+
+An ordered JSON object from key-value pairs; keys convert to `String`. A small
+helper for assembling OpenAPI document fragments by hand alongside
+[`OpenAPI.document`](@ref).
+"""
 function obj(pairs::Pair...)
     o = JSON.Object{String,Any}()
     for (k, v) in pairs

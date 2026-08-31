@@ -1,3 +1,11 @@
+"""
+    DocumentVersion(value::AbstractString)
+
+The parsed `openapi` version declaration of a source document. Accepts 3.0.x,
+3.1.x, and 3.2.x values, with an optional prerelease suffix, and rejects
+everything else. Carries `raw`, `major`, `minor`, `patch`, and `prerelease`
+fields; [`OpenAPI.oas_family`](@ref) names the minor line it belongs to.
+"""
 struct DocumentVersion
     raw::String
     major::Int
@@ -22,6 +30,13 @@ function DocumentVersion(value::AbstractString)
     )
 end
 
+"""
+    oas_family(version::DocumentVersion) -> Symbol
+
+The OAS minor line a document belongs to: `:oas30`, `:oas31`, or `:oas32`.
+Behavior that differs between specification lines — structural schema
+selection, normalization rules — follows this family, never the patch version.
+"""
 oas_family(version::DocumentVersion) = Symbol("oas3", version.minor)
 
 """An immutable, parsed OpenAPI source resource."""
@@ -41,6 +56,14 @@ Base.getindex(document::SourceDocument, key) = document.resource.contents[key]
 Base.haskey(document::SourceDocument, key) = haskey(document.resource.contents, key)
 Base.keys(document::SourceDocument) = keys(document.resource.contents)
 
+"""
+    location(document::SourceDocument, pointer = Resources.JSONPointer()) -> SourceLocation
+
+The source location of the value at `pointer` inside a loaded document. When
+no position was recorded for the exact node, the nearest recorded ancestor's
+position is reported. Diagnostics use these locations to point back into the
+original JSON or YAML text.
+"""
 function location(
     document::SourceDocument,
     pointer::Resources.JSONPointer = Resources.JSONPointer(),
