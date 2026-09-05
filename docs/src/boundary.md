@@ -25,7 +25,7 @@ streams response bodies that are described by normal schemas.
 
 `strict=true` is the default. Use `strict=false` only for documented ecosystem
 compatibility cases. Permissive mode can retain ambiguous path templates, a
-non-object `deepObject` parameter, and operation security naming schemes the
+scalar `deepObject` parameter, and operation security naming schemes the
 document never declares (see [Security](security.md)), each with warnings. For
 OAS 3.0 documents, it also supports the common non-standard `nullable: true`
 plus `$ref` or `allOf` idiom. Strict mode follows the normative rule that

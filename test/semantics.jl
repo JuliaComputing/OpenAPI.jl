@@ -335,8 +335,8 @@ end
         @test ignored.severity === :warning
     end
 
-    @testset "permissive vendor serialization compatibility" begin
-        document = minimal_openapi(
+    @testset "deepObject accepts arrays; scalars are vendor compatibility" begin
+        deep_document(schema) = minimal_openapi(
             "3.0.4",
             OpenAPI.obj(
                 "/items" => OpenAPI.obj(
@@ -348,18 +348,28 @@ end
                                 "in" => "query",
                                 "style" => "deepObject",
                                 "explode" => true,
-                                "schema" => OpenAPI.obj(
-                                    "type" => "array",
-                                    "items" => OpenAPI.obj("type" => "string"),
-                                ),
+                                "schema" => schema,
                             ),
                         ],
                     ),
                 ),
             ),
         )
-        @test_throws OpenAPI.OpenAPIError OpenAPI.plan(document)
-        plan = OpenAPI.plan(document; strict = false)
+        # Arrays (and nested objects) use the documented bracket-path extension
+        # and plan at strict without diagnostics.
+        array_document = deep_document(
+            OpenAPI.obj("type" => "array", "items" => OpenAPI.obj("type" => "string")),
+        )
+        plan = OpenAPI.plan(array_document)
+        @test !any(
+            diagnostic -> diagnostic.code === :invalid_deep_object_schema,
+            plan.diagnostics,
+        )
+        @test OpenAPI.serverplan(array_document) isa OpenAPI.ServerPlan
+        # Scalars have no bracket form: strict rejects, permissive warns.
+        scalar_document = deep_document(OpenAPI.obj("type" => "string"))
+        @test_throws OpenAPI.OpenAPIError OpenAPI.plan(scalar_document)
+        plan = OpenAPI.plan(scalar_document; strict = false)
         warning = only(
             diagnostic for diagnostic in plan.diagnostics if
             diagnostic.code === :invalid_deep_object_schema

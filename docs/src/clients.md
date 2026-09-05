@@ -85,7 +85,9 @@ Generated clients support:
 
 - path, query, header, and cookie parameters;
 - `simple`, `label`, `matrix`, `form`, `spaceDelimited`, `pipeDelimited`, and
-  `deepObject` serialization where the specification permits each style;
+  `deepObject` serialization where the specification permits each style,
+  plus the bracket-path `deepObject` extension for arrays and nested values
+  (see [deepObject bracket paths](@ref));
 - `allowReserved`, `allowEmptyValue`, explode defaults, and parameter `content`;
 - JSON and structured-suffix JSON media types;
 - text and binary bodies;
