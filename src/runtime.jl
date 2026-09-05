@@ -253,6 +253,234 @@ end
 _schema_valid(spec::Spec, descriptor, value; direction::Symbol = :neutral) =
     isempty(_schema_issues(spec, descriptor, value; direction))
 
+# ── deepObject bracket paths ─────────────────────────────────────────────────
+# OAS 3.x defines `deepObject` only for objects whose property values are
+# scalars. OpenAPI.jl extends the style with the bracket convention shared by
+# qs, Rack, and PHP: nested objects nest brackets (`name[a][b]=v`), arrays use
+# zero-based bracket indices (`name[0][field]=v`), and decoders also accept
+# `name[]=v` for appended array items. Generated clients and servers use these
+# helpers so both sides agree on the wire format.
+
+# Flatten an encoded (JSON-shaped) value into `(wire_name, scalar)` pairs.
+function _deep_object_pairs!(output, name::String, encoded)
+    if encoded isa AbstractDict
+        for (key, item) in encoded
+            _deep_object_pairs!(output, string(name, '[', key, ']'), item)
+        end
+    elseif encoded isa AbstractVector || encoded isa Tuple
+        for (index, item) in enumerate(encoded)
+            _deep_object_pairs!(output, string(name, '[', index - 1, ']'), item)
+        end
+    else
+        push!(output, (name, encoded))
+    end
+    return output
+end
+
+_deep_object_pairs(name, encoded) =
+    _deep_object_pairs!(Tuple{String,Any}[], String(name), encoded)
+
+# Split a wire key into its bracket path below `name`: `name` gives an empty
+# path, `name[a][0][]` gives `["a", "0", ""]`. Returns `nothing` for keys that
+# belong to another parameter or are not well-formed bracket paths.
+function _deep_object_path(key::AbstractString, name::AbstractString)
+    key == name && return String[]
+    startswith(key, name) || return nothing
+    rest = SubString(key, nextind(key, lastindex(name)))
+    path = String[]
+    position = firstindex(rest)
+    while position <= lastindex(rest)
+        rest[position] == '[' || return nothing
+        close = findnext(']', rest, position)
+        close === nothing && return nothing
+        push!(path, String(SubString(rest, nextind(rest, position), prevind(rest, close))))
+        position = nextind(rest, close)
+    end
+    return path
+end
+
+# A decoded wire value whose JSON type the parameter schema decides later.
+struct _DeepObjectLeaf
+    text::String
+end
+
+# Insert `leaf` at `path` below `root`, creating intermediate objects. Array
+# items arrive as integer keys (or empty keys, which append), and stay objects
+# until `_deep_object_coerce` consults the schema.
+function _deep_object_assign!(root, path::Vector{String}, leaf)
+    isempty(path) && return leaf
+    object = root isa JSON.Object{String,Any} ? root : JSON.Object{String,Any}()
+    current = object
+    for (depth, token) in enumerate(path)
+        key = isempty(token) ? string(length(current)) : token
+        if depth == length(path)
+            current[key] = leaf
+        else
+            child = get(current, key, nothing)
+            if !(child isa JSON.Object{String,Any})
+                child = JSON.Object{String,Any}()
+                current[key] = child
+            end
+            current = child
+        end
+    end
+    return object
+end
+
+function _deep_object_types(data)
+    data isa AbstractDict || return String[]
+    type = get(data, "type", nothing)
+    type isa AbstractString && return [String(type)]
+    type isa AbstractVector && return String[String(item) for item in type if item isa AbstractString]
+    return String[]
+end
+
+function _deep_object_expects_array(data)
+    data isa AbstractDict || return false
+    types = _deep_object_types(data)
+    "object" in types && return false
+    "array" in types && return true
+    isempty(types) || return false
+    (haskey(data, "items") || haskey(data, "prefixItems")) || return false
+    return !any(
+        haskey(data, key) for key in ("properties", "additionalProperties", "patternProperties")
+    )
+end
+
+function _deep_object_indices(value::AbstractDict)
+    isempty(value) && return nothing
+    indices = Tuple{Int,Any}[]
+    for (key, item) in value
+        index = tryparse(Int, key)
+        (index === nothing || index < 0) && return nothing
+        push!(indices, (index, item))
+    end
+    sort!(indices; by = first)
+    return Any[item for (_, item) in indices]
+end
+
+function _deep_object_leaf(data, leaf::_DeepObjectLeaf)
+    types = _deep_object_types(data)
+    if "string" in types && all(type -> type == "string" || type == "null", types)
+        return leaf.text
+    end
+    return _header_atom(leaf.text)
+end
+
+function _deep_object_child(schema, tokens...)
+    schema === nothing && return nothing
+    pointer = schema.root.pointer
+    for token in tokens
+        pointer = pointer / String(token)
+    end
+    return SchemaEngine.trysubschema(
+        schema,
+        SchemaEngine.Resources.NodeId(schema.root.resource, pointer),
+    )
+end
+
+function _deep_object_reference(schema, reference)
+    target = SchemaEngine.reference_target(schema, schema.root, "\$ref")
+    if target === nothing
+        target = try
+            SchemaEngine.Resources.resolve(
+                schema.registry,
+                SchemaEngine.Resources.Reference(schema.root.resource, reference),
+            ).id
+        catch
+            nothing
+        end
+    end
+    target === nothing && return nothing
+    return SchemaEngine.trysubschema(schema, target)
+end
+
+# Rebuild a bracket tree in the JSON shape `schema` describes: integer-keyed
+# objects become arrays where the schema expects an array, leaves become typed
+# atoms unless the schema declares them strings, and nested schemas are
+# followed through `\$ref`, `allOf`, `oneOf`, and `anyOf`. Without a schema the
+# tree keeps its object shape and leaves become atoms.
+function _deep_object_coerce(spec::Spec, descriptor, value)
+    schema = _schema_at(spec, descriptor, :input)
+    return _deep_object_coerce(schema, value, 0)
+end
+
+function _deep_object_coerce(schema, value, depth::Int)
+    depth > 64 && return _deep_object_coerce(nothing, value, 0)
+    data = schema === nothing ? nothing : schema.data
+    if data isa AbstractDict
+        reference = get(data, "\$ref", nothing)
+        if reference isa AbstractString
+            resolved = _deep_object_reference(schema, reference)
+            if resolved !== nothing
+                value = _deep_object_coerce(resolved, value, depth + 1)
+                schema.dialect.ref_siblings || return value
+            end
+        end
+        alternatives = get(data, "allOf", nothing)
+        if alternatives isa AbstractVector
+            for index in eachindex(alternatives)
+                child = _deep_object_child(schema, "allOf", string(index - 1))
+                child === nothing && continue
+                value = _deep_object_coerce(child, value, depth + 1)
+            end
+        end
+        for keyword in ("oneOf", "anyOf")
+            alternatives = get(data, keyword, nothing)
+            alternatives isa AbstractVector || continue
+            for index in eachindex(alternatives)
+                child = _deep_object_child(schema, keyword, string(index - 1))
+                child === nothing && continue
+                candidate = _deep_object_coerce(child, value, depth + 1)
+                if SchemaEngine.validate(child, candidate) === nothing
+                    value = candidate
+                    break
+                end
+            end
+        end
+    end
+    value isa _DeepObjectLeaf && return _deep_object_leaf(data, value)
+    if value isa AbstractDict
+        items = _deep_object_expects_array(data) ? _deep_object_indices(value) : nothing
+        if items === nothing
+            properties = data isa AbstractDict ? get(data, "properties", nothing) : nothing
+            additional = data isa AbstractDict ? get(data, "additionalProperties", nothing) : nothing
+            output = JSON.Object{String,Any}()
+            for (key, item) in value
+                child = properties isa AbstractDict && haskey(properties, key) ?
+                        _deep_object_child(schema, "properties", key) : nothing
+                if child === nothing && additional isa AbstractDict
+                    child = _deep_object_child(schema, "additionalProperties")
+                end
+                output[key] = _deep_object_coerce(child, item, depth + 1)
+            end
+            return output
+        end
+        value = items
+    end
+    if value isa AbstractVector
+        items = data isa AbstractDict ? get(data, "items", nothing) : nothing
+        prefix = data isa AbstractDict ? get(data, "prefixItems", nothing) : nothing
+        modern = schema !== nothing && schema.dialect.modern_items
+        output = Vector{Any}(undef, length(value))
+        for (index, item) in enumerate(value)
+            child = nothing
+            if modern && prefix isa AbstractVector && index <= length(prefix)
+                child = _deep_object_child(schema, "prefixItems", string(index - 1))
+            elseif items isa AbstractVector && !modern
+                child = index <= length(items) ?
+                        _deep_object_child(schema, "items", string(index - 1)) :
+                        _deep_object_child(schema, "additionalItems")
+            elseif items isa AbstractDict
+                child = _deep_object_child(schema, "items")
+            end
+            output[index] = _deep_object_coerce(child, item, depth + 1)
+        end
+        return output
+    end
+    return value
+end
+
 struct Upload
     data::Vector{UInt8}
     filename::Union{Nothing,String}
@@ -1148,21 +1376,9 @@ function _query_parameter(
 )
     encoded = _encode(value)
     if style === :deepObject
-        if encoded isa AbstractDict
-            any(
-                item -> item isa AbstractDict || item isa AbstractVector || item isa Tuple,
-                values(encoded),
-            ) && throw(ArgumentError("deepObject does not define nested object or array values"))
-            return Tuple{String,String,Bool}[
-                (string(name, '[', key, ']'), _scalar(item), false) for
-                (key, item) in _pairs(encoded)
-            ]
-        elseif encoded isa AbstractVector || encoded isa Tuple
-            return Tuple{String,String,Bool}[
-                (string(name, "[]"), _scalar(item), false) for item in encoded
-            ]
-        end
-        return [(name, _scalar(encoded), false)]
+        return Tuple{String,String,Bool}[
+            (key, _scalar(item), false) for (key, item) in _deep_object_pairs(name, encoded)
+        ]
     elseif style in (:spaceDelimited, :pipeDelimited)
         explode && throw(ArgumentError("$style with explode=true is undefined"))
         delimiter = style === :spaceDelimited ? " " : "|"
@@ -1808,9 +2024,8 @@ end
 function _multipart_style_pairs(name, value, style, explode)
     encoded = _encode(value)
     if style === :deepObject
-        encoded isa AbstractDict || throw(ArgumentError("deepObject requires an object"))
         return Pair{String,Any}[
-            string(name, '[', key, ']') => item for (key, item) in _pairs(encoded)
+            key => item for (key, item) in _deep_object_pairs(name, encoded)
         ]
     elseif style in (:spaceDelimited, :pipeDelimited)
         explode && throw(ArgumentError("$style with explode=true is undefined"))

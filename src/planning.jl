@@ -1549,14 +1549,16 @@ function _check_generation_support!(context::PlanningContext, strict::Bool)
             array_schema = "array" in types ||
                            _keyword_owner(view, "items") !== nothing ||
                            _keyword_owner(view, "prefixItems") !== nothing
-            if parameter.style === :deepObject && !_is_object_schema(view)
+            # Object and array schemas serialize with bracket paths (the
+            # documented deepObject extension); scalars have no bracket form.
+            if parameter.style === :deepObject && !_is_object_schema(view) && !array_schema
                 emit = strict ? _error! : _warning!
                 emit(
                     context.bag,
                     :invalid_deep_object_schema,
                     strict ?
-                    "deepObject serialization requires an object schema" :
-                    "non-object deepObject schema uses non-standard bracket compatibility serialization",
+                    "deepObject serialization requires an object or array schema" :
+                    "scalar deepObject schema uses non-standard plain serialization",
                     SourceLocation(
                         parameter.provenance.node.resource,
                         parameter.provenance.node.pointer,

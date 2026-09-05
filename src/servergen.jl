@@ -9,8 +9,9 @@ const GENERATED_SERVER_IMPORTS = raw"""
 const SchemaEngine = OpenAPI.SchemaEngine
 import OpenAPI.Runtime:
     ABSENT, Absent, DecodeError, MultipartPartHeaders, SchemaValidationError,
-    UnsupportedMediaType, Upload,
+    UnsupportedMediaType, Upload, _DeepObjectLeaf,
     _base_media_type, _decode, _decode_schema_header, _decode_sequential_json,
+    _deep_object_assign!, _deep_object_coerce, _deep_object_path,
     _encode, _encode_sequential_json, _form_fields, _header_atom, _header_scalar,
     _header_type_variant, _header_values, _is_json_media, _is_sequential_json_media,
     _media_type, _object, _parse_json, _required, _safe_header, _schema_valid,
@@ -288,34 +289,24 @@ function _decode_query_parameter(descriptor, pairs, consumed)
     end
     style = descriptor.style
     if style === :deepObject
-        object = JSON.Object{String,Any}()
-        items = Any[]
-        scalar = nothing
+        # Bracket paths (`name[a][0][field]=v`, `name[]=v`) build a tree of
+        # objects whose JSON shape the parameter schema settles afterwards.
+        value = nothing
         found = false
-        prefix = name * "["
-        list_key = name * "[]"
         for (index, pair) in enumerate(pairs)
-            key = pair.first
-            value() = _percent_decode(String(pair.second); plus_space = true)
-            if key == list_key
-                push!(items, _header_atom(value()))
-            elseif startswith(key, prefix) && endswith(key, ']')
-                start = nextind(key, lastindex(prefix))
-                stop = prevind(key, lastindex(key))
-                start <= stop || continue
-                inner = String(SubString(key, start, stop))
-                object[inner] = _header_atom(value())
-            elseif key == name
-                scalar = _header_atom(value())
-            else
-                continue
-            end
+            path = _deep_object_path(pair.first, name)
+            path === nothing && continue
+            leaf = _DeepObjectLeaf(_percent_decode(String(pair.second); plus_space = true))
+            value = _deep_object_assign!(value, path, leaf)
             consumed[index] = true
             found = true
         end
         found || return ABSENT
-        value = !isempty(object) ? object : (!isempty(items) ? items : scalar)
-        return _finish_parameter(descriptor, value, context)
+        return _finish_parameter(
+            descriptor,
+            _deep_object_coerce(_SPEC, descriptor.schema, value),
+            context,
+        )
     elseif style === :spaceDelimited || style === :pipeDelimited
         index = _first_pair_index(pairs, name)
         index === nothing && return ABSENT
