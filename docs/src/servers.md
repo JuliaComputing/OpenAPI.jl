@@ -121,6 +121,30 @@ the selected JSON schema accepts null. A full `HTTP.Response` bypasses
 generated status, header, and body validation. The handler owns that
 validation.
 
+### deepObject bracket paths
+
+OAS 3.x defines `deepObject` only for objects whose property values are
+scalars (`filter[role]=admin`). OpenAPI.jl extends the style with the bracket
+convention that `qs`, Rack, and PHP produce, so `deepObject` parameters may
+declare array schemas and nested object or array values. Nested objects nest
+brackets, arrays use zero-based bracket indices, and servers also accept
+`name[]=value` for appended items:
+
+```text
+filters[0][field]=severity&filters[0][values][0]=error&filters[0][values][1]=warning
+sorts[0]=-created_at&sorts[1]=%2Bname
+```
+
+Generated clients emit this form and generated servers decode it, in both
+strict and permissive mode. Bracket keys may arrive percent-encoded. The
+server rebuilds the value in the shape the parameter schema declares: integer
+keys become array indices only where the schema expects an array, so an
+`additionalProperties` object keeps `"0"` as a string key, and leaf values
+stay strings where the schema says `string` rather than being read as numbers.
+Schemas reached through `$ref`, `allOf`, `oneOf`, and `anyOf` are followed.
+The result is then validated against the schema as for every other parameter.
+Only scalar `deepObject` schemas remain a permissive-mode compatibility case.
+
 An operation that documents no success response at all (only error entries)
 produces a `missing_success_response` planning warning; its handler's
 `nothing` return is answered with an empty `200`, which the OpenAPI

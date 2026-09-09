@@ -335,19 +335,49 @@
             true,
             false,
         ) == [
-            ("expand[]", "customer", false),
-            ("expand[]", "invoice", false),
+            ("expand[0]", "customer", false),
+            ("expand[1]", "invoice", false),
         ]
         @test invoke(:_query_parameter, "created", 7, :deepObject, true, false) ==
               [("created", "7", false)]
-        @test_throws ArgumentError invoke(
+        @test invoke(
             :_query_parameter,
             "filter",
             Dict("nested" => Dict("x" => 1)),
             :deepObject,
             true,
             false,
-        )
+        ) == [("filter[nested][x]", "1", false)]
+        @test invoke(
+            :_query_parameter,
+            "filters",
+            [(; field = "severity", values = ["error", "warning"])],
+            :deepObject,
+            true,
+            false,
+        ) == [
+            ("filters[0][field]", "severity", false),
+            ("filters[0][values][0]", "error", false),
+            ("filters[0][values][1]", "warning", false),
+        ]
+
+        # Server-side bracket path parsing and tree building.
+        @test invoke(:_deep_object_path, "filters", "filters") == String[]
+        @test invoke(:_deep_object_path, "filters[0][values][]", "filters") ==
+              ["0", "values", ""]
+        @test invoke(:_deep_object_path, "filters[é]", "filters") == ["é"]
+        @test invoke(:_deep_object_path, "filtersx", "filters") === nothing
+        @test invoke(:_deep_object_path, "filters[0", "filters") === nothing
+        @test invoke(:_deep_object_path, "filters[0]x", "filters") === nothing
+        @test invoke(:_deep_object_path, "other[0]", "filters") === nothing
+        Leaf = OpenAPI.Runtime._DeepObjectLeaf
+        tree = invoke(:_deep_object_assign!, nothing, ["0", "field"], Leaf("a"))
+        tree = invoke(:_deep_object_assign!, tree, ["0", "values", ""], Leaf("x"))
+        tree = invoke(:_deep_object_assign!, tree, ["0", "values", ""], Leaf("y"))
+        @test tree["0"]["field"] == Leaf("a")
+        @test collect(keys(tree["0"]["values"])) == ["0", "1"]
+        @test tree["0"]["values"]["1"] == Leaf("y")
+        @test invoke(:_deep_object_assign!, nothing, String[], Leaf("s")) == Leaf("s")
 
         @test invoke(:_header_parameter, ["a", "b"], false) == "a,b"
         malformed_header = (

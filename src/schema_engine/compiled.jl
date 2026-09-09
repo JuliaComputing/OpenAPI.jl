@@ -1466,6 +1466,16 @@ function subschema(
     return subschema(schemas, Resources.NodeId(resource, pointer))
 end
 
+"""
+Return a compiled view of a schema node, or `nothing` when the location was
+not compiled as a schema.
+"""
+function trysubschema(template::CompiledSchema, requested::Resources.NodeId)
+    canonical = Resources.canonical(template.registry, requested)
+    haskey(getfield(template, :evaluation_nodes), canonical) || return nothing
+    return subschema(template, requested)
+end
+
 function CompiledSchema(
     resource::Resources.Resource,
     pointer::Resources.JSONPointer = Resources.JSONPointer();

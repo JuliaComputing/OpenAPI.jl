@@ -902,3 +902,230 @@ end
         @test OpenAPI.plan(document) isa OpenAPI.ClientPlan
     end
 end
+
+@testset "deepObject bracket paths" begin
+    string_schema() = OpenAPI.obj("type" => "string")
+    string_array() = OpenAPI.obj("type" => "array", "items" => string_schema())
+    component(name) = OpenAPI.obj("\$ref" => "#/components/schemas/$name")
+    deep(name, schema) = OpenAPI.obj(
+        "name" => name,
+        "in" => "query",
+        "style" => "deepObject",
+        "explode" => true,
+        "schema" => schema,
+    )
+    document = OpenAPI.obj(
+        "openapi" => "3.0.3",
+        "info" => OpenAPI.obj("title" => "Listing", "version" => "1.0.0"),
+        "paths" => OpenAPI.obj(
+            "/items" => OpenAPI.obj(
+                "get" => OpenAPI.obj(
+                    "operationId" => "listItems",
+                    "parameters" => Any[
+                        deep(
+                            "filters",
+                            OpenAPI.obj("type" => "array", "items" => component("Filter")),
+                        ),
+                        deep("sorts", string_array()),
+                        deep("page", component("Page")),
+                        deep("labels", component("Labels")),
+                    ],
+                    "responses" => OpenAPI.obj(
+                        "200" => OpenAPI.obj(
+                            "description" => "echo",
+                            "content" => OpenAPI.obj(
+                                "application/json" => OpenAPI.obj("schema" => component("Echo")),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        ),
+        "components" => OpenAPI.obj(
+            "schemas" => OpenAPI.obj(
+                "Filter" => OpenAPI.obj(
+                    "type" => "object",
+                    "properties" => OpenAPI.obj(
+                        "field" => string_schema(),
+                        "op" => string_schema(),
+                        "values" => string_array(),
+                        "limit" => OpenAPI.obj("type" => "integer"),
+                    ),
+                ),
+                "Page" => OpenAPI.obj(
+                    "type" => "object",
+                    "properties" => OpenAPI.obj(
+                        "size" => OpenAPI.obj("type" => "integer"),
+                        "tags" => string_array(),
+                    ),
+                ),
+                "Labels" => OpenAPI.obj(
+                    "type" => "object",
+                    "additionalProperties" => string_schema(),
+                ),
+                "Echo" => OpenAPI.obj(
+                    "type" => "object",
+                    "properties" => OpenAPI.obj(
+                        "filters" => OpenAPI.obj("type" => "array", "items" => component("Filter")),
+                        "sorts" => string_array(),
+                        "page" => component("Page"),
+                        "labels" => component("Labels"),
+                    ),
+                ),
+            ),
+        ),
+    )
+    # Array and nested deepObject schemas plan at strict (the default).
+    @test OpenAPI.serverplan(document) isa OpenAPI.ServerPlan
+    @test OpenAPI.plan(document) isa OpenAPI.ClientPlan
+
+    server_host = Module(:DeepBracketServerHost)
+    Base.include_string(
+        server_host,
+        OpenAPI.server(document; name = "DeepBracketServer"),
+        "DeepBracketServer.jl",
+    )
+    S = Base.invokelatest(getfield, server_host, :DeepBracketServer)
+    impl = Module(:DeepBracketImpl)
+    Base.include_string(
+        impl,
+        """
+        using OpenAPI
+        present(value) = !(value === nothing || value === OpenAPI.Runtime.ABSENT)
+        function listitems(request; filters = nothing, sorts = nothing, page = nothing, labels = nothing)
+            echo = Dict{String,Any}()
+            present(filters) && (echo["filters"] = filters)
+            present(sorts) && (echo["sorts"] = sorts)
+            present(page) && (echo["page"] = page)
+            present(labels) && (echo["labels"] = labels)
+            return echo
+        end
+        """,
+        "DeepBracketImpl.jl",
+    )
+    router = HTTP.Router()
+    Base.invokelatest(getfield(S, :register!), router, impl)
+    server = HTTP.serve!(router, "127.0.0.1", 0; verbose = false)
+    try
+        base = "http://127.0.0.1:$(HTTP.port(server))"
+        fetch_items(query) = HTTP.get("$base/items?$query"; status_exception = false)
+        parsed(response) = JSON.parse(String(response.body))
+
+        client_host = Module(:DeepBracketClientHost)
+        Base.include_string(
+            client_host,
+            OpenAPI.client(document; name = "DeepBracketClient"),
+            "DeepBracketClient.jl",
+        )
+        C = Base.invokelatest(getfield, client_host, :DeepBracketClient)
+        call(name, args...; kwargs...) =
+            Base.invokelatest(getfield(C, name), args...; kwargs...)
+        call(:server!, base)
+
+        @testset "client encodes nested values as indexed bracket paths" begin
+            filter = call(:FilterModel; field = "severity", values = ["error", "warning"])
+            @test Base.invokelatest(
+                OpenAPI.Runtime._query_parameter,
+                "filters",
+                [filter],
+                :deepObject,
+                true,
+                false,
+            ) == [
+                ("filters[0][field]", "severity", false),
+                ("filters[0][values][0]", "error", false),
+                ("filters[0][values][1]", "warning", false),
+            ]
+        end
+
+        @testset "typed client to server round trip" begin
+            echo = call(
+                :listitems;
+                filters = [
+                    call(
+                        :FilterModel;
+                        field = "severity",
+                        op = "in",
+                        values = ["error", "warning"],
+                        limit = 5,
+                    ),
+                ],
+                sorts = ["-created_at", "+name"],
+                page = call(:Page; size = 20, tags = ["a", "b"]),
+                labels = call(
+                    :Labels;
+                    additional_properties = Dict("env" => "prod", "0" => "zero"),
+                ),
+            )
+            @test length(echo.filters) == 1
+            @test echo.filters[1].field == "severity"
+            @test echo.filters[1].op == "in"
+            @test echo.filters[1].values == ["error", "warning"]
+            @test echo.filters[1].limit == 5
+            @test echo.sorts == ["-created_at", "+name"]
+            @test echo.page.size == 20
+            @test echo.page.tags == ["a", "b"]
+            @test echo.labels.additional_properties == Dict("env" => "prod", "0" => "zero")
+        end
+
+        @testset "bracket-index wire format (qs default)" begin
+            response = fetch_items(
+                "filters[0][field]=severity&filters[0][op]=in&filters[0][values][0]=error" *
+                "&filters[0][values][1]=warning&filters[0][limit]=5" *
+                "&sorts[0]=-created_at&sorts[1]=%2Bname",
+            )
+            @test response.status == 200
+            echo = parsed(response)
+            @test echo["filters"] == [
+                Dict(
+                    "field" => "severity",
+                    "op" => "in",
+                    "values" => ["error", "warning"],
+                    "limit" => 5,
+                ),
+            ]
+            @test echo["sorts"] == ["-created_at", "+name"]
+        end
+
+        @testset "appended items, encoded brackets, sparse indices" begin
+            response = fetch_items("sorts[]=a&sorts[]=b")
+            @test response.status == 200
+            @test parsed(response)["sorts"] == ["a", "b"]
+
+            response = fetch_items("sorts%5B0%5D=2024&filters%5B0%5D%5Bfield%5D=f")
+            @test response.status == 200
+            echo = parsed(response)
+            @test echo["sorts"] == ["2024"] # string schema keeps digits as text
+            @test echo["filters"] == [Dict("field" => "f")]
+
+            response = fetch_items("sorts[10]=late&sorts[2]=early")
+            @test response.status == 200
+            @test parsed(response)["sorts"] == ["early", "late"]
+        end
+
+        @testset "schema decides between array index and object key" begin
+            response = fetch_items(
+                "labels[0]=zero&labels[env]=prod&page[size]=20&page[tags][0]=a&page[tags][1]=b",
+            )
+            @test response.status == 200
+            echo = parsed(response)
+            @test echo["labels"] == Dict("0" => "zero", "env" => "prod")
+            @test echo["page"] == Dict("size" => 20, "tags" => ["a", "b"])
+        end
+
+        @testset "shapes the schema rejects produce 400" begin
+            response = fetch_items("sorts=plain")
+            @test response.status == 400
+            @test occursin("sorts", String(response.body))
+
+            response = fetch_items("filters[0][values]=notarray")
+            @test response.status == 400
+            @test occursin("filters", String(response.body))
+
+            @test fetch_items("filters[0][limit]=many").status == 400
+            @test fetch_items("page[size]=abc").status == 400
+        end
+    finally
+        close(server)
+    end
+end
