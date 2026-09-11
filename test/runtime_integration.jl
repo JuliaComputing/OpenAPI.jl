@@ -137,6 +137,8 @@ end
             return HTTP.Response(200, ["Content-Type" => "application/json"], body)
         elseif startswith(path, "/form") || startswith(path, "/multipart")
             return HTTP.Response(200, ["Content-Type" => "text/plain"], "accepted")
+        elseif startswith(path, "/documents/")
+            return HTTP.Response(200, ["Content-Type" => "application/json"], """{"ok":true}""")
         elseif startswith(path, "/secure")
             return HTTP.Response(200, ["Content-Type" => "text/plain"], "authorized")
         end
@@ -429,6 +431,22 @@ end
                     ),
                     "responses" => OpenAPI.obj(
                         "200" => runtime_response("text/plain", string_schema),
+                    ),
+                ),
+            ),
+            "/documents/{path}" => OpenAPI.obj(
+                "get" => OpenAPI.obj(
+                    "operationId" => "getDocument",
+                    "parameters" => Any[
+                        runtime_parameter(
+                            "path",
+                            "path",
+                            string_schema;
+                            allow_reserved = true,
+                        ),
+                    ],
+                    "responses" => OpenAPI.obj(
+                        "200" => runtime_response("application/json", OpenAPI.obj()),
                     ),
                 ),
             ),
@@ -825,6 +843,22 @@ end
             )
         take_request() = take!(captures)
         client = C.Client()
+
+        @testset "allowReserved on a path parameter" begin
+            # A slash-delimited document path (OPA style) must reach the server
+            # as path segments, not as one %2F-joined segment; other unsafe
+            # characters are still percent-encoded.
+            result = call(
+                :getdocument,
+                "opa/examples/public servers";
+                client,
+                with_http_info = true,
+            )
+            request = take_request()
+            @test request.target == "/documents/opa/examples/public%20servers"
+            @test result.status == 200
+            @test result.body["ok"] === true
+        end
 
         @testset "parameters, servers, and request overrides" begin
             result = call(

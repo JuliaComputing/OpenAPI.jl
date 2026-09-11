@@ -424,6 +424,17 @@
         @test invoke(:_escape, reserved; allow_reserved = true) == reserved
         @test invoke(:_escape, "%2F"; allow_reserved = true) == "%2F"
         @test invoke(:_escape, "a b") == "a%20b"
+        # allowReserved on a path parameter keeps slash-delimited values intact
+        @test invoke(:_path_parameter, "path", "opa/examples/public servers", :simple, false) ==
+              "opa%2Fexamples%2Fpublic%20servers"
+        @test invoke(:_path_parameter, "path", "opa/examples/public servers", :simple, false;
+                     allow_reserved = true) == "opa/examples/public%20servers"
+        @test invoke(:_path_parameter, "path", ["a/b", "c d"], :simple, false;
+                     allow_reserved = true) == "a/b,c%20d"
+        @test invoke(:_path_parameter, "path", "a/b", :label, false; allow_reserved = true) ==
+              ".a/b"
+        @test invoke(:_path_parameter, "path", "a/b", :matrix, false; allow_reserved = true) ==
+              ";path=a/b"
         @test invoke(:_safe_header, "X-Test", "ok") == ("X-Test" => "ok")
         @test_throws ArgumentError invoke(:_safe_header, "Bad Header", "ok")
         @test_throws ArgumentError invoke(:_safe_header, "X-Test", "ok\r\nInjected: x")
