@@ -1308,28 +1308,41 @@ function _join_object(value, pair_delimiter, key_delimiter)
     )
 end
 
-_path_scalar(value) = _escape(_scalar(value))
+# `allow_reserved` is honoured for path parameters as well as query parameters.
+# OAS scopes `allowReserved` to `in: query`, but documents for APIs whose path
+# parameters are themselves slash-delimited paths (OPA data documents, proxied
+# object paths) declare it on the path parameter, and the only useful reading
+# of that is "send the value through without percent-encoding reserved
+# characters". Without it every `/` becomes `%2F` and the server sees a single
+# segment.
+_path_scalar(value; allow_reserved::Bool = false) = _escape(_scalar(value); allow_reserved)
 
-function _path_array(value, delimiter)
+function _path_array(value, delimiter; allow_reserved::Bool = false)
     value isa AbstractVector || value isa Tuple ||
         throw(ArgumentError("parameter style requires an array value"))
-    return join((_path_scalar(item) for item in value), delimiter)
+    return join((_path_scalar(item; allow_reserved) for item in value), delimiter)
 end
 
-function _path_object(value, pair_delimiter, key_delimiter)
+function _path_object(value, pair_delimiter, key_delimiter; allow_reserved::Bool = false)
     return join(
         (
             string(
-                _path_scalar(key),
+                _path_scalar(key; allow_reserved),
                 key_delimiter,
-                _path_scalar(item),
+                _path_scalar(item; allow_reserved),
             ) for (key, item) in _pairs(value)
         ),
         pair_delimiter,
     )
 end
 
-function _path_parameter(name, value, style::Symbol, explode::Bool)
+function _path_parameter(
+    name,
+    value,
+    style::Symbol,
+    explode::Bool;
+    allow_reserved::Bool = false,
+)
     encoded = _encode(value)
     if encoded === nothing
         style === :matrix && return ";" * _path_scalar(name)
@@ -1338,26 +1351,29 @@ function _path_parameter(name, value, style::Symbol, explode::Bool)
     end
     if style === :simple
         encoded isa AbstractDict && return explode ?
-            _path_object(encoded, ",", "=") : _path_object(encoded, ",", ",")
-        encoded isa AbstractVector && return _path_array(encoded, ",")
-        return _path_scalar(encoded)
+            _path_object(encoded, ",", "="; allow_reserved) :
+            _path_object(encoded, ",", ","; allow_reserved)
+        encoded isa AbstractVector && return _path_array(encoded, ","; allow_reserved)
+        return _path_scalar(encoded; allow_reserved)
     elseif style === :label
         encoded isa AbstractDict && return "." * (explode ?
-            _path_object(encoded, ".", "=") : _path_object(encoded, ",", ","))
-        encoded isa AbstractVector && return "." * _path_array(encoded, explode ? "." : ",")
-        return "." * _path_scalar(encoded)
+            _path_object(encoded, ".", "="; allow_reserved) :
+            _path_object(encoded, ",", ","; allow_reserved))
+        encoded isa AbstractVector &&
+            return "." * _path_array(encoded, explode ? "." : ","; allow_reserved)
+        return "." * _path_scalar(encoded; allow_reserved)
     elseif style === :matrix
         encoded_name = _path_scalar(name)
         if encoded isa AbstractDict
             return explode ?
-                join((";" * _path_scalar(key) * "=" * _path_scalar(item) for (key, item) in _pairs(encoded))) :
-                ";" * encoded_name * "=" * _path_object(encoded, ",", ",")
+                join((";" * _path_scalar(key) * "=" * _path_scalar(item; allow_reserved) for (key, item) in _pairs(encoded))) :
+                ";" * encoded_name * "=" * _path_object(encoded, ",", ","; allow_reserved)
         elseif encoded isa AbstractVector
             return explode ?
-                join((";" * encoded_name * "=" * _path_scalar(item) for item in encoded)) :
-                ";" * encoded_name * "=" * _path_array(encoded, ",")
+                join((";" * encoded_name * "=" * _path_scalar(item; allow_reserved) for item in encoded)) :
+                ";" * encoded_name * "=" * _path_array(encoded, ","; allow_reserved)
         end
-        return ";" * encoded_name * "=" * _path_scalar(encoded)
+        return ";" * encoded_name * "=" * _path_scalar(encoded; allow_reserved)
     end
     throw(ArgumentError("unsupported path parameter style $style"))
 end
@@ -1550,8 +1566,10 @@ function _append_parameter!(client, path, query, headers, cookies, descriptor, v
         if location === :path
             path = replace(
                 path,
-                "{" * descriptor.name * "}" =>
-                    (preencoded ? serialized : _escape(serialized)),
+                "{" * descriptor.name * "}" => (
+                    preencoded ? serialized :
+                    _escape(serialized; allow_reserved = descriptor.allow_reserved)
+                ),
             )
         elseif location === :query
             push!(
@@ -1571,7 +1589,13 @@ function _append_parameter!(client, path, query, headers, cookies, descriptor, v
             throw(ArgumentError("unsupported parameter location $location"))
         end
     elseif location === :path
-        serialized = _path_parameter(descriptor.name, value, style, explode)
+        serialized = _path_parameter(
+            descriptor.name,
+            value,
+            style,
+            explode;
+            allow_reserved = descriptor.allow_reserved,
+        )
         path = replace(path, "{" * descriptor.name * "}" => serialized)
     elseif location === :query
         for (name, item, preencoded) in _query_parameter(

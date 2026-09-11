@@ -88,7 +88,10 @@ Generated clients support:
   `deepObject` serialization where the specification permits each style,
   plus the bracket-path `deepObject` extension for arrays and nested values
   (see [deepObject bracket paths](@ref));
-- `allowReserved`, `allowEmptyValue`, explode defaults, and parameter `content`;
+- `allowReserved`, `allowEmptyValue`, explode defaults, and parameter `content`.
+  `allowReserved: true` is honoured on path parameters too, so a
+  slash-delimited value such as an OPA document path is sent as-is instead of
+  with every `/` percent-encoded;
 - JSON and structured-suffix JSON media types;
 - text and binary bodies;
 - `application/x-www-form-urlencoded` bodies;

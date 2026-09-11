@@ -46,6 +46,7 @@ OpenAPI.server("openapi.json"; name = "MyServer", path = "MyServer.jl")
 | `pre_request_hook`, `get_return_type` | `request_headers` / `request_options` keywords; typed responses come from the document |
 | Chunk readers (`LineChunkReader`, …) for streaming | `stream_to::Channel` keyword; framing follows the response media type, customizable with `codec!` |
 | `httplib = Downloads` or `HTTP` backends | HTTP.jl only |
+| `Client(url; escape_path_params = false)` | Declare `allowReserved: true` on the path parameter in the document; the generated client then leaves reserved characters such as `/` unescaped for that parameter |
 | Constructor/`setproperty!` validation, `val_format` overloads | Full JSON Schema validation at encode/decode time; disable per client with `validate_requests` / `validate_responses` |
 | `mutable struct` models, `haspropertyat` / `getpropertyat` | Immutable keyword-constructed structs; optional absent fields are `ABSENT` |
 
