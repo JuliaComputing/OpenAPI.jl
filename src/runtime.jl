@@ -1309,12 +1309,17 @@ function _join_object(value, pair_delimiter, key_delimiter)
 end
 
 # `allow_reserved` is honoured for path parameters as well as query parameters.
-# OAS scopes `allowReserved` to `in: query`, but documents for APIs whose path
-# parameters are themselves slash-delimited paths (OPA data documents, proxied
-# object paths) declare it on the path parameter, and the only useful reading
-# of that is "send the value through without percent-encoding reserved
-# characters". Without it every `/` becomes `%2F` and the server sees a single
-# segment.
+# OAS 3.2 lists `allowReserved` under the path-parameter branch of the Parameter
+# Object (`styles-for-path` in `schemas/oas-3.2.json`), so this is conformant,
+# not an extension: reserved characters go on the wire as-is. It matters for
+# APIs whose path parameters are themselves slash-delimited paths (OPA data
+# documents, proxied object paths) — without it every `/` becomes `%2F` and the
+# server sees a single segment.
+#
+# Version caveat: 3.0 tolerates the field on a path parameter and 3.2 blesses
+# it, but 3.1 scopes it to `in: query` under `unevaluatedProperties: false`, so
+# a 3.1 document that declares it fails document validation outright (even with
+# `strict = false`) rather than reaching this code.
 _path_scalar(value; allow_reserved::Bool = false) = _escape(_scalar(value); allow_reserved)
 
 function _path_array(value, delimiter; allow_reserved::Bool = false)
