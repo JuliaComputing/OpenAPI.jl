@@ -655,6 +655,46 @@ function _portable_schema_ids(context::NormalizationContext, schemas)
     return output
 end
 
+# JSON Pointer, relative to a schema object, of a discriminator mapping value.
+# Planning derives the same key to look up the binding the compiler recorded.
+function _discriminator_mapping_pointer(tag::AbstractString)
+    return string(Resources.JSONPointer(("discriminator", "mapping", String(tag))))
+end
+
+const _DISCRIMINATOR_DEFAULT_POINTER = "/discriminator/defaultMapping"
+
+# OAS 3.1.1 §4.8.25: a mapping value is either a schema name or a URI
+# reference, and an ambiguous bare value such as "Cat" is a schema name; authors
+# write "./Cat" to force a URI reference. Only URI-shaped values are references.
+function _uri_reference_mapping_value(value::AbstractString)
+    return occursin('/', value) || occursin('#', value) || occursin(':', value)
+end
+
+# `discriminator.mapping` values are URI references that live outside the JSON
+# Schema vocabulary, so the schema engine does not see them as references.
+# Declare them as optional references so the compiler resolves them against the
+# schema's real base URI, retrieving cross-file targets like `\$ref`, before the
+# graph is rebased onto portable identifiers. Planning reads the bindings.
+function _discriminator_references(schema::AbstractDict)
+    discriminator = get(schema, "discriminator", nothing)
+    discriminator isa AbstractDict || return ()
+    references = Tuple{String,String}[]
+    mapping = get(discriminator, "mapping", nothing)
+    if mapping isa AbstractDict
+        for tag in sort!(String[String(tag) for tag in keys(mapping)])
+            value = mapping[tag]
+            value isa AbstractString && _uri_reference_mapping_value(value) ||
+                continue
+            push!(references, (_discriminator_mapping_pointer(tag), String(value)))
+        end
+    end
+    default = get(discriminator, "defaultMapping", nothing)
+    if default isa AbstractString && _uri_reference_mapping_value(default)
+        push!(references, (_DISCRIMINATOR_DEFAULT_POINTER, String(default)))
+    end
+    return references
+end
+
 function _compile_schemas!(context::NormalizationContext)
     isempty(context.schema_cache) && return
     handles = sort(
@@ -678,6 +718,7 @@ function _compile_schemas!(context::NormalizationContext)
             max_resources = context.resolver.max_resources,
             max_nodes = context.resolver.max_nodes,
             max_depth = context.resolver.max_depth,
+            extra_references = _discriminator_references,
         )
     catch error
         location = error isa SchemaEngine.CompilationError ? error.location : first(roots)

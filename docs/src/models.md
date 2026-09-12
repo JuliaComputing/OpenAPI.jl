@@ -8,7 +8,9 @@ Implemented model behavior includes:
 
 - objects, arrays, tuples, dictionaries, primitives, enums, and nullable types;
 - required, optional, and explicit-null values;
-- `allOf`, `oneOf`, `anyOf`, and discriminators;
+- `allOf`, `oneOf`, `anyOf`, and discriminators, whose `mapping` and
+  `defaultMapping` values may be same-document, relative, or cross-file URI
+  references resolved like `$ref`;
 - recursive models and recursive aliases;
 - `additionalProperties`, `patternProperties`, `propertyNames`, and closed
   objects;

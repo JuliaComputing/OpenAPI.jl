@@ -110,6 +110,138 @@
               Set(diagnostic.code for diagnostic in error.value.diagnostics)
     end
 
+    @testset "cross-file discriminator mappings" begin
+        variant(field) = OpenAPI.obj(
+            "type" => "object",
+            "required" => ["kind", field],
+            "properties" => OpenAPI.obj(
+                "kind" => OpenAPI.obj("type" => "string"),
+                field => OpenAPI.obj("type" => "boolean"),
+            ),
+            "additionalProperties" => false,
+        )
+        pet_paths = OpenAPI.obj(
+            "/pets" => OpenAPI.obj(
+                "get" => OpenAPI.obj(
+                    "operationId" => "getPet",
+                    "responses" => OpenAPI.obj(
+                        "200" => OpenAPI.obj(
+                            "description" => "a pet",
+                            "content" => OpenAPI.obj(
+                                "application/json" => OpenAPI.obj(
+                                    "schema" => OpenAPI.obj(
+                                        "\$ref" => "#/components/schemas/Pet",
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        # The union lives in its own file under `schemas/`. Mapping values are
+        # relative to that file, not to the root document, and mix whole-file,
+        # empty-fragment, and pointer-fragment targets.
+        function write_tree(directory, mapping)
+            schemas = joinpath(directory, "schemas")
+            mkdir(schemas)
+            write(joinpath(schemas, "cat.json"), JSON.json(variant("meows")))
+            write(joinpath(schemas, "dog.json"), JSON.json(variant("barks")))
+            write(
+                joinpath(schemas, "animals.json"),
+                JSON.json(OpenAPI.obj("\$defs" => OpenAPI.obj("Bird" => variant("flies")))),
+            )
+            write(
+                joinpath(schemas, "pet.json"),
+                JSON.json(
+                    OpenAPI.obj(
+                        "oneOf" => Any[
+                            OpenAPI.obj("\$ref" => "./cat.json"),
+                            OpenAPI.obj("\$ref" => "./dog.json"),
+                            OpenAPI.obj("\$ref" => "./animals.json#/\$defs/Bird"),
+                        ],
+                        "discriminator" => OpenAPI.obj(
+                            "propertyName" => "kind",
+                            "mapping" => mapping,
+                        ),
+                    ),
+                ),
+            )
+            document = minimal_openapi("3.1.1", pet_paths)
+            document["components"] = OpenAPI.obj(
+                "schemas" => OpenAPI.obj(
+                    "Pet" => OpenAPI.obj("\$ref" => "./schemas/pet.json"),
+                ),
+            )
+            root_path = joinpath(directory, "openapi.json")
+            write(root_path, JSON.json(document))
+            return root_path
+        end
+
+        root_path = write_tree(
+            mktempdir(),
+            OpenAPI.obj(
+                "feline" => "./cat.json",
+                "canine" => "./dog.json#",
+                "avian" => "./animals.json#/\$defs/Bird",
+            ),
+        )
+        source = OpenAPI.client(root_path; name = "CrossFileDiscriminatorClient")
+        host = Module(:CrossFileDiscriminatorClientHost)
+        Base.include_string(host, source, "CrossFileDiscriminatorClient.jl")
+        client_module =
+            Base.invokelatest(getfield, host, :CrossFileDiscriminatorClient)
+        response_media = only(only(client_module._OP_getpet.responses).media)
+        decode_pet(json) = Base.invokelatest(
+            OpenAPI.Runtime._decode_body,
+            client_module.DEFAULT_CLIENT,
+            client_module.Pet,
+            "application/json",
+            Vector{UInt8}(codeunits(json)),
+            response_media.schema,
+        )
+        cat = decode_pet("{\"kind\":\"feline\",\"meows\":true}")
+        dog = decode_pet("{\"kind\":\"canine\",\"barks\":true}")
+        bird = decode_pet("{\"kind\":\"avian\",\"flies\":true}")
+        @test cat.value.meows
+        @test dog.value.barks
+        @test bird.value.flies
+        @test length(Set(typeof.((cat.value, dog.value, bird.value)))) == 3
+        @test_throws OpenAPI.Runtime.DecodeError decode_pet(
+            "{\"kind\":\"avian\",\"meows\":true}",
+        )
+
+        # The discriminator may also sit on a schema reached through `allOf`
+        # from another file; mapping values stay relative to the owning file.
+        inherited = minimal_openapi("3.1.1", pet_paths)
+        inherited["components"] = OpenAPI.obj(
+            "schemas" => OpenAPI.obj(
+                "Pet" => OpenAPI.obj(
+                    "allOf" => Any[OpenAPI.obj("\$ref" => "./schemas/pet.json")],
+                ),
+            ),
+        )
+        inherited_path = joinpath(dirname(root_path), "inherited.json")
+        write(inherited_path, JSON.json(inherited))
+        @test length(OpenAPI.plan(inherited_path).models) ==
+              length(OpenAPI.plan(root_path).models)
+
+        # A mapping target that cannot be retrieved is a located planning
+        # diagnostic that names the missing file, not a generic failure.
+        typo_path = write_tree(
+            mktempdir(),
+            OpenAPI.obj("feline" => "./cta.json", "canine" => "./dog.json"),
+        )
+        error = @test_throws OpenAPI.OpenAPIError OpenAPI.plan(typo_path)
+        diagnostic = only(
+            diagnostic for diagnostic in error.value.diagnostics if
+            diagnostic.code == :invalid_discriminator_mapping
+        )
+        @test occursin("\"feline\"", diagnostic.message)
+        @test occursin("cta.json", diagnostic.message)
+        @test isempty(diagnostic.location.pointer)
+    end
+
     @testset "implicit mappings and collision-safe Julia names" begin
         document = minimal_openapi(
             "3.1.1",

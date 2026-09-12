@@ -30,7 +30,10 @@ function _rebased_reference(
     resource_ids::Dict{Resources.ResourceId,Resources.ResourceId},
 )
     resource = string(resource_ids[target.resource])
-    if keyword == "\$ref"
+    # Plain references, including the optional references declared through
+    # the `extra_references` hook (keyed by a relative JSON Pointer), are
+    # rewritten to the canonical target location.
+    if keyword == "\$ref" || startswith(keyword, '/')
         pointer = string(target.pointer)
         return isempty(pointer) ? resource : resource * "#" * pointer
     end
@@ -110,11 +113,29 @@ function _rewrite_resource_documents(template::CompiledSchema, resource_ids)
         document === nothing && continue
         schema = Resources.resolve(document, source.pointer)
         schema isa AbstractDict || continue
-        raw = get(schema, keyword, nothing)
+        container, key = _reference_slot(schema, keyword)
+        container === nothing && continue
+        raw = get(container, key, nothing)
         raw isa AbstractString || continue
-        schema[keyword] = _rebased_reference(keyword, raw, target, resource_ids)
+        container[key] = _rebased_reference(keyword, raw, target, resource_ids)
     end
     return documents
+end
+
+# Locate the object holding a reference string and its key. Reference keywords
+# live directly in the schema object; optional references from the
+# `extra_references` hook are keyed by a JSON Pointer relative to the schema.
+function _reference_slot(schema::AbstractDict, keyword::String)
+    startswith(keyword, '/') || return (schema, keyword)
+    tokens = Resources.JSONPointer(keyword).tokens
+    isempty(tokens) && return (nothing, keyword)
+    container = schema
+    for token in tokens[1:end-1]
+        container isa AbstractDict || return (nothing, keyword)
+        container = get(container, token, nothing)
+    end
+    container isa AbstractDict || return (nothing, keyword)
+    return (container, tokens[end])
 end
 
 function _mapped_raw_node(resource_ids, node::Resources.NodeId)
@@ -205,12 +226,17 @@ function _rebased_template(template, resource_ids, registry)
     for (key, node) in getfield(template, :transitions)
         transitions[key] = nodes_by_index[node.index]
     end
-    references = Dict(
+    references = ReferenceTable(
         (
             _mapped_node(original_registry, resource_ids, source),
             keyword,
         ) => _mapped_node(original_registry, resource_ids, target) for
         ((source, keyword), target) in getfield(template, :references)
+    )
+    reference_failures = ReferenceFailures(
+        (_mapped_node(original_registry, resource_ids, source), keyword) =>
+            message for
+        ((source, keyword), message) in getfield(template, :reference_failures)
     )
     recursive_anchors = Set(
         resource_ids[resource] for
@@ -231,6 +257,7 @@ function _rebased_template(template, resource_ids, registry)
         template.uses_annotations,
         recursive_anchors,
         references,
+        reference_failures,
         copy(getfield(template, :regexes)),
         Resources.DisabledRetriever(),
     )

@@ -123,6 +123,10 @@ The default retriever has conservative access rules:
 - HTTP redirects are not followed.
 - Unsupported URI schemes are rejected.
 
+Discriminator `mapping` and `defaultMapping` URI references are retrieved under
+the same rules as `$ref`, relative to the document that holds the
+`discriminator`.
+
 Pass an `OpenAPI.SchemaEngine.Resources.AbstractRetriever` with `retriever=...`
 when an application needs another retrieval policy or an in-memory resource
 store. Resource size and count limits still apply.
