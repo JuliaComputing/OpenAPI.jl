@@ -101,3 +101,63 @@
         value in recursive_samples
     ]
 end
+
+@testset "Rebasing optional extra references" begin
+    R = SchemaEngine.Resources
+    root_id = R.ResourceId("file:///private/build/openapi.json")
+    common_id = R.ResourceId("file:///private/build/common.json")
+    root = R.Resource(
+        root_id,
+        Dict(
+            "schemas" => Dict(
+                "Union" => Dict(
+                    "oneOf" => Any[Dict("\$ref" => "./common.json#/\$defs/Count")],
+                    "x-links" => Dict(
+                        "count" => "./common.json#/\$defs/Count",
+                        "missing" => "./nothing.json",
+                    ),
+                ),
+            ),
+        ),
+    )
+    common = R.Resource(
+        common_id,
+        Dict("\$defs" => Dict("Count" => Dict("type" => "integer"))),
+    )
+    union_root = R.NodeId(root_id, R.JSONPointer("/schemas/Union"))
+    links(schema) =
+        schema isa AbstractDict && haskey(schema, "x-links") ?
+        sort!([("/x-links/" * key, value) for (key, value) in schema["x-links"]]) :
+        ()
+    graph = SchemaEngine.CompiledSchemas(
+        [root, common],
+        [union_root];
+        dialect = SchemaEngine.DRAFT202012,
+        extra_references = links,
+    )
+    mapping = Dict(
+        root_id => R.ResourceId("https://portable.invalid/root.json"),
+        common_id => R.ResourceId("https://portable.invalid/common.json"),
+    )
+    rebased = SchemaEngine.rebase(graph, mapping)
+    mapped_union = R.NodeId(mapping[root_id], R.JSONPointer("/schemas/Union"))
+    count_node = R.NodeId(mapping[common_id], R.JSONPointer("/\$defs/Count"))
+
+    # Bindings and recorded failures follow the graph onto the new identifiers.
+    @test SchemaEngine.reference_target(rebased, mapped_union, "/x-links/count") ==
+          count_node
+    @test SchemaEngine.reference_target(rebased, mapped_union, "/x-links/missing") ===
+          nothing
+    failure = SchemaEngine.reference_failure(rebased, mapped_union, "/x-links/missing")
+    @test failure isa String
+    @test occursin("nothing.json", failure)
+
+    # Serialized resource data uses only replacement identifiers for resolved
+    # optional references; unresolved strings are left as written.
+    document = R.resource(rebased.template.registry, mapping[root_id]).contents
+    rebased_links = document["schemas"]["Union"]["x-links"]
+    @test rebased_links["count"] == "https://portable.invalid/common.json#/\$defs/Count"
+    @test rebased_links["missing"] == "./nothing.json"
+    @test isvalid(SchemaEngine.select(rebased, union_root), 3)
+    @test !isvalid(SchemaEngine.select(rebased, union_root), "3")
+end

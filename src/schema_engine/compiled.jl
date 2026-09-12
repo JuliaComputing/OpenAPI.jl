@@ -27,7 +27,11 @@ struct PendingReference
     reference::String
     dialect::Dialect
     location::Resources.NodeId
+    required::Bool
 end
+
+const ReferenceTable = Dict{Tuple{Resources.NodeId,String},Resources.NodeId}
+const ReferenceFailures = Dict{Tuple{Resources.NodeId,String},String}
 
 struct CompiledNode
     index::Int
@@ -41,7 +45,9 @@ mutable struct Compiler{R<:Resources.AbstractRetriever}
     dialects::Dict{Resources.NodeId,Dialect}
     dialect_aliases::Dict{String,Dialect}
     recursive_anchors::Set{Resources.ResourceId}
-    references::Dict{Tuple{Resources.NodeId,String},Resources.NodeId}
+    references::ReferenceTable
+    reference_failures::ReferenceFailures
+    extra_references::Any
     regexes::Dict{String,Regex}
     evaluation_nodes::Dict{Resources.NodeId,CompiledNode}
     transitions::Dict{Tuple{Int,Tuple{Vararg{String}}},CompiledNode}
@@ -62,6 +68,7 @@ function Compiler(
     max_resources::Integer,
     max_nodes::Integer,
     max_depth::Integer,
+    extra_references = nothing,
 ) where {R<:Resources.AbstractRetriever}
     max_resources > 0 || throw(ArgumentError("max_resources must be positive"))
     max_nodes > 0 || throw(ArgumentError("max_nodes must be positive"))
@@ -71,7 +78,9 @@ function Compiler(
         Dict{Resources.NodeId,Dialect}(),
         Dict{String,Dialect}(),
         Set{Resources.ResourceId}(),
-        Dict{Tuple{Resources.NodeId,String},Resources.NodeId}(),
+        ReferenceTable(),
+        ReferenceFailures(),
+        extra_references,
         Dict{String,Regex}(),
         Dict{Resources.NodeId,CompiledNode}(),
         Dict{Tuple{Int,Tuple{Vararg{String}}},CompiledNode}(),
@@ -109,7 +118,8 @@ struct CompiledSchema{R<:Resources.AbstractRetriever}
     transitions::Dict{Tuple{Int,Tuple{Vararg{String}}},CompiledNode}
     uses_annotations::Bool
     recursive_anchors::Set{Resources.ResourceId}
-    references::Dict{Tuple{Resources.NodeId,String},Resources.NodeId}
+    references::ReferenceTable
+    reference_failures::ReferenceFailures
     regexes::Dict{String,Regex}
     retriever::R
 end
@@ -136,6 +146,7 @@ function Base.getproperty(schema::CompiledSchema, name::Symbol)
         :evaluation_nodes,
         :transitions,
         :references,
+        :reference_failures,
         :regexes,
     ) && return copy(getfield(schema, name))
     name === :recursive_anchors && return copy(getfield(schema, name))
@@ -168,6 +179,34 @@ function reference_target(
     keyword::AbstractString = "\$ref",
 )
     return reference_target(getfield(schemas, :template), source, keyword)
+end
+
+"""
+    reference_failure(schema, source, keyword)
+
+Return the failure message recorded for an optional reference at `source`, or
+`nothing` when the reference resolved or was never declared. Optional
+references come from the `extra_references` compilation hook; failures to
+retrieve or resolve them are recorded here instead of aborting compilation.
+"""
+function reference_failure(
+    schema::CompiledSchema,
+    source::Resources.NodeId,
+    keyword::AbstractString,
+)
+    canonical = Resources.canonical(schema.registry, source)
+    return get(
+        getfield(schema, :reference_failures),
+        (canonical, String(keyword)),
+        nothing,
+    )
+end
+function reference_failure(
+    schemas::CompiledSchemas,
+    source::Resources.NodeId,
+    keyword::AbstractString,
+)
+    return reference_failure(getfield(schemas, :template), source, keyword)
 end
 
 function _directory_resource(parent_dir::AbstractString)
@@ -609,6 +648,40 @@ function _record_references!(compiler::Compiler, schema, node, schema_dialect)
                 String(reference),
                 schema_dialect,
                 node,
+                true,
+            ),
+        )
+    end
+    compiler.extra_references === nothing && return
+    for entry in compiler.extra_references(schema)
+        entry isa Tuple && length(entry) == 2 || throw(
+            CompilationError(
+                node,
+                "extra_references must return (pointer, reference) string pairs",
+            ),
+        )
+        pointer, reference = entry
+        pointer isa AbstractString && reference isa AbstractString || throw(
+            CompilationError(
+                node,
+                "extra_references must return (pointer, reference) string pairs",
+            ),
+        )
+        startswith(pointer, '/') || throw(
+            CompilationError(
+                node,
+                "extra_references pointers must be JSON Pointers relative to the schema",
+            ),
+        )
+        push!(
+            compiler.pending,
+            PendingReference(
+                node.resource,
+                String(pointer),
+                String(reference),
+                schema_dialect,
+                node,
+                false,
             ),
         )
     end
@@ -1179,27 +1252,40 @@ function _resolve_pending!(compiler::Compiler)
     index = 1
     while index <= length(compiler.pending)
         pending = compiler.pending[index]
-        reference = Resources.Reference(pending.base, pending.reference)
+        index += 1
+        reference = try
+            Resources.Reference(pending.base, pending.reference)
+        catch err
+            _reference_failed!(compiler, pending, err)
+            continue
+        end
         if !haskey(compiler.registry, reference.resource)
             try
                 _load_reference!(compiler, reference.resource, pending.dialect)
             catch err
-                throw(
+                # A retrieved document that fails to compile is an error in
+                # the graph itself, so it stays fatal for optional references.
+                err isa CompilationError && throw(
                     CompilationError(pending.location, sprint(showerror, err)),
                 )
+                _reference_failed!(compiler, pending, err)
+                continue
             end
         end
         resolved = try
             Resources.resolve(compiler.registry, reference)
         catch err
-            throw(CompilationError(pending.location, sprint(showerror, err)))
+            _reference_failed!(compiler, pending, err)
+            continue
         end
-        (resolved.value isa AbstractDict || resolved.value isa Bool) || throw(
-            CompilationError(
-                pending.location,
+        if !(resolved.value isa AbstractDict || resolved.value isa Bool)
+            _reference_failed!(
+                compiler,
+                pending,
                 "$(pending.keyword) does not resolve to an object or boolean schema",
-            ),
-        )
+            )
+            continue
+        end
         target = Resources.canonical(compiler.registry, resolved.id)
         if !haskey(compiler.dialects, target)
             target = _scan!(
@@ -1212,8 +1298,14 @@ function _resolve_pending!(compiler::Compiler)
         end
         target = Resources.canonical(compiler.registry, target)
         compiler.references[(pending.location, pending.keyword)] = target
-        index += 1
     end
+    return
+end
+
+function _reference_failed!(compiler::Compiler, pending::PendingReference, err)
+    message = err isa AbstractString ? String(err) : sprint(showerror, err)
+    pending.required && throw(CompilationError(pending.location, message))
+    compiler.reference_failures[(pending.location, pending.keyword)] = message
     return
 end
 
@@ -1227,10 +1319,12 @@ function CompiledSchema(
     max_resources::Integer = 256,
     max_nodes::Integer = 1_000_000,
     max_depth::Integer = 512,
+    extra_references = nothing,
 )
     default_dialect = SchemaEngine.dialect(dialect)
     retrieval = _resource_id(base_uri, parent_dir)
-    compiler = Compiler(retriever, max_resources, max_nodes, max_depth)
+    compiler =
+        Compiler(retriever, max_resources, max_nodes, max_depth, extra_references)
     _register_dialect_aliases!(compiler, dialect_aliases)
     root, frozen, schema_dialect =
         _compile_resource!(compiler, schema, retrieval, default_dialect)
@@ -1247,6 +1341,7 @@ function CompiledSchema(
         compiler.uses_annotations,
         copy(compiler.recursive_anchors),
         copy(compiler.references),
+        copy(compiler.reference_failures),
         copy(compiler.regexes),
         retriever,
     )
@@ -1269,6 +1364,7 @@ function _compiled_schema(compiler::Compiler, root::Resources.NodeId)
         compiler.uses_annotations,
         copy(compiler.recursive_anchors),
         copy(compiler.references),
+        copy(compiler.reference_failures),
         copy(compiler.regexes),
         compiler.retriever,
     )
@@ -1296,6 +1392,18 @@ map each requested or canonical root to a `Dialect`, registered dialect symbol,
 or dialect URI. Roots not in the map use `dialect`. `dialect_aliases` maps
 application dialect URI strings to compatible built-in dialects without
 retrieving a meta-schema.
+
+`extra_references` optionally names additional reference strings that live
+inside schema objects without being reference keywords of the dialect. It is
+called with each scanned schema object and returns an iterable of
+`(pointer, reference)` string pairs, where `pointer` is a JSON Pointer relative
+to that schema object and `reference` is the URI reference stored there. Each
+pair is resolved like `\$ref` against the schema's base URI, retrieving and
+compiling the target resource when needed, and is then available through
+`reference_target` under `pointer`. Unlike `\$ref`, a reference that cannot be
+retrieved or resolved does not abort compilation; its message is recorded for
+`reference_failure`. Documents that are retrieved but fail to compile remain
+fatal.
 """
 function CompiledSchemas(
     resources::AbstractVector{<:Resources.Resource},
@@ -1307,6 +1415,7 @@ function CompiledSchemas(
     max_resources::Integer = 256,
     max_nodes::Integer = 1_000_000,
     max_depth::Integer = 512,
+    extra_references = nothing,
 )
     isempty(resources) &&
         throw(ArgumentError("at least one resource is required"))
@@ -1315,7 +1424,8 @@ function CompiledSchemas(
     length(resources) <= max_resources ||
         throw(ArgumentError("initial resources exceed max_resources"))
     default_dialect = SchemaEngine.dialect(dialect)
-    compiler = Compiler(retriever, max_resources, max_nodes, max_depth)
+    compiler =
+        Compiler(retriever, max_resources, max_nodes, max_depth, extra_references)
     _register_dialect_aliases!(compiler, dialect_aliases)
     for resource in resources
         try
@@ -1411,6 +1521,7 @@ function select(schemas::CompiledSchemas, requested::Resources.NodeId)
         template.uses_annotations,
         getfield(template, :recursive_anchors),
         getfield(template, :references),
+        getfield(template, :reference_failures),
         getfield(template, :regexes),
         template.retriever,
     )
@@ -1453,6 +1564,7 @@ function subschema(template::CompiledSchema, requested::Resources.NodeId)
         template.uses_annotations,
         getfield(template, :recursive_anchors),
         getfield(template, :references),
+        getfield(template, :reference_failures),
         getfield(template, :regexes),
         template.retriever,
     )
@@ -1485,9 +1597,11 @@ function CompiledSchema(
     max_resources::Integer = 256,
     max_nodes::Integer = 1_000_000,
     max_depth::Integer = 512,
+    extra_references = nothing,
 )
     default_dialect = SchemaEngine.dialect(dialect)
-    compiler = Compiler(retriever, max_resources, max_nodes, max_depth)
+    compiler =
+        Compiler(retriever, max_resources, max_nodes, max_depth, extra_references)
     _register_dialect_aliases!(compiler, dialect_aliases)
     try
         _check_source!(compiler, resource.contents)
@@ -1547,6 +1661,7 @@ function CompiledSchema(
         compiler.uses_annotations,
         copy(compiler.recursive_anchors),
         copy(compiler.references),
+        copy(compiler.reference_failures),
         copy(compiler.regexes),
         retriever,
     )

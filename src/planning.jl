@@ -989,6 +989,52 @@ function _reference_view(view::SchemaView, reference::AbstractString)
     )
 end
 
+# Resolve a discriminator `mapping` or `defaultMapping` value. The schema
+# compiler already resolved URI-shaped values (see `_discriminator_references`)
+# against the pre-rebase base URI of the schema that owns the discriminator,
+# retrieving cross-file targets, and recorded either the binding or a failure.
+# Values the compiler was not asked about fall back to same-document lookup.
+# Emit a diagnostic with `code` and return `nothing` when the value does not
+# name a schema.
+function _discriminator_target(
+    context,
+    owner::SchemaView,
+    pointer::String,
+    reference::AbstractString,
+    code::Symbol,
+    label::String,
+)
+    compiled = owner.compiled
+    location = SourceLocation(owner.node.resource, owner.node.pointer)
+    if compiled !== nothing
+        target = SchemaEngine.reference_target(compiled, owner.node, pointer)
+        if target !== nothing
+            resource = Resources.resource(compiled.registry, target.resource)
+            value = Resources.resolve(resource.contents, target.pointer)
+            return SchemaView(value, target, owner.version, compiled)
+        end
+        failure = SchemaEngine.reference_failure(compiled, owner.node, pointer)
+        if failure !== nothing
+            _error!(context.bag, code, "cannot resolve $label: $failure", location)
+            return nothing
+        end
+    end
+    target = try
+        _reference_view(owner, reference)
+    catch error
+        _error!(
+            context.bag,
+            code,
+            "cannot resolve $label: $(sprint(showerror, error))",
+            location,
+        )
+        return nothing
+    end
+    target === nothing &&
+        _error!(context.bag, code, "$label does not resolve to a schema", location)
+    return target
+end
+
 function _plan_union!(context, view, suggested, mode, keyword)
     resolved = _resolved_view(view)
     union_owner = something(_keyword_owner(resolved, keyword), resolved)
@@ -1035,27 +1081,15 @@ function _plan_union!(context, view, suggested, mode, keyword)
        get(discriminator, "mapping", nothing) isa AbstractDict
         for (tag, reference) in discriminator["mapping"]
             reference isa AbstractString || continue
-            target = try
-                _reference_view(resolved, reference)
-            catch error
-                _error!(
-                    context.bag,
-                    :invalid_discriminator_mapping,
-                    "cannot resolve discriminator mapping $(repr(tag)): $(sprint(showerror, error))",
-                    SourceLocation(resolved.node.resource, resolved.node.pointer),
-                )
-                missing
-            end
-            target === missing && continue
-            if target === nothing
-                _error!(
-                    context.bag,
-                    :invalid_discriminator_mapping,
-                    "discriminator mapping $(repr(tag)) does not resolve to a schema",
-                    SourceLocation(resolved.node.resource, resolved.node.pointer),
-                )
-                continue
-            end
+            target = _discriminator_target(
+                context,
+                discriminator_owner,
+                _discriminator_mapping_pointer(tag),
+                reference,
+                :invalid_discriminator_mapping,
+                "discriminator mapping $(repr(tag))",
+            )
+            target === nothing && continue
             target_type = _type_for!(
                 context,
                 target,
@@ -1071,27 +1105,15 @@ function _plan_union!(context, view, suggested, mode, keyword)
     default_mapping = nothing
     if discriminator isa AbstractDict &&
        get(discriminator, "defaultMapping", nothing) isa AbstractString
-        target = try
-            _reference_view(resolved, discriminator["defaultMapping"])
-        catch error
-            _error!(
-                context.bag,
-                :invalid_discriminator_default,
-                "cannot resolve discriminator defaultMapping: $(sprint(showerror, error))",
-                SourceLocation(resolved.node.resource, resolved.node.pointer),
-            )
-            missing
-        end
-        if target === missing
-            nothing
-        elseif target === nothing
-            _error!(
-                context.bag,
-                :invalid_discriminator_default,
-                "discriminator defaultMapping does not resolve to a schema",
-                SourceLocation(resolved.node.resource, resolved.node.pointer),
-            )
-        else
+        target = _discriminator_target(
+            context,
+            discriminator_owner,
+            _DISCRIMINATOR_DEFAULT_POINTER,
+            discriminator["defaultMapping"],
+            :invalid_discriminator_default,
+            "discriminator defaultMapping",
+        )
+        if target !== nothing
             target_type = _type_for!(context, target, suggested * "Default", mode)
             push!(types, target_type)
             default_mapping = target.node => target_type

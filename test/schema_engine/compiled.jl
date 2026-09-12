@@ -629,3 +629,79 @@ end
         retriever,
     )
 end
+
+@testset "Optional extra references" begin
+    retriever = Resources.MemoryRetriever(
+        Dict(
+            "https://example.com/a" => "{\"type\":\"string\"}",
+            "https://example.com/broken" => "{\"\$ref\":5}",
+        ),
+    )
+    # Application-level reference strings that are not dialect keywords, keyed
+    # by their location inside the schema object.
+    links(schema) =
+        schema isa AbstractDict && haskey(schema, "x-links") ?
+        sort!([("/x-links/" * key, value) for (key, value) in schema["x-links"]]) :
+        ()
+    schema = Dict(
+        "\$defs" => Dict("local" => Dict("type" => "integer")),
+        "oneOf" => Any[Dict("\$ref" => "https://example.com/a")],
+        "x-links" => Dict(
+            "first" => "https://example.com/a",
+            "local" => "#/\$defs/local",
+            "missing" => "https://example.com/none",
+            "value" => "#/\$defs/local/type",
+        ),
+    )
+    compiled = SchemaEngine.CompiledSchema(
+        schema;
+        dialect = SchemaEngine.DRAFT202012,
+        base_uri = "https://example.com/root.json",
+        retriever,
+        extra_references = links,
+    )
+    root = compiled.root
+    @test SchemaEngine.reference_target(compiled, root, "/x-links/first") ==
+          Resources.NodeId(
+        Resources.ResourceId("https://example.com/a"),
+        Resources.JSONPointer(),
+    )
+    local_node = Resources.NodeId(root.resource, Resources.JSONPointer("/\$defs/local"))
+    @test SchemaEngine.reference_target(compiled, root, "/x-links/local") == local_node
+    @test isvalid(SchemaEngine.subschema(compiled, local_node), 1)
+    @test SchemaEngine.reference_failure(compiled, root, "/x-links/first") === nothing
+    @test SchemaEngine.reference_failure(compiled, root, "\$ref") === nothing
+
+    # Failures to retrieve or resolve an optional reference are recorded, not
+    # thrown, and leave no binding behind.
+    @test SchemaEngine.reference_target(compiled, root, "/x-links/missing") === nothing
+    missing_failure = SchemaEngine.reference_failure(compiled, root, "/x-links/missing")
+    @test missing_failure isa String
+    @test occursin("https://example.com/none", missing_failure)
+    value_failure = SchemaEngine.reference_failure(compiled, root, "/x-links/value")
+    @test value_failure isa String
+    @test occursin("object or boolean schema", value_failure)
+    @test compiled.reference_failures == Dict(
+        (root, "/x-links/missing") => missing_failure,
+        (root, "/x-links/value") => value_failure,
+    )
+
+    # `\$ref` stays fatal, and so does an optional target that was retrieved but
+    # does not compile: that is an error in the graph, not in the reference.
+    @test_throws SchemaEngine.CompilationError SchemaEngine.CompiledSchema(
+        Dict("\$ref" => "https://example.com/none");
+        retriever,
+    )
+    @test_throws SchemaEngine.CompilationError SchemaEngine.CompiledSchema(
+        Dict("x-links" => Dict("broken" => "https://example.com/broken"));
+        dialect = SchemaEngine.DRAFT202012,
+        retriever,
+        extra_references = links,
+    )
+    # The hook must return relative JSON Pointers.
+    @test_throws SchemaEngine.CompilationError SchemaEngine.CompiledSchema(
+        Dict("x-links" => Dict("bad" => "#"));
+        dialect = SchemaEngine.DRAFT202012,
+        extra_references = schema -> [("x-links/bad", "#")],
+    )
+end
