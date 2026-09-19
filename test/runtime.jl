@@ -445,6 +445,36 @@
               ".a/b"
         @test invoke(:_path_parameter, "path", "a/b", :matrix, false; allow_reserved = true) ==
               ";path=a/b"
+        # escape_path_chars percent-encodes extra characters after standard
+        # escaping (Rails routes treat a literal `.` as a format suffix)
+        @test invoke(:_path_parameter, "id", "acme.example.com-42", :simple, false) ==
+              "acme.example.com-42"
+        @test invoke(:_path_parameter, "id", "acme.example.com-42", :simple, false;
+                     escape_chars = ".") == "acme%2Eexample%2Ecom-42"
+        @test invoke(:_path_parameter, "id", "a.b c", :simple, false; escape_chars = ".-") ==
+              "a%2Eb%20c"
+        @test invoke(:_path_parameter, "id", ["a.b", "c.d"], :simple, false;
+                     escape_chars = ".") == "a%2Eb,c%2Ed"
+        @test invoke(:_path_parameter, "id", Dict("k.1" => "v.2"), :simple, true;
+                     escape_chars = ".") == "k%2E1=v%2E2"
+        # style delimiters and the template parameter name stay literal
+        @test invoke(:_path_parameter, "id", ["a.b", "c.d"], :label, true;
+                     escape_chars = ".") == ".a%2Eb.c%2Ed"
+        @test invoke(:_path_parameter, "v.1", "a.b", :matrix, false; escape_chars = ".") ==
+              ";v.1=a%2Eb"
+        @test invoke(:_path_parameter, "id", Dict("k.1" => "v.2"), :matrix, true;
+                     escape_chars = ".") == ";k%2E1=v%2E2"
+        # composes with allowReserved: reserved characters pass, listed ones are encoded
+        @test invoke(:_path_parameter, "path", "a/b.c", :simple, false;
+                     allow_reserved = true, escape_chars = ".") == "a/b%2Ec"
+        # a listed unreserved character that is already reserved-escaped is unaffected
+        @test invoke(:_path_parameter, "id", "a b", :simple, false; escape_chars = " ") ==
+              "a%20b"
+        @test invoke(:_percent_encode_chars, "a.b", "") == "a.b"
+        @test invoke(:_percent_encode_chars, "a~b", "~") == "a%7Eb"
+        @test invoke(:Client).escape_path_chars == ""
+        @test invoke(:Client; escape_path_chars = ".").escape_path_chars == "."
+        @test_throws ArgumentError invoke(:Client; escape_path_chars = "%")
         @test invoke(:_safe_header, "X-Test", "ok") == ("X-Test" => "ok")
         @test_throws ArgumentError invoke(:_safe_header, "Bad Header", "ok")
         @test_throws ArgumentError invoke(:_safe_header, "X-Test", "ok\r\nInjected: x")

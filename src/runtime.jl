@@ -1162,6 +1162,7 @@ mutable struct Client
     media_decoders::Dict{String,Function}
     validate_requests::Bool
     validate_responses::Bool
+    escape_path_chars::String
 end
 
 function _normalize_media_codecs(codecs::AbstractDict)
@@ -1187,8 +1188,14 @@ function Client(
     media_decoders::AbstractDict = Dict{String,Function}(),
     validate_requests::Bool = true,
     validate_responses::Bool = true,
+    escape_path_chars::AbstractString = "",
 )
     server_index > 0 || throw(ArgumentError("server_index must be positive"))
+    occursin('%', escape_path_chars) && throw(
+        ArgumentError(
+            "escape_path_chars must not contain '%': it would re-encode the percent-encoding itself",
+        ),
+    )
     normalized_credentials = credentials isa Dict{String,AbstractCredential} ?
                              copy(credentials) :
                              Dict{String,AbstractCredential}(
@@ -1216,6 +1223,7 @@ function Client(
         _normalize_media_codecs(media_decoders),
         validate_requests,
         validate_responses,
+        String(escape_path_chars),
     )
 end
 
@@ -1320,21 +1328,58 @@ end
 # it, but 3.1 scopes it to `in: query` under `unevaluatedProperties: false`, so
 # a 3.1 document that declares it fails document validation outright (even with
 # `strict = false`) rather than reaching this code.
-_path_scalar(value; allow_reserved::Bool = false) = _escape(_scalar(value); allow_reserved)
+#
+# `escape_chars` names characters to percent-encode on top of RFC 3986 escaping
+# (`Client(escape_path_chars = ...)`). Unreserved characters such as `.` are
+# never escaped by `_escape`, yet some routers cannot match a literal `.` in a
+# dynamic segment (Rails treats it as a format suffix) and need `%2E` instead.
+# RFC 3986 §2.3 makes the two spellings equivalent, so a server that decodes
+# before routing is unaffected. It applies to values only, after escaping, so
+# style delimiters (`.` for `label`, `;` and `=` for `matrix`) and the
+# parameter name from the path template stay literal.
+_path_scalar(value; allow_reserved::Bool = false, escape_chars::AbstractString = "") =
+    _percent_encode_chars(_escape(_scalar(value); allow_reserved), escape_chars)
 
-function _path_array(value, delimiter; allow_reserved::Bool = false)
-    value isa AbstractVector || value isa Tuple ||
-        throw(ArgumentError("parameter style requires an array value"))
-    return join((_path_scalar(item; allow_reserved) for item in value), delimiter)
+function _percent_encode_chars(text::String, chars::AbstractString)
+    isempty(chars) && return text
+    io = IOBuffer()
+    for char in text
+        if char in chars
+            for byte in codeunits(string(char))
+                write(io, UInt8('%'), codeunit("0123456789ABCDEF", (byte >> 4) + 1),
+                      codeunit("0123456789ABCDEF", (byte & 0x0f) + 1))
+            end
+        else
+            write(io, char)
+        end
+    end
+    return String(take!(io))
 end
 
-function _path_object(value, pair_delimiter, key_delimiter; allow_reserved::Bool = false)
+function _path_array(
+    value,
+    delimiter;
+    allow_reserved::Bool = false,
+    escape_chars::AbstractString = "",
+)
+    value isa AbstractVector || value isa Tuple ||
+        throw(ArgumentError("parameter style requires an array value"))
+    return join((_path_scalar(item; allow_reserved, escape_chars) for item in value), delimiter)
+end
+
+function _path_object(
+    value,
+    pair_delimiter,
+    key_delimiter;
+    allow_reserved::Bool = false,
+    escape_chars::AbstractString = "",
+)
     return join(
         (
             string(
-                _path_scalar(key; allow_reserved),
+                _path_scalar(key; allow_reserved, escape_chars),
                 key_delimiter,
-                _path_scalar(item; allow_reserved),
+                _path_scalar(item; allow_reserved, escape_chars),
             ) for (key, item) in _pairs(value)
         ),
         pair_delimiter,
@@ -1347,6 +1392,7 @@ function _path_parameter(
     style::Symbol,
     explode::Bool;
     allow_reserved::Bool = false,
+    escape_chars::AbstractString = "",
 )
     encoded = _encode(value)
     if encoded === nothing
@@ -1356,29 +1402,29 @@ function _path_parameter(
     end
     if style === :simple
         encoded isa AbstractDict && return explode ?
-            _path_object(encoded, ",", "="; allow_reserved) :
-            _path_object(encoded, ",", ","; allow_reserved)
-        encoded isa AbstractVector && return _path_array(encoded, ","; allow_reserved)
-        return _path_scalar(encoded; allow_reserved)
+            _path_object(encoded, ",", "="; allow_reserved, escape_chars) :
+            _path_object(encoded, ",", ","; allow_reserved, escape_chars)
+        encoded isa AbstractVector && return _path_array(encoded, ","; allow_reserved, escape_chars)
+        return _path_scalar(encoded; allow_reserved, escape_chars)
     elseif style === :label
         encoded isa AbstractDict && return "." * (explode ?
-            _path_object(encoded, ".", "="; allow_reserved) :
-            _path_object(encoded, ",", ","; allow_reserved))
+            _path_object(encoded, ".", "="; allow_reserved, escape_chars) :
+            _path_object(encoded, ",", ","; allow_reserved, escape_chars))
         encoded isa AbstractVector &&
-            return "." * _path_array(encoded, explode ? "." : ","; allow_reserved)
-        return "." * _path_scalar(encoded; allow_reserved)
+            return "." * _path_array(encoded, explode ? "." : ","; allow_reserved, escape_chars)
+        return "." * _path_scalar(encoded; allow_reserved, escape_chars)
     elseif style === :matrix
         encoded_name = _path_scalar(name)
         if encoded isa AbstractDict
             return explode ?
-                join((";" * _path_scalar(key) * "=" * _path_scalar(item; allow_reserved) for (key, item) in _pairs(encoded))) :
-                ";" * encoded_name * "=" * _path_object(encoded, ",", ","; allow_reserved)
+                join((";" * _path_scalar(key; escape_chars) * "=" * _path_scalar(item; allow_reserved, escape_chars) for (key, item) in _pairs(encoded))) :
+                ";" * encoded_name * "=" * _path_object(encoded, ",", ","; allow_reserved, escape_chars)
         elseif encoded isa AbstractVector
             return explode ?
-                join((";" * encoded_name * "=" * _path_scalar(item; allow_reserved) for item in encoded)) :
-                ";" * encoded_name * "=" * _path_array(encoded, ","; allow_reserved)
+                join((";" * encoded_name * "=" * _path_scalar(item; allow_reserved, escape_chars) for item in encoded)) :
+                ";" * encoded_name * "=" * _path_array(encoded, ","; allow_reserved, escape_chars)
         end
-        return ";" * encoded_name * "=" * _path_scalar(encoded; allow_reserved)
+        return ";" * encoded_name * "=" * _path_scalar(encoded; allow_reserved, escape_chars)
     end
     throw(ArgumentError("unsupported path parameter style $style"))
 end
@@ -1574,7 +1620,10 @@ function _append_parameter!(client, path, query, headers, cookies, descriptor, v
                 path,
                 "{" * descriptor.name * "}" => (
                     preencoded ? serialized :
-                    _escape(serialized; allow_reserved = descriptor.allow_reserved)
+                    _percent_encode_chars(
+                        _escape(serialized; allow_reserved = descriptor.allow_reserved),
+                        client.escape_path_chars,
+                    )
                 ),
             )
         elseif location === :query
@@ -1601,6 +1650,7 @@ function _append_parameter!(client, path, query, headers, cookies, descriptor, v
             style,
             explode;
             allow_reserved = descriptor.allow_reserved,
+            escape_chars = client.escape_path_chars,
         )
         path = replace(path, "{" * descriptor.name * "}" => serialized)
     elseif location === :query

@@ -79,6 +79,31 @@ stream cancellation closes one request connection. Set `protocol=:auto` or
 `:h2` in `request_options` when the caller accepts HTTP/2 stream lifecycle
 semantics. Buffered calls keep HTTP.jl's automatic protocol selection.
 
+## Extra percent-encoding in path parameters
+
+Generated clients percent-encode path parameters per RFC 3986, which leaves
+the unreserved characters `A-Z a-z 0-9 - _ . ~` as they are. Some servers
+cannot route a path segment that contains a literal `.`: Rails, for example,
+ends a dynamic segment at the first `.` and reads the rest as a format suffix,
+so `GET /customers/acme.example.com-42` is a `404` while
+`GET /customers/acme%2Eexample%2Ecom-42` matches. `escape_path_chars` names
+characters to percent-encode in addition to the standard set:
+
+```julia
+client = ExampleClient.Client("https://api.example.com"; escape_path_chars = ".")
+ExampleClient.get_customer("acme.example.com-42"; client)
+# GET /customers/acme%2Eexample%2Ecom-42
+```
+
+The option applies to the values of every path parameter of every operation
+and defaults to empty. Style delimiters (`.` for `label`, `;` and `=` for
+`matrix`) and the parameter name from the path template are never touched.
+RFC 3986 treats the encoded and unencoded spellings of an unreserved character
+as the same identifier, so servers that decode before routing are unaffected.
+This is independent of `allowReserved`, which removes escaping rather than
+adding it, and it is not a substitute for it: a `/` in a value is still
+encoded unless the parameter declares `allowReserved: true`.
+
 ## HTTP behavior
 
 Generated clients support:

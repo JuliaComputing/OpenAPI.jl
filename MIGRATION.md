@@ -47,6 +47,7 @@ OpenAPI.server("openapi.json"; name = "MyServer", path = "MyServer.jl")
 | Chunk readers (`LineChunkReader`, …) for streaming | `stream_to::Channel` keyword; framing follows the response media type, customizable with `codec!` |
 | `httplib = Downloads` or `HTTP` backends | HTTP.jl only |
 | `Client(url; escape_path_params = false)` | Declare `allowReserved: true` on the path parameter in the document; the generated client then leaves reserved characters such as `/` unescaped for that parameter. Requires a 3.0 or 3.2 document — 3.1 scopes `allowReserved` to query parameters and rejects it on a path parameter at load time |
+| `pre_request_hook` rewriting the path to send `%2E` for `.` | `Client(url; escape_path_chars = ".")` percent-encodes the listed characters in every path parameter value on top of the standard RFC 3986 escaping |
 | Constructor/`setproperty!` validation, `val_format` overloads | Full JSON Schema validation at encode/decode time; disable per client with `validate_requests` / `validate_responses` |
 | `mutable struct` models, `haspropertyat` / `getpropertyat` | Immutable keyword-constructed structs; optional absent fields are `ABSENT` |
 

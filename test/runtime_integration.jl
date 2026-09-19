@@ -450,6 +450,17 @@ end
                     ),
                 ),
             ),
+            "/tenants/{external_id}" => OpenAPI.obj(
+                "get" => OpenAPI.obj(
+                    "operationId" => "getTenant",
+                    "parameters" => Any[
+                        runtime_parameter("external_id", "path", string_schema),
+                    ],
+                    "responses" => OpenAPI.obj(
+                        "200" => runtime_response("application/json", OpenAPI.obj()),
+                    ),
+                ),
+            ),
             "/status/{code}" => OpenAPI.obj(
                 "get" => OpenAPI.obj(
                     "operationId" => "statusResult",
@@ -858,6 +869,31 @@ end
             @test request.target == "/documents/opa/examples/public%20servers"
             @test result.status == 200
             @test result.body["ok"] === true
+        end
+
+        @testset "escape_path_chars on the client" begin
+            # Rails-style routers end a dynamic segment at a literal `.`; a
+            # client configured with escape_path_chars = "." sends `%2E`
+            # instead, for every path parameter of every operation. The
+            # default client keeps RFC 3986 unreserved characters as-is.
+            call(:gettenant, "acme.example.com-42"; client)
+            @test take_request().target == "/tenants/acme.example.com-42"
+
+            dotted_client = C.Client(; escape_path_chars = ".")
+            result = call(
+                :gettenant,
+                "acme.example.com-42";
+                client = dotted_client,
+                with_http_info = true,
+            )
+            request = take_request()
+            @test request.target == "/tenants/acme%2Eexample%2Ecom-42"
+            @test result.status == 200
+            @test result.body["ok"] === true
+
+            # composes with allowReserved: `/` still passes, `.` is encoded
+            call(:getdocument, "opa/v1.2/data"; client = dotted_client)
+            @test take_request().target == "/documents/opa/v1%2E2/data"
         end
 
         @testset "parameters, servers, and request overrides" begin
