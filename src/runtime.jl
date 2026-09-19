@@ -1504,7 +1504,8 @@ function _escapeuri(text)
         if char in 'A':'Z' || char in 'a':'z' || char in '0':'9' || char in "-_.~"
             write(io, char)
         else
-            print(io, '%', uppercase(string(byte; base = 16, pad = 2)))
+            write(io, UInt8('%'), codeunit("0123456789ABCDEF", (byte >> 4) + 1),
+                  codeunit("0123456789ABCDEF", (byte & 0x0f) + 1))
         end
     end
     return String(take!(io))
