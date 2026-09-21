@@ -424,6 +424,16 @@
         @test invoke(:_escape, reserved; allow_reserved = true) == reserved
         @test invoke(:_escape, "%2F"; allow_reserved = true) == "%2F"
         @test invoke(:_escape, "a b") == "a%20b"
+        @test invoke(:_escape, "AZaz09-_.~") == "AZaz09-_.~"
+        @test invoke(:_escape, "%2F") == "%252F"
+        @test invoke(:_escape, "α👽/\0") == "%CE%B1%F0%9F%91%BD%2F%00"
+        @test invoke(:_escape, SubString("prefixα 👽", 7)) == "%CE%B1%20%F0%9F%91%BD"
+        for byte in UInt8(0):UInt8(255)
+            char = Char(byte)
+            expected = char in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~" ?
+                       string(char) : "%" * uppercase(string(byte; base = 16, pad = 2))
+            @test invoke(:_escape, String([byte])) == expected
+        end
         # allowReserved on a path parameter keeps slash-delimited values intact
         @test invoke(:_path_parameter, "path", "opa/examples/public servers", :simple, false) ==
               "opa%2Fexamples%2Fpublic%20servers"
