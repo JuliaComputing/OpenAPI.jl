@@ -277,6 +277,80 @@ end
     )
 end
 
+@testset "Compiled evaluation shortcuts" begin
+    # `$ref` targets and `properties` children resolved at compile time must report the same
+    # results, paths, and order as resolving them per evaluation.
+    schema = SchemaEngine.CompiledSchema(
+        OpenAPI.obj(
+            "\$schema" => SchemaEngine.DRAFT202012.uri,
+            "\$defs" => OpenAPI.obj(
+                "limits" => OpenAPI.obj(
+                    "type" => "object",
+                    "properties" => OpenAPI.obj(
+                        "min" => OpenAPI.obj("type" => "number"),
+                        "max" => OpenAPI.obj("type" => "number"),
+                    ),
+                    "required" => Any["min", "max"],
+                ),
+            ),
+            "type" => "object",
+            "properties" => OpenAPI.obj(
+                "name" => OpenAPI.obj("type" => "string"),
+                "limits" => OpenAPI.obj("\$ref" => "#/\$defs/limits"),
+                "rating" => OpenAPI.obj(
+                    "anyOf" => Any[
+                        OpenAPI.obj("type" => "number", "minimum" => 0),
+                        OpenAPI.obj("type" => "null"),
+                    ],
+                ),
+            ),
+        ),
+    )
+    @test isvalid(
+        schema,
+        Dict(
+            "name" => "a",
+            "limits" => Dict("min" => 0, "max" => 1),
+            "rating" => nothing,
+        ),
+    )
+
+    issue = SchemaEngine.validate(
+        schema,
+        Dict("limits" => Dict("min" => "low", "max" => 1)),
+    )
+    @test issue.path == "/limits/min"
+    @test issue.reason == "type"
+
+    # Every alternative failing reports the combinator itself, not its alternatives.
+    issues = SchemaEngine.validate(schema, Dict("rating" => -1); fail_fast = false)
+    @test length(issues) == 1
+    @test only(issues).path == "/rating"
+    @test only(issues).reason == "anyOf"
+
+    # Collected issues follow the schema's declared property order.
+    issues = SchemaEngine.validate(
+        schema,
+        Dict("rating" => "high", "limits" => Dict("min" => 0), "name" => 1);
+        fail_fast = false,
+    )
+    @test [issue.path for issue in issues] == ["/name", "/limits", "/rating"]
+
+    # Branches read only for validity still decide the result.
+    conditional = SchemaEngine.CompiledSchema(
+        OpenAPI.obj(
+            "\$schema" => SchemaEngine.DRAFT202012.uri,
+            "if" => OpenAPI.obj("type" => "string"),
+            "then" => OpenAPI.obj("minLength" => 2),
+            "not" => OpenAPI.obj("const" => "no"),
+        ),
+    )
+    @test isvalid(conditional, 5)
+    @test isvalid(conditional, "ok")
+    @test SchemaEngine.validate(conditional, "a").reason == "minLength"
+    @test SchemaEngine.validate(conditional, "no").reason == "not"
+end
+
 @testset "Nested resource canonicalization" begin
     child = Dict(
         "\$id" => "sub/",

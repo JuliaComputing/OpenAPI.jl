@@ -66,6 +66,7 @@ struct Spec
     default_server::String
     server::Base.RefValue{String}
     graphs::Dict{Symbol,Any}
+    subschemas::Dict{Tuple{Symbol,String,String},Any}
     graph_lock::ReentrantLock
     # Generated data is required and name-mapped so an omitted keyword or a
     # declaration reorder cannot silently substitute an empty or adjacent
@@ -88,6 +89,7 @@ struct Spec
             default_server = normalized_server,
             server = Ref(normalized_server),
             graphs = Dict{Symbol,Any}(),
+            subschemas = Dict{Tuple{Symbol,String,String},Any}(),
             graph_lock = ReentrantLock(),
         )
         ordered = map(field -> getproperty(values, field), fieldnames(Spec))
@@ -221,6 +223,17 @@ end
 
 function _schema_at(spec::Spec, descriptor, direction::Symbol = :neutral)
     descriptor === nothing && return nothing
+    # Every validation of a generated model asks for the same few views, and building one
+    # parses the resource URI and walks its pointer; keep each view once it exists.
+    key = (direction, String(descriptor.resource), String(descriptor.pointer))
+    cached = lock(() -> get(spec.subschemas, key, nothing), spec.graph_lock)
+    cached === nothing || return cached
+    schema = _build_schema_at(spec, descriptor, direction)
+    lock(() -> (spec.subschemas[key] = schema), spec.graph_lock)
+    return schema
+end
+
+function _build_schema_at(spec::Spec, descriptor, direction::Symbol)
     graph = _schema_graph(spec, direction)
     graph === nothing && throw(ArgumentError(
         "generated schema metadata has a descriptor but no schema roots; regenerate the module",
@@ -638,6 +651,27 @@ function _decode_union(
     variants = Base.uniontypes(T)
     if value === nothing && Nothing in variants
         return nothing
+    end
+    # `Union{Absent, Nothing, X}` is how every optional field is typed. With one variant to
+    # try, the ordering and collection below reduce to decoding it, so skip them.
+    candidate = nothing
+    candidates = 0
+    for variant in variants
+        variant in (Absent, Nothing) && continue
+        candidates += 1
+        candidate = variant
+    end
+    if candidates == 1
+        try
+            return _decode(candidate, value, validate)
+        catch error
+            error isa DecodeError || rethrow()
+            throw(
+                DecodeError(
+                    "value does not match any variant of $T: " * error.message,
+                ),
+            )
+        end
     end
     if !oneof
         preferred = Any[
