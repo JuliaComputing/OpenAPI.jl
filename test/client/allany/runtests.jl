@@ -179,7 +179,8 @@ function test_http_resp()
 
     @test resp.status == 200
     @test resp.headers == ["Content-Type" => "application/json"]
-    json = JSON.parse(String(copy(resp.body)))
+    body = resp.body isa AbstractString ? resp.body : String(copy(resp.body))
+    json = JSON.parse(body)
     @test pet_equals(OpenAPI.Clients.from_json(M.Dog, json), dog)
 end
 
