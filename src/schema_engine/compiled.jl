@@ -106,6 +106,64 @@ function _register_dialect_aliases!(compiler::Compiler, aliases::AbstractDict)
     return compiler
 end
 
+"""
+Evaluation shortcuts resolved once per compiled graph, indexed by `CompiledNode.index`.
+
+`refs[i]` is node `i`'s static `\$ref` target (the reference table's `NodeId` and the node it
+compiles to); `properties[i]` is node `i`'s `properties` children in schema order. Either is
+`nothing` when the node has none, or when some part could not be resolved at compile time, in
+which case evaluation takes the general path exactly as before. They replace a `NodeId`- or
+string-tuple-keyed lookup per `\$ref` and per property, which dominated validation time.
+"""
+struct JumpTable
+    refs::Vector{Union{Nothing,Tuple{Resources.NodeId,CompiledNode}}}
+    properties::Vector{Union{Nothing,Vector{Tuple{String,CompiledNode}}}}
+end
+
+function JumpTable(
+    evaluation_nodes::AbstractDict,
+    transitions::AbstractDict,
+    references::AbstractDict,
+    registry,
+)
+    count = maximum((node.index for node in values(evaluation_nodes)); init = 0)
+    refs = Vector{Union{Nothing,Tuple{Resources.NodeId,CompiledNode}}}(nothing, count)
+    properties = Vector{Union{Nothing,Vector{Tuple{String,CompiledNode}}}}(nothing, count)
+    for node in values(evaluation_nodes)
+        value = node.value
+        value isa AbstractDict || continue
+        if get(value, "\$ref", nothing) isa AbstractString
+            target = get(references, (node.id, "\$ref"), nothing)
+            if target !== nothing
+                compiled = get(evaluation_nodes, target, nothing)
+                if compiled === nothing
+                    compiled = get(
+                        evaluation_nodes,
+                        Resources.canonical(registry, target),
+                        nothing,
+                    )
+                end
+                compiled === nothing || (refs[node.index] = (target, compiled))
+            end
+        end
+        declared = get(value, "properties", nothing)
+        declared isa AbstractDict || continue
+        children = Tuple{String,CompiledNode}[]
+        complete = true
+        for (name, subschema) in declared
+            (subschema isa AbstractDict || subschema isa Bool) || continue
+            child = get(transitions, (node.index, ("properties", String(name))), nothing)
+            if child === nothing
+                complete = false
+                break
+            end
+            push!(children, (String(name), child))
+        end
+        complete && (properties[node.index] = children)
+    end
+    return JumpTable(refs, properties)
+end
+
 """A non-mutating, dialect-aware JSON Schema resource graph."""
 struct CompiledSchema{R<:Resources.AbstractRetriever}
     data::Union{Resources.FrozenObject,Bool}
@@ -122,6 +180,42 @@ struct CompiledSchema{R<:Resources.AbstractRetriever}
     reference_failures::ReferenceFailures
     regexes::Dict{String,Regex}
     retriever::R
+    jumps::JumpTable
+end
+
+function CompiledSchema(
+    data,
+    dialect,
+    registry,
+    root,
+    dialects,
+    dialect_aliases,
+    evaluation_nodes,
+    transitions,
+    uses_annotations,
+    recursive_anchors,
+    references,
+    reference_failures,
+    regexes,
+    retriever,
+)
+    return CompiledSchema(
+        data,
+        dialect,
+        registry,
+        root,
+        dialects,
+        dialect_aliases,
+        evaluation_nodes,
+        transitions,
+        uses_annotations,
+        recursive_anchors,
+        references,
+        reference_failures,
+        regexes,
+        retriever,
+        JumpTable(evaluation_nodes, transitions, references, registry),
+    )
 end
 
 """A compiled graph with multiple JSON Schema roots embedded in JSON resources."""
@@ -1524,6 +1618,7 @@ function select(schemas::CompiledSchemas, requested::Resources.NodeId)
         getfield(template, :reference_failures),
         getfield(template, :regexes),
         template.retriever,
+        getfield(template, :jumps),
     )
 end
 
@@ -1567,6 +1662,7 @@ function subschema(template::CompiledSchema, requested::Resources.NodeId)
         getfield(template, :reference_failures),
         getfield(template, :regexes),
         template.retriever,
+        getfield(template, :jumps),
     )
 end
 

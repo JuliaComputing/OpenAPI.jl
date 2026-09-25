@@ -636,3 +636,48 @@
         @test occursin("ff00", shown)
     end
 end
+
+@testset "runtime validation shortcuts" begin
+    Runtime = OpenAPI.Runtime
+    # An optional field's union decodes its one real variant directly, with the same error.
+    optional = Union{Nothing,Runtime.Absent,Int64}
+    @test Runtime._decode_union(optional, 3) == 3
+    @test Runtime._decode_union(optional, nothing) === nothing
+    error = try
+        Runtime._decode_union(optional, "three")
+        nothing
+    catch caught
+        caught
+    end
+    @test error isa Runtime.DecodeError
+    @test startswith(error.message, "value does not match any variant of")
+
+    # The subschema view for a descriptor is built once per spec and direction.
+    resource = "https://example.test/cached-schema"
+    spec = Runtime.Spec(;
+        security_schemes = Dict{String,NamedTuple}(),
+        resources = Any[(
+            id = resource,
+            retrieval = resource,
+            media_type = "application/schema+json",
+            json = JSON.json(
+                OpenAPI.obj(
+                    "\$defs" => OpenAPI.obj("n" => OpenAPI.obj("type" => "integer")),
+                ),
+            ),
+        )],
+        roots = Any[(
+            resource = resource,
+            pointer = "",
+            dialect = SchemaEngine.DRAFT202012,
+        )],
+        dialects = Any[],
+        directional_required = Any[],
+        default_server = "",
+    )
+    descriptor = (resource = resource, pointer = "/\$defs/n")
+    view = Runtime._schema_at(spec, descriptor)
+    @test Runtime._schema_at(spec, descriptor) === view
+    @test Runtime._schema_valid(spec, descriptor, 1)
+    @test !Runtime._schema_valid(spec, descriptor, "one")
+end

@@ -38,7 +38,11 @@ end
 
 mutable struct EvaluationContext
     schema::CompiledSchema
-    active::Set{Tuple{Int,EvaluationPath,Tuple{Vararg{Resources.ResourceId}}}}
+    # `(compiled node index, instance path, dynamic scope)` for every node being evaluated,
+    # outermost first, for reference-cycle detection. A stack scanned by identity rather than
+    # a `Set`: entries are pushed and popped in call order, the stack is only as deep as the
+    # evaluation, and a `Set` had to hash the mutable path by `objectid` on every node visited.
+    active::Vector{Tuple{Int,EvaluationPath,Vector{Resources.ResourceId}}}
     regexes::Dict{String,Regex}
     evaluations::Int
     depth::Int
@@ -48,6 +52,9 @@ mutable struct EvaluationContext
     collect_all::Bool
     annotations::Bool
     tracks_cycles::Bool
+    # > 0 while evaluating a branch whose issues are discarded (`anyOf`/`oneOf` alternatives,
+    # `not`, an `if` condition, `contains` candidates): only its validity is read.
+    speculative::Int
 end
 
 function EvaluationContext(
@@ -63,7 +70,7 @@ function EvaluationContext(
     max_depth > 0 || throw(ArgumentError("max_depth must be positive"))
     return EvaluationContext(
         schema,
-        Set{Tuple{Int,EvaluationPath,Tuple{Vararg{Resources.ResourceId}}}}(),
+        Tuple{Int,EvaluationPath,Vector{Resources.ResourceId}}[],
         copy(getfield(schema, :regexes)),
         0,
         0,
@@ -73,6 +80,7 @@ function EvaluationContext(
         collect_all,
         getfield(schema, :uses_annotations),
         !isempty(getfield(schema, :references)),
+        0,
     )
 end
 
@@ -107,6 +115,49 @@ function _regex(context::EvaluationContext, pattern::AbstractString)
     end
 end
 
+struct _LazyIssue
+    x::Any
+    path::EvaluationPath
+    keyword::String
+    value::Any
+end
+
+# Stands in for an issue raised under a speculative branch. Counted like a real one, so
+# `max_issues` behaves the same, but the instance path is kept unrendered in `val` and only
+# rendered if the issue limit is reached and the path has to appear in the error.
+_speculative_issue(path::EvaluationPath) = SingleIssue(nothing, "", "speculative", path)
+
+function _issue_path(issue::SingleIssue)
+    issue.reason == "speculative" && issue.val isa EvaluationPath &&
+        return _path_string(issue.val::EvaluationPath)
+    return issue.path
+end
+
+function _invalidate!(
+    result::EvaluationResult,
+    context::EvaluationContext,
+    lazy::_LazyIssue,
+)
+    !context.collect_all && !result.valid && return result
+    if context.speculative > 0
+        return _invalidate!(result, context, _speculative_issue(lazy.path))
+    end
+    return _invalidate!(
+        result,
+        context,
+        _issue(lazy.x, lazy.path, lazy.keyword, lazy.value),
+    )
+end
+
+function _speculative_result(context, node, tokens, x, path, dynamic_scope)
+    context.speculative += 1
+    try
+        return _child_result(context, node, tokens, x, path, dynamic_scope)
+    finally
+        context.speculative -= 1
+    end
+end
+
 function _invalidate!(
     result::EvaluationResult,
     context::EvaluationContext,
@@ -118,7 +169,7 @@ function _invalidate!(
         issue_count < context.max_issues || throw(
             EvaluationError(
                 context.schema.root,
-                issue.path,
+                _issue_path(issue),
                 "the issue limit was reached",
             ),
         )
@@ -175,7 +226,7 @@ function _absorb!(
             issue_count + length(child_issues) <= context.max_issues || throw(
                 EvaluationError(
                     context.schema.root,
-                    isempty(child_issues) ? "" : first(child_issues).path,
+                    isempty(child_issues) ? "" : _issue_path(first(child_issues)),
                     "the issue limit was reached",
                 ),
             )
@@ -216,8 +267,7 @@ function _canonical(schema::CompiledSchema, node::Resources.NodeId)
     return _compiled_node(schema, node).id
 end
 
-function _compiled_child(schema::CompiledSchema, node::Resources.NodeId, tokens)
-    parent = _compiled_node(schema, node)
+function _compiled_child(schema::CompiledSchema, parent::CompiledNode, tokens)
     key = (parent.index, tokens)
     return get(
         () -> throw(
@@ -282,16 +332,16 @@ function _simple_assertions!(
 )
     expected = get(schema, "type", nothing)
     if expected !== nothing && !_type_valid(x, expected)
-        _invalidate!(result, context, _issue(x, path, "type", expected))
+        _invalidate!(result, context, _LazyIssue(x, path, "type", expected))
     end
     enum = get(schema, "enum", nothing)
     if enum isa AbstractVector && !any(value -> _isequal(x, value), enum)
-        _invalidate!(result, context, _issue(x, path, "enum", enum))
+        _invalidate!(result, context, _LazyIssue(x, path, "enum", enum))
     end
-    if keyword_applies(schema_dialect, "const") &&
-       haskey(schema, "const") &&
+    if haskey(schema, "const") &&
+       keyword_applies(schema_dialect, "const") &&
        !_isequal(x, schema["const"])
-        _invalidate!(result, context, _issue(x, path, "const", schema["const"]))
+        _invalidate!(result, context, _LazyIssue(x, path, "const", schema["const"]))
     end
     if x isa Real && !(x isa Bool)
         multiple = get(schema, "multipleOf", nothing)
@@ -299,16 +349,16 @@ function _simple_assertions!(
             _invalidate!(
                 result,
                 context,
-                _issue(x, path, "multipleOf", multiple),
+                _LazyIssue(x, path, "multipleOf", multiple),
             )
         end
         maximum = get(schema, "maximum", nothing)
         if maximum isa Real && x > maximum
-            _invalidate!(result, context, _issue(x, path, "maximum", maximum))
+            _invalidate!(result, context, _LazyIssue(x, path, "maximum", maximum))
         end
         minimum = get(schema, "minimum", nothing)
         if minimum isa Real && x < minimum
-            _invalidate!(result, context, _issue(x, path, "minimum", minimum))
+            _invalidate!(result, context, _LazyIssue(x, path, "minimum", minimum))
         end
         exclusive_maximum = get(schema, "exclusiveMaximum", nothing)
         if schema_dialect.name != :draft4 &&
@@ -318,7 +368,7 @@ function _simple_assertions!(
             _invalidate!(
                 result,
                 context,
-                _issue(x, path, "exclusiveMaximum", exclusive_maximum),
+                _LazyIssue(x, path, "exclusiveMaximum", exclusive_maximum),
             )
         elseif schema_dialect.name == :draft4 &&
                exclusive_maximum === true &&
@@ -327,7 +377,7 @@ function _simple_assertions!(
             _invalidate!(
                 result,
                 context,
-                _issue(x, path, "exclusiveMaximum", exclusive_maximum),
+                _LazyIssue(x, path, "exclusiveMaximum", exclusive_maximum),
             )
         end
         exclusive_minimum = get(schema, "exclusiveMinimum", nothing)
@@ -338,7 +388,7 @@ function _simple_assertions!(
             _invalidate!(
                 result,
                 context,
-                _issue(x, path, "exclusiveMinimum", exclusive_minimum),
+                _LazyIssue(x, path, "exclusiveMinimum", exclusive_minimum),
             )
         elseif schema_dialect.name == :draft4 &&
                exclusive_minimum === true &&
@@ -347,7 +397,7 @@ function _simple_assertions!(
             _invalidate!(
                 result,
                 context,
-                _issue(x, path, "exclusiveMinimum", exclusive_minimum),
+                _LazyIssue(x, path, "exclusiveMinimum", exclusive_minimum),
             )
         end
     end
@@ -356,34 +406,34 @@ function _simple_assertions!(
         maximum isa Real &&
             isinteger(maximum) &&
             length(x) > maximum &&
-            _invalidate!(result, context, _issue(x, path, "maxLength", maximum))
+            _invalidate!(result, context, _LazyIssue(x, path, "maxLength", maximum))
         minimum = get(schema, "minLength", nothing)
         minimum isa Real &&
             isinteger(minimum) &&
             length(x) < minimum &&
-            _invalidate!(result, context, _issue(x, path, "minLength", minimum))
+            _invalidate!(result, context, _LazyIssue(x, path, "minLength", minimum))
         pattern = get(schema, "pattern", nothing)
         pattern isa AbstractString &&
             !occursin(_regex(context, pattern), x) &&
-            _invalidate!(result, context, _issue(x, path, "pattern", pattern))
+            _invalidate!(result, context, _LazyIssue(x, path, "pattern", pattern))
     elseif x isa AbstractVector
         maximum = get(schema, "maxItems", nothing)
         maximum isa Real &&
             isinteger(maximum) &&
             length(x) > maximum &&
-            _invalidate!(result, context, _issue(x, path, "maxItems", maximum))
+            _invalidate!(result, context, _LazyIssue(x, path, "maxItems", maximum))
         minimum = get(schema, "minItems", nothing)
         minimum isa Real &&
             isinteger(minimum) &&
             length(x) < minimum &&
-            _invalidate!(result, context, _issue(x, path, "minItems", minimum))
+            _invalidate!(result, context, _LazyIssue(x, path, "minItems", minimum))
         if get(schema, "uniqueItems", false) === true
             for left in eachindex(x), right in firstindex(x):(left-1)
                 if _isequal(x[left], x[right])
                     _invalidate!(
                         result,
                         context,
-                        _issue(x, path, "uniqueItems", true),
+                        _LazyIssue(x, path, "uniqueItems", true),
                     )
                     break
                 end
@@ -397,7 +447,7 @@ function _simple_assertions!(
             _invalidate!(
                 result,
                 context,
-                _issue(x, path, "maxProperties", maximum),
+                _LazyIssue(x, path, "maxProperties", maximum),
             )
         minimum = get(schema, "minProperties", nothing)
         minimum isa Real &&
@@ -406,19 +456,19 @@ function _simple_assertions!(
             _invalidate!(
                 result,
                 context,
-                _issue(x, path, "minProperties", minimum),
+                _LazyIssue(x, path, "minProperties", minimum),
             )
         required = get(schema, "required", nothing)
         if required isa AbstractVector
             all(name -> haskey(x, name), required) || _invalidate!(
                 result,
                 context,
-                _issue(x, path, "required", required),
+                _LazyIssue(x, path, "required", required),
             )
         end
         dependent = get(schema, "dependentRequired", nothing)
-        keyword_applies(schema_dialect, "dependentRequired") &&
-            dependent isa AbstractDict &&
+        dependent isa AbstractDict &&
+            keyword_applies(schema_dialect, "dependentRequired") &&
             _dependent_required!(
                 result,
                 context,
@@ -428,8 +478,8 @@ function _simple_assertions!(
                 "dependentRequired",
             )
         dependencies = get(schema, "dependencies", nothing)
-        keyword_applies(schema_dialect, "dependencies") &&
-            dependencies isa AbstractDict &&
+        dependencies isa AbstractDict &&
+            keyword_applies(schema_dialect, "dependencies") &&
             _dependent_required!(
                 result,
                 context,
@@ -451,7 +501,7 @@ function _dependent_required!(result, context, x, dependencies, path, keyword)
         all(name -> haskey(x, name), required) || _invalidate!(
             result,
             context,
-            _issue(x, path, keyword, dependencies),
+            _LazyIssue(x, path, keyword, dependencies),
         )
     end
     return result
@@ -459,14 +509,14 @@ end
 
 function _reference_target(
     context::EvaluationContext,
-    node::Resources.NodeId,
+    node::CompiledNode,
     keyword::String,
     reference_text::AbstractString,
     dynamic_scope::Vector{Resources.ResourceId};
     dynamic::Bool = false,
     recursive::Bool = false,
 )
-    canonical_node = _canonical(context.schema, node)
+    canonical_node = node.id
     reference =
         dynamic ? Resources.Reference(canonical_node.resource, reference_text) :
         nothing
@@ -516,7 +566,7 @@ end
 
 function _follow_reference(
     context::EvaluationContext,
-    node::Resources.NodeId,
+    node::CompiledNode,
     keyword::String,
     reference_text::AbstractString,
     x,
@@ -525,33 +575,36 @@ function _follow_reference(
     dynamic::Bool = false,
     recursive::Bool = false,
 )
-    target = _reference_target(
-        context,
-        node,
-        keyword,
-        reference_text,
-        dynamic_scope;
-        dynamic,
-        recursive,
-    )
+    jump = nothing
+    if keyword == "\$ref" && !dynamic && !recursive
+        jump = getfield(context.schema, :jumps).refs[node.index]
+    end
+    if jump === nothing
+        target = _reference_target(
+            context,
+            node,
+            keyword,
+            reference_text,
+            dynamic_scope;
+            dynamic,
+            recursive,
+        )
+        compiled = _compiled_node(context.schema, target)
+    else
+        target, compiled = jump
+    end
     next_scope = dynamic_scope
     if isempty(dynamic_scope) || last(dynamic_scope) != target.resource
         next_scope = copy(dynamic_scope)
         push!(next_scope, target.resource)
     end
-    return _evaluate_compiled_node(
-        context,
-        _compiled_node(context.schema, target),
-        x,
-        path,
-        next_scope,
-    )
+    return _evaluate_compiled_node(context, compiled, x, path, next_scope)
 end
 
 function _references!(
     result::EvaluationResult,
     context::EvaluationContext,
-    node::Resources.NodeId,
+    node::CompiledNode,
     x,
     schema::AbstractDict,
     schema_dialect::Dialect,
@@ -645,7 +698,7 @@ function _combinators!(
         schemas isa AbstractVector || continue
         valid = EvaluationResult[]
         for index in eachindex(schemas)
-            child = _child_result(
+            child = _speculative_result(
                 context,
                 node,
                 (keyword, string(index - 1)),
@@ -661,22 +714,22 @@ function _combinators!(
                 _absorb!(result, context, child)
             end
         else
-            _invalidate!(result, context, _issue(x, path, keyword, schemas))
+            _invalidate!(result, context, _LazyIssue(x, path, keyword, schemas))
             _stopped(context, result) && return result
         end
     end
     negated = get(schema, "not", nothing)
     if negated isa AbstractDict || negated isa Bool
-        child = _child_result(context, node, ("not",), x, path, dynamic_scope)
+        child = _speculative_result(context, node, ("not",), x, path, dynamic_scope)
         if child.valid
-            _invalidate!(result, context, _issue(x, path, "not", negated))
+            _invalidate!(result, context, _LazyIssue(x, path, "not", negated))
             _stopped(context, result) && return result
         end
     end
     condition = get(schema, "if", nothing)
-    if keyword_applies(schema_dialect, "if") &&
-       (condition isa AbstractDict || condition isa Bool)
-        child = _child_result(context, node, ("if",), x, path, dynamic_scope)
+    if (condition isa AbstractDict || condition isa Bool) &&
+       keyword_applies(schema_dialect, "if")
+        child = _speculative_result(context, node, ("if",), x, path, dynamic_scope)
         child.valid && _absorb!(result, context, child)
         branch = child.valid ? "then" : "else"
         selected = get(schema, branch, nothing)
@@ -704,7 +757,23 @@ function _object_applicators!(
     tracks_coverage = additional isa AbstractDict || additional isa Bool
     covered = tracks_coverage ? Set{String}() : nothing
     properties = get(schema, "properties", nothing)
-    if properties isa AbstractDict
+    children = getfield(context.schema, :jumps).properties[node.index]
+    if children !== nothing
+        for (name, compiled) in children
+            haskey(x, name) || continue
+            child = _evaluate_compiled_node(
+                context,
+                compiled,
+                x[name],
+                _property_path(path, name),
+                dynamic_scope,
+            )
+            _absorb!(result, context, child; annotations = false)
+            _stopped(context, result) && return result
+            tracks_coverage && push!(covered::Set{String}, name)
+            context.annotations && _mark_property!(result, name)
+        end
+    elseif properties isa AbstractDict
         for (name, subschema) in properties
             haskey(x, name) || continue
             (subschema isa AbstractDict || subschema isa Bool) || continue
@@ -761,8 +830,8 @@ function _object_applicators!(
         end
     end
     names = get(schema, "propertyNames", nothing)
-    if keyword_applies(schema_dialect, "propertyNames") &&
-       (names isa AbstractDict || names isa Bool)
+    if (names isa AbstractDict || names isa Bool) &&
+       keyword_applies(schema_dialect, "propertyNames")
         for name in keys(x)
             child = _child_result(
                 context,
@@ -777,9 +846,9 @@ function _object_applicators!(
         end
     end
     for keyword in ("dependencies", "dependentSchemas")
-        keyword_applies(schema_dialect, keyword) || continue
         dependencies = get(schema, keyword, nothing)
         dependencies isa AbstractDict || continue
+        keyword_applies(schema_dialect, keyword) || continue
         for (name, subschema) in dependencies
             haskey(x, name) || continue
             (subschema isa AbstractDict || subschema isa Bool) || continue
@@ -911,11 +980,11 @@ function _array_applicators!(
         end
     end
     contains = get(schema, "contains", nothing)
-    if keyword_applies(schema_dialect, "contains") &&
-       (contains isa AbstractDict || contains isa Bool)
+    if (contains isa AbstractDict || contains isa Bool) &&
+       keyword_applies(schema_dialect, "contains")
         matches = BitSet()
         for index in eachindex(x)
-            child = _child_result(
+            child = _speculative_result(
                 context,
                 node,
                 ("contains",),
@@ -932,7 +1001,7 @@ function _array_applicators!(
             keyword_applies(schema_dialect, "maxContains") ?
             get(schema, "maxContains", typemax(Int)) : typemax(Int)
         if !(minimum <= length(matches) <= maximum)
-            _invalidate!(result, context, _issue(x, path, "contains", contains))
+            _invalidate!(result, context, _LazyIssue(x, path, "contains", contains))
         else
             if context.annotations && !isempty(matches)
                 result.items === nothing && (result.items = BitSet())
@@ -1018,7 +1087,7 @@ _unevaluated!(result, context, node, x, schema, path, dynamic_scope) = result
 
 function _evaluate_schema(
     context::EvaluationContext,
-    node::Resources.NodeId,
+    node::CompiledNode,
     x,
     schema::Bool,
     schema_dialect::Dialect,
@@ -1026,13 +1095,13 @@ function _evaluate_schema(
     dynamic_scope,
 )
     result = EvaluationResult()
-    schema || _invalidate!(result, context, _issue(x, path, "schema", false))
+    schema || _invalidate!(result, context, _LazyIssue(x, path, "schema", false))
     return result
 end
 
 function _evaluate_schema(
     context::EvaluationContext,
-    node::Resources.NodeId,
+    node::CompiledNode,
     x,
     schema::AbstractDict,
     schema_dialect::Dialect,
@@ -1093,6 +1162,17 @@ function _evaluate_schema(
     return result
 end
 
+# Shared sentinel; compared only. Never push!/append! to it.
+const _NO_SCOPE = Resources.ResourceId[]
+
+function _is_active(context::EvaluationContext, active)
+    for entry in context.active
+        entry[1] == active[1] && entry[2] === active[2] && entry[3] == active[3] &&
+            return true
+    end
+    return false
+end
+
 function _evaluate_compiled_node(
     context::EvaluationContext,
     compiled::CompiledNode,
@@ -1129,7 +1209,7 @@ function _evaluate_compiled_node(
         try
             return _evaluate_schema(
                 context,
-                node,
+                compiled,
                 x,
                 compiled.value,
                 compiled.dialect,
@@ -1142,9 +1222,9 @@ function _evaluate_compiled_node(
     end
     scoped_key =
         compiled.dialect.dynamic_refs || compiled.dialect.recursive_refs ?
-        Tuple(scoped) : ()
+        scoped : _NO_SCOPE
     active = (compiled.index, path, scoped_key)
-    if active in context.active
+    if _is_active(context, active)
         context.depth -= 1
         throw(
             EvaluationError(
@@ -1158,7 +1238,7 @@ function _evaluate_compiled_node(
     try
         return _evaluate_schema(
             context,
-            node,
+            compiled,
             x,
             compiled.value,
             compiled.dialect,
@@ -1166,7 +1246,7 @@ function _evaluate_compiled_node(
             scoped,
         )
     finally
-        delete!(context.active, active)
+        pop!(context.active)
         context.depth -= 1
     end
 end
