@@ -260,6 +260,25 @@ end
     @test isempty(
         SchemaEngine.validate(speculative, 1; fail_fast = false, max_issues = 1),
     )
+    # The issue limit error names the real location even under a speculative branch.
+    for branch in (
+        Dict("allOf" => Any[false, false, false]),
+        Dict("minimum" => 10, "maximum" => 0, "multipleOf" => 7),
+    )
+        limited = SchemaEngine.CompiledSchema(
+            Dict(
+                "\$schema" => SchemaEngine.DRAFT202012.uri,
+                "properties" => Dict("p" => Dict("anyOf" => Any[branch])),
+            ),
+        )
+        err = try
+            SchemaEngine.validate(limited, Dict("p" => 1); fail_fast = false, max_issues = 2)
+        catch caught
+            caught
+        end
+        @test err isa SchemaEngine.EvaluationError
+        @test occursin("instance \"/p\"", sprint(showerror, err))
+    end
 
     short_circuit = SchemaEngine.CompiledSchema(
         Dict(

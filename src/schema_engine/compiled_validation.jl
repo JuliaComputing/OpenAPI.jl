@@ -122,9 +122,16 @@ struct _LazyIssue
     value::Any
 end
 
-# Stands in for every issue raised under a speculative branch. Counted like a real one, so
-# `max_issues` behaves the same, but never built: building one renders the instance path.
-const _SPECULATIVE_ISSUE = SingleIssue(nothing, "", "speculative", nothing)
+# Stands in for an issue raised under a speculative branch. Counted like a real one, so
+# `max_issues` behaves the same, but the instance path is kept unrendered in `val` and only
+# rendered if the issue limit is reached and the path has to appear in the error.
+_speculative_issue(path::EvaluationPath) = SingleIssue(nothing, "", "speculative", path)
+
+function _issue_path(issue::SingleIssue)
+    issue.reason == "speculative" && issue.val isa EvaluationPath &&
+        return _path_string(issue.val::EvaluationPath)
+    return issue.path
+end
 
 function _invalidate!(
     result::EvaluationResult,
@@ -133,7 +140,7 @@ function _invalidate!(
 )
     !context.collect_all && !result.valid && return result
     if context.speculative > 0
-        return _invalidate!(result, context, _SPECULATIVE_ISSUE)
+        return _invalidate!(result, context, _speculative_issue(lazy.path))
     end
     return _invalidate!(
         result,
@@ -162,7 +169,7 @@ function _invalidate!(
         issue_count < context.max_issues || throw(
             EvaluationError(
                 context.schema.root,
-                issue.path,
+                _issue_path(issue),
                 "the issue limit was reached",
             ),
         )
@@ -219,7 +226,7 @@ function _absorb!(
             issue_count + length(child_issues) <= context.max_issues || throw(
                 EvaluationError(
                     context.schema.root,
-                    isempty(child_issues) ? "" : first(child_issues).path,
+                    isempty(child_issues) ? "" : _issue_path(first(child_issues)),
                     "the issue limit was reached",
                 ),
             )
@@ -1155,6 +1162,7 @@ function _evaluate_schema(
     return result
 end
 
+# Shared sentinel; compared only. Never push!/append! to it.
 const _NO_SCOPE = Resources.ResourceId[]
 
 function _is_active(context::EvaluationContext, active)
