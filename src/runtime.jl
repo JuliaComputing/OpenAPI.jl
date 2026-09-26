@@ -1350,18 +1350,10 @@ function _join_object(value, pair_delimiter, key_delimiter)
     )
 end
 
-# `allow_reserved` is honoured for path parameters as well as query parameters.
-# OAS 3.2 lists `allowReserved` under the path-parameter branch of the Parameter
-# Object (`styles-for-path` in `schemas/oas-3.2.json`), so this is conformant,
-# not an extension: reserved characters go on the wire as-is. It matters for
-# APIs whose path parameters are themselves slash-delimited paths (OPA data
-# documents, proxied object paths) — without it every `/` becomes `%2F` and the
-# server sees a single segment.
-#
-# Version caveat: 3.0 tolerates the field on a path parameter and 3.2 blesses
-# it, but 3.1 scopes it to `in: query` under `unevaluatedProperties: false`, so
-# a 3.1 document that declares it fails document validation outright (even with
-# `strict = false`) rather than reaching this code.
+# OAS 3.2 allows reserved expansion in path values, but still forbids raw
+# `/`, `?`, and `#` there. RFC 3986 also excludes `[` and `]` from path
+# segments. Preserve other reserved characters and existing percent-escapes.
+# A literal percent-escape must itself be encoded (e.g. `%252F` for `%2F`).
 #
 # `escape_chars` names characters to percent-encode on top of RFC 3986 escaping
 # (`Client(escape_path_chars = ...)`). Unreserved characters such as `.` are
@@ -1372,7 +1364,10 @@ end
 # style delimiters (`.` for `label`, `;` and `=` for `matrix`) and the
 # parameter name from the path template stay literal.
 _path_scalar(value; allow_reserved::Bool = false, escape_chars::AbstractString = "") =
-    _percent_encode_chars(_escape(_scalar(value); allow_reserved), escape_chars)
+    _percent_encode_chars(
+        _escape(_scalar(value); allow_reserved),
+        allow_reserved ? "/?#[]" * escape_chars : escape_chars,
+    )
 
 function _percent_encode_chars(text::String, chars::AbstractString)
     isempty(chars) && return text
@@ -1654,9 +1649,10 @@ function _append_parameter!(client, path, query, headers, cookies, descriptor, v
                 path,
                 "{" * descriptor.name * "}" => (
                     preencoded ? serialized :
-                    _percent_encode_chars(
-                        _escape(serialized; allow_reserved = descriptor.allow_reserved),
-                        client.escape_path_chars,
+                    _path_scalar(
+                        serialized;
+                        allow_reserved = descriptor.allow_reserved,
+                        escape_chars = client.escape_path_chars,
                     )
                 ),
             )

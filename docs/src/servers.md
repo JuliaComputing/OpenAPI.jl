@@ -121,12 +121,12 @@ the selected JSON schema accepts null. A full `HTTP.Response` bypasses
 generated status, header, and body validation. The handler owns that
 validation.
 
-One client capability has no server counterpart yet: a path parameter declared
-`allowReserved: true`. Generated clients send such a value with its reserved
-characters intact, so a slash-delimited value spans several path segments, but
-generated servers register the path template as written and `HTTP.Router`
-matches `{name}` against a single segment. Those requests reach the router as
-`404`s rather than the handler.
+Path parameters occupy one route segment, including those declared with
+`allowReserved: true`. Generated clients percent-encode `/`, `?`, and `#`
+inside path values, so `opa/examples/public servers` is sent as
+`opa%2Fexamples%2Fpublic%20servers` and decoded back to its original value by
+its generated server. This also works when the parameter precedes another
+path segment, such as `/documents/{path}/versions`.
 
 ### deepObject bracket paths
 
