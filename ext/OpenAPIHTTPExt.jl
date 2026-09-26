@@ -146,10 +146,11 @@ end
 #
 # Mount every documented operation on `router`, dispatching to the handler
 # functions `impl` defines (one per operation; the expected signatures are
-# listed at the top of this file). Handlers may return a documented typed
-# value (encoded and validated automatically), `nothing` (a 204 response), or
-# a full `HTTP.Response` for anything custom. `middleware` wraps each
-# operation handler: `middleware(handler) -> handler`. `register` is an alias
+# listed at the top of this file). Plain values use the first documented
+# success response; OpenAPI.Reply selects an explicit status. Both paths
+# validate and encode the body. A full HTTP.Response bypasses validation.
+# `middleware` wraps each operation handler: `middleware(handler) -> handler`.
+# `register` is an alias
 # kept for familiarity with OpenAPI.jl 0.2.x generated servers.
 function register!(
     router::HTTP.Router,

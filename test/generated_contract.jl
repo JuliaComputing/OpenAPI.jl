@@ -115,9 +115,9 @@
 
         current = OpenAPI.Runtime.CONTRACT_VERSION
         # Deliberate tripwire: update alongside every CONTRACT_VERSION bump.
-        @test current == 3
+        @test current == 4
         @test OpenAPI.Runtime.require_contract(current, OpenAPI.PACKAGE_VERSION) === nothing
-        for generated_contract in (1, 2, current + 1)
+        for generated_contract in (1, 2, 3, current + 1)
             mismatch = try
                 OpenAPI.Runtime.require_contract(generated_contract, "0.0.0")
                 nothing
@@ -130,6 +130,23 @@
             @test occursin("contract $generated_contract", message)
             @test occursin("provides contract $current", message)
             @test occursin("regenerate", message)
+        end
+
+        # Stored clients and servers from contract 3 fail before runtime
+        # imports, even if their handlers never use an explicit Reply.
+        for source in (client_source, server_source)
+            old_source = replace(source, guard => "Runtime.require_contract(3, \"1.1.3\")")
+            mismatch = try
+                Base.include_string(Module(:OldContractHost), old_source, "old-generated.jl")
+                nothing
+            catch error
+                error
+            end
+            @test mismatch isa LoadError
+            @test mismatch.error isa ErrorException
+            @test occursin("contract 3", sprint(showerror, mismatch))
+            @test occursin("provides contract 4", sprint(showerror, mismatch))
+            @test occursin("regenerate", sprint(showerror, mismatch))
         end
     end
 

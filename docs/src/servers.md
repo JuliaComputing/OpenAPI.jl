@@ -4,6 +4,11 @@ The same document generates a server-stub module. The document stays the
 source of truth: generate the client and the server from one specification and
 implement one handler function per operation.
 
+!!! note "Regenerate stored modules"
+    This runtime uses generated-code contract 4. Clients and servers generated
+    under contract 3 must be regenerated, even when their handlers do not use
+    `OpenAPI.Reply`. See [the runtime contract](@ref "Generated modules and the runtime contract").
+
 ```julia
 using OpenAPI, HTTP
 
@@ -106,6 +111,47 @@ handler contract — implementation module second, typed positional parameters,
 typed-value-or-`HTTP.Response` returns — matches the shape OpenAPI.jl 0.2.x
 users generated with `-g julia-server`.
 
+## Choosing a response status
+
+A plain return value uses the first documented success response. When an
+operation documents several outcomes, return [`OpenAPI.Reply`](@ref) to choose
+the status explicitly while retaining body validation and encoding:
+
+```julia
+using OpenAPI
+
+function submit(request, body)
+    if needs_processing(body)
+        return OpenAPI.Reply(202, (; ticket = "queued"))
+    end
+    return (; id = body.id)  # this operation documents its first success as 200
+end
+
+function get_item(request, id)
+    item = lookup_item(id)
+    item === nothing && return OpenAPI.Reply(404, (; message = "no such item"))
+    return item
+end
+```
+
+The body can be a generated model, named tuple, dictionary or another value
+the documented media type supports. It must satisfy the schema selected by
+the status: an exact code takes precedence over a range such as `4XX`, which
+takes precedence over `default`. The explicit status is sent unchanged; it
+is never inferred from the body's Julia type. Two statuses may use the same
+body type.
+
+`Reply` accepts final HTTP statuses from 200 through 599. Informational `1xx`
+responses are not handler results. A status with no exact, range or default
+entry fails with an error naming the operation and status; the HTTP extension
+reports this as a server error. Schema failures also produce a server error.
+`OpenAPI.Reply(204, nothing)` sends an empty body when 204 documents no content;
+`nothing` becomes JSON `null` only when the selected JSON schema accepts it.
+
+For custom headers or output that deliberately bypasses generated validation,
+return an `HTTP.Response` directly. `Reply` does not add header or media-type
+overrides.
+
 ## Request decoding and response encoding
 
 Request decoding mirrors client encoding: parameter styles (`simple`, `label`,
@@ -115,7 +161,8 @@ cookie parameters, JSON, `application/x-www-form-urlencoded`, and
 before handlers run. Decoding failures produce structured JSON `400` (or `415`
 for undocumented media types) responses without invoking the handler. Response
 values are validated against the output-direction schema and encoded from the
-first documented success response. Returning `nothing` follows that response:
+first documented success response, or the status selected by `OpenAPI.Reply`.
+Returning `nothing` follows that response:
 it emits an empty body when the response has no content, or JSON `null` when
 the selected JSON schema accepts null. A full `HTTP.Response` bypasses
 generated status, header, and body validation. The handler owns that
