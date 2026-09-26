@@ -1,5 +1,10 @@
 # Generated modules and the runtime contract
 
+The current runtime uses **contract 4**. Regenerate clients and servers stored
+under contract 3 with `OpenAPI.client` or `OpenAPI.server` before loading them
+with this runtime. This applies even when the application does not use
+`OpenAPI.Reply`; clients and servers share the same exact contract guard.
+
 A generated module targets an OpenAPI.jl generated-code contract version. It
 also records the exact OpenAPI.jl version that produced it. The module imports
 internal `OpenAPI.Runtime` machinery and bakes runtime data shapes — operation

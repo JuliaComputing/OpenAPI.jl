@@ -1129,3 +1129,192 @@ end
         close(server)
     end
 end
+
+
+@testset "explicit server reply statuses" begin
+    @test OpenAPI.Reply === OpenAPI.Runtime.Reply
+    payload = [1, 2]
+    @test OpenAPI.Reply(Int16(202), payload).body === payload
+    @test OpenAPI.Reply(big(599), nothing).status === 599
+    @test OpenAPI.Reply{Any}(200, payload).body === payload
+    for status in (true, -1, 0, 100, 199, 600, big(typemax(Int)) + 1)
+        @test_throws ArgumentError OpenAPI.Reply(status, payload)
+        @test_throws ArgumentError OpenAPI.Reply{Vector{Int}}(status, payload)
+    end
+    @test_throws MethodError OpenAPI.Reply(200.0, payload)
+
+    ref(name) = OpenAPI.obj("\$ref" => "#/components/schemas/$name")
+    response(schema; media = "application/json") = OpenAPI.obj(
+        "description" => "reply",
+        "content" => OpenAPI.obj(media => OpenAPI.obj("schema" => schema)),
+    )
+    record(field, type) = OpenAPI.obj(
+        "type" => "object", "required" => [field],
+        "properties" => OpenAPI.obj(field => OpenAPI.obj("type" => type)),
+        "additionalProperties" => false,
+    )
+    route(id, responses) = OpenAPI.obj("get" => OpenAPI.obj(
+        "operationId" => id, "responses" => responses,
+    ))
+    document = OpenAPI.obj(
+        "openapi" => "3.1.0",
+        "info" => OpenAPI.obj("title" => "Explicit replies", "version" => "1.0.0"),
+        "paths" => OpenAPI.obj(
+            "/choose" => route("choose", OpenAPI.obj(
+                "default" => response(ref("Fallback")),
+                "4XX" => response(ref("RangeError")),
+                "404" => response(ref("MissingItem")),
+                "200" => response(ref("Widget")),
+                "201" => response(ref("Widget")),
+                "202" => response(ref("Accepted")),
+            )),
+            "/documented" => route("documented", OpenAPI.obj("200" => response(ref("Widget")))),
+            "/only-errors" => route("onlyErrors", OpenAPI.obj("404" => response(ref("MissingItem")))),
+            "/empty" => route("emptyReply", OpenAPI.obj("204" => OpenAPI.obj("description" => "empty"))),
+            "/nullable" => route("nullableReply", OpenAPI.obj(
+                "202" => response(OpenAPI.obj("type" => ["string", "null"])),
+            )),
+            "/text" => route("textReply", OpenAPI.obj(
+                "203" => response(OpenAPI.obj("type" => "string", "minLength" => 2); media = "text/plain"),
+            )),
+            "/binary" => route("binaryReply", OpenAPI.obj(
+                "206" => response(OpenAPI.obj("type" => "string", "format" => "binary"); media = "application/octet-stream"),
+            )),
+            "/sequence" => route("sequenceReply", OpenAPI.obj(
+                "202" => response(OpenAPI.obj("type" => "array", "items" => OpenAPI.obj("type" => "integer")); media = "application/x-ndjson"),
+            )),
+            "/named-reply" => route("namedReply", OpenAPI.obj("200" => response(ref("Reply")))),
+        ),
+        "components" => OpenAPI.obj("schemas" => OpenAPI.obj(
+            "Widget" => record("value", "integer"),
+            "Accepted" => record("ticket", "string"),
+            "MissingItem" => record("missing", "string"),
+            "RangeError" => record("problem", "string"),
+            "Fallback" => record("fallback", "string"),
+            "Reply" => record("value", "integer"),
+        )),
+    )
+    source = OpenAPI.server(document; name = "ExplicitReplyServer")
+    @test source == OpenAPI.server(document; name = "ExplicitReplyServer")
+    @test occursin("#     choose(request)\n", source)
+    @test !occursin("#     choose(request) ->", source)
+    @test occursin("# OpenAPI.Reply(status, body)", source)
+    host = Module(:ExplicitReplyHost)
+    Base.include_string(host, source, "ExplicitReplyServer.jl")
+    S = Base.invokelatest(getfield, host, :ExplicitReplyServer)
+    sget(name) = Base.invokelatest(getfield, S, name)
+    @test sget(:Reply) !== OpenAPI.Reply
+    @test isconcretetype(sget(:Reply))
+    @test all(entry -> !occursin(" -> ", entry.signature), sget(:_SERVER_OPS))
+    model(name, value) = Base.invokelatest(sget(name), value)
+    current = Ref{Any}(nothing)
+    handler = req -> current[]
+    impl = (; choose = handler, documented = handler, onlyerrors = handler,
+        emptyreply = handler, nullablereply = handler, textreply = handler,
+        binaryreply = handler, sequencereply = handler, namedreply = handler)
+    router = HTTP.Router()
+    Base.invokelatest(sget(:register!), router, impl)
+    server = HTTP.serve!(router, "127.0.0.1", 0; verbose = false)
+    try
+        base = "http://127.0.0.1:$(HTTP.port(server))"
+        function request(path, value)
+            current[] = value
+            return HTTP.get(base * path; status_exception = false)
+        end
+        parsed(response) = JSON.parse(String(copy(response.body)))
+        widget = model(:Widget, 7)
+        accepted = model(:Accepted, "queued")
+        for (status, body, expected) in (
+            (200, widget, Dict("value" => 7)),
+            (201, widget, Dict("value" => 7)),
+            (202, accepted, Dict("ticket" => "queued")),
+            (404, model(:MissingItem, "gone"), Dict("missing" => "gone")),
+            (409, model(:RangeError, "conflict"), Dict("problem" => "conflict")),
+            (599, model(:Fallback, "other"), Dict("fallback" => "other")),
+        )
+            result = request("/choose", OpenAPI.Reply(status, body))
+            @test result.status == status
+            @test parsed(result) == expected
+            @test HTTP.header(result, "Content-Type") == "application/json"
+        end
+
+        plain = request("/choose", widget)
+        @test plain.status == 200
+        @test parsed(plain) == Dict("value" => 7)
+        @test request("/choose", accepted).status == 500
+        invalid = request("/choose", OpenAPI.Reply(202, widget))
+        @test invalid.status == 500
+        @test occursin("schema validation failed", String(invalid.body))
+        @test request("/choose", OpenAPI.Reply(404, model(:RangeError, "wrong exact schema"))).status == 500
+        @test request("/choose", OpenAPI.Reply(409, model(:Fallback, "wrong range schema"))).status == 500
+
+        missing = request("/documented", OpenAPI.Reply(418, widget))
+        @test missing.status == 500
+        @test occursin("operation documented does not document response status 418", String(missing.body))
+        @test request("/only-errors", nothing).status == 200
+        @test request("/only-errors", OpenAPI.Reply(404, model(:MissingItem, "gone"))).status == 404
+
+        empty = request("/empty", OpenAPI.Reply(204, nothing))
+        @test empty.status == 204
+        @test isempty(empty.body)
+        @test request("/empty", OpenAPI.Reply(204, "unexpected")).status == 500
+        nullable = request("/nullable", OpenAPI.Reply(202, nothing))
+        @test nullable.status == 202
+        @test String(nullable.body) == "null"
+        @test request("/nullable", OpenAPI.Reply(202, 1)).status == 500
+        text = request("/text", OpenAPI.Reply(203, "ok"))
+        @test text.status == 203
+        @test String(text.body) == "ok"
+        @test HTTP.header(text, "Content-Type") == "text/plain"
+        @test request("/text", OpenAPI.Reply(203, "x")).status == 500
+        @test request("/text", OpenAPI.Reply(203, nothing)).status == 500
+        binary = request("/binary", OpenAPI.Reply(206, UInt8[0x00, 0xff]))
+        @test binary.status == 206
+        @test binary.body == UInt8[0x00, 0xff]
+        sequence = request("/sequence", OpenAPI.Reply(202, [1, 2]))
+        @test sequence.status == 202
+        @test String(sequence.body) == "1\n2\n"
+        @test request("/sequence", OpenAPI.Reply(202, ["bad"])).status == 500
+        named = request("/named-reply", OpenAPI.Reply(200, model(:Reply, 9)))
+        @test named.status == 200
+        @test parsed(named) == Dict("value" => 9)
+
+        raw = request("/choose", HTTP.Response(418, ["X-Raw" => "yes"], "unvalidated"))
+        @test raw.status == 418
+        @test HTTP.header(raw, "X-Raw") == "yes"
+        @test String(raw.body) == "unvalidated"
+
+        client_source = OpenAPI.client(document; name = "ExplicitReplyClient")
+        client_host = Module(:ExplicitReplyClientHost)
+        Base.include_string(client_host, client_source, "ExplicitReplyClient.jl")
+        C = Base.invokelatest(getfield, client_host, :ExplicitReplyClient)
+        cget(name) = Base.invokelatest(getfield, C, name)
+        client = Base.invokelatest(cget(:Client), base)
+        @test cget(:Reply) !== OpenAPI.Reply
+        for (status, body, name, field, expected) in (
+            (200, widget, :Widget, :value, 7),
+            (201, widget, :Widget, :value, 7),
+            (202, accepted, :Accepted, :ticket, "queued"),
+        )
+            current[] = OpenAPI.Reply(status, body)
+            result = Base.invokelatest(cget(:choose); client, with_http_info = true)
+            @test result.status == status
+            @test result.body isa cget(name)
+            @test getfield(result.body, field) == expected
+        end
+        current[] = OpenAPI.Reply(404, model(:MissingItem, "gone"))
+        failure = try
+            Base.invokelatest(cget(:choose); client)
+            nothing
+        catch error
+            error
+        end
+        @test failure isa cget(:ApiError)
+        @test failure.status == 404
+        @test failure.decode_error === nothing
+        @test failure.decoded isa cget(:MissingItem)
+        @test failure.decoded.missing == "gone"
+    finally
+        close(server)
+    end
+end

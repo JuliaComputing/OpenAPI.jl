@@ -1,5 +1,5 @@
 """
-Runtime support for generated OpenAPI clients.
+Runtime support for generated OpenAPI clients and servers.
 
 Generated client modules import this module's machinery instead of carrying a
 pasted copy: protocol encoding and decoding, parameter styling, content
@@ -21,7 +21,7 @@ semantics. Bump this whenever any of those change so previously generated
 modules fail loudly at load time instead of misbehaving; see
 [`require_contract`](@ref).
 """
-const CONTRACT_VERSION = 3
+const CONTRACT_VERSION = 4
 
 """
     Runtime.require_contract(version::Integer, generator::AbstractString)
@@ -1108,6 +1108,31 @@ struct ApiResponse{T}
     decoded_headers::Dict{String,Any}
     body::T
 end
+
+"""
+    OpenAPI.Reply(status::Integer, body)
+
+Return a body from a generated server handler with an explicit final HTTP
+status from 200 through 599. The server selects the documented response by
+exact status, then status range, then `default`, and validates and encodes
+`body` using that response. An undocumented status is an error.
+
+Plain handler results retain the first documented success response. For custom
+headers or unvalidated output, return the server framework's response object.
+Use `OpenAPI.Reply(204, nothing)` for a documented response with no content.
+"""
+struct Reply{T}
+    status::Int
+    body::T
+
+    function Reply{T}(status::Integer, body) where {T}
+        200 <= status <= 599 ||
+            throw(ArgumentError("Reply status must be a final HTTP status from 200 through 599"))
+        return new{T}(Int(status), body)
+    end
+end
+
+Reply(status::Integer, body::T) where {T} = Reply{T}(status, body)
 
 struct UnexpectedBody <: Exception
     operation_id::String

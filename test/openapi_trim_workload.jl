@@ -33,6 +33,18 @@ function exercise_openapi_public_entrypoints()::Nothing
     return nothing
 end
 
+function exercise_explicit_reply(status::Int, payload::String, invalid_status::Int)::Nothing
+    reply = OpenAPI.Reply(status, payload)
+    checked(reply.status == status && reply.body == payload, "explicit reply lost status or body")
+    try
+        OpenAPI.Reply{String}(invalid_status, payload)
+        error("invalid final reply status was accepted")
+    catch error
+        error isa ArgumentError || rethrow()
+    end
+    return nothing
+end
+
 function exercise_generated_client()::Nothing
     client = TrimClient.Client("https://override.example.test")
     checked(client.server == "https://override.example.test", "Client server was not set")
@@ -58,15 +70,16 @@ function exercise_generated_client()::Nothing
     return nothing
 end
 
-function run_openapi_trim_workload()::Nothing
+function run_openapi_trim_workload(args::Vector{String})::Nothing
+    length(args) == 3 || error("expected status, payload, and invalid status")
     exercise_openapi_public_entrypoints()
+    exercise_explicit_reply(parse(Int, args[1]), args[2], parse(Int, args[3]))
     exercise_generated_client()
     return nothing
 end
 
 function @main(args::Vector{String})::Cint
-    _ = args
-    run_openapi_trim_workload()
+    run_openapi_trim_workload(args)
     return 0
 end
 

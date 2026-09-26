@@ -32,6 +32,7 @@ getschema(reg, T) = OpenAPI.schemaof(reg, T)
         for name in (
             :Operation,
             :Param,
+            :Reply,
             :check,
             :client,
             :document,
