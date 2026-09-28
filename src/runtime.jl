@@ -17,17 +17,21 @@ using JSON, Base64, Dates, UUIDs
 Version of the contract between this runtime and generated modules: the names
 generated code imports, the shapes of the data it bakes ([`Spec`](@ref)
 keywords, operation tables, schema descriptors, dialect literals), and their
-semantics. Bump this whenever any of those change so previously generated
-modules fail loudly at load time instead of misbehaving; see
-[`require_contract`](@ref).
+semantics. Bump this whenever generated code needs a new contract so older
+runtimes reject it at load time; see [`require_contract`](@ref).
 """
 const CONTRACT_VERSION = 4
+
+# Oldest supported contract; raise only when runtime changes break names,
+# data shapes, or semantics older generated modules depend on.
+const MIN_CONTRACT_VERSION = 3
 
 """
     Runtime.require_contract(version::Integer, generator::AbstractString)
 
 Called at load time by every generated module to assert that the loaded
-runtime still provides the contract the module was generated against;
+runtime still provides the contract the module was generated against, from
+`MIN_CONTRACT_VERSION` through [`CONTRACT_VERSION`](@ref), inclusive;
 `generator` records the OpenAPI.jl version that produced the module. Throws
 with regeneration guidance on mismatch. This function and
 [`CONTRACT_VERSION`](@ref) are permanently stable names: renaming either would
@@ -35,7 +39,7 @@ make old generated modules fail with a bare `UndefVarError` instead of this
 error.
 """
 function require_contract(version::Integer, generator::AbstractString)
-    version == CONTRACT_VERSION && return nothing
+    MIN_CONTRACT_VERSION <= version <= CONTRACT_VERSION && return nothing
     runtime = something(pkgversion(@__MODULE__), "unknown")
     return error(
         "this generated module was produced by OpenAPI.jl v",
@@ -44,7 +48,9 @@ function require_contract(version::Integer, generator::AbstractString)
         version,
         ", but the loaded OpenAPI.jl v",
         runtime,
-        " provides contract ",
+        " provides contracts ",
+        MIN_CONTRACT_VERSION,
+        " through ",
         CONTRACT_VERSION,
         "; regenerate the module with `OpenAPI.client` or `OpenAPI.server`.",
     )

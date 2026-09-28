@@ -4,10 +4,11 @@ The same document generates a server-stub module. The document stays the
 source of truth: generate the client and the server from one specification and
 implement one handler function per operation.
 
-!!! note "Regenerate stored modules"
-    This runtime uses generated-code contract 4. Clients and servers generated
-    under contract 3 must be regenerated, even when their handlers do not use
-    `OpenAPI.Reply`. See [the runtime contract](@ref "Generated modules and the runtime contract").
+!!! note "Generated-module compatibility"
+    This runtime supports generated-code contracts 3 through 4. Existing
+    contract-3 servers keep their generated behavior; regenerate them to use
+    `OpenAPI.Reply`. Contract-4 modules require OpenAPI.jl 1.2 or later.
+    See [the runtime contract](@ref "Generated modules and the runtime contract").
 
 ```julia
 using OpenAPI, HTTP
