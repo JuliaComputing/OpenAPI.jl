@@ -42,6 +42,7 @@ include("normalize.jl")
 include("planning.jl")
 include("read.jl")
 include("runtime.jl")
+using .Runtime: Reply
 include("client.jl")
 include("servergen.jl")
 include("precompile.jl")
@@ -79,6 +80,7 @@ function fetchresource end
             :Operation,
             :Param,
             :Resources,
+            :Reply,
             :SchemaEngine,
             :SchemaRegistry,
             :ServerPlan,

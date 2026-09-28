@@ -52,6 +52,12 @@ OpenAPI.server_source
 OpenAPI.server_module_source
 ```
 
+## Server replies
+
+```@docs
+OpenAPI.Reply
+```
+
 ## Document authoring
 
 ```@docs

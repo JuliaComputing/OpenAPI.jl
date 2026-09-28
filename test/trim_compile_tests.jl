@@ -130,18 +130,20 @@ function _run_openapi_trim_case(trim_project::String)::Nothing
             Sys.iswindows() ? output_name * ".exe" : output_name,
         )
         @test isfile(executable)
-        run_exit, run_output, run_timed_out = _run_openapi_command(
-            `$(abspath(executable))`;
-            timeout_s = _OPENAPI_TRIM_RUN_TIMEOUT_S,
-            label = "run",
-        )
-        if run_timed_out || run_exit != 0
-            println("---- trim executable output ----")
-            println(run_output)
-            println("---- end trim executable output ----")
+        for args in (("202", "queued", "100"), ("599", "other", "600"))
+            run_exit, run_output, run_timed_out = _run_openapi_command(
+                addenv(`$(abspath(executable)) $args`, "JULIA_LOAD_CODEGEN_LIB" => "0");
+                timeout_s = _OPENAPI_TRIM_RUN_TIMEOUT_S,
+                label = "run",
+            )
+            if run_timed_out || run_exit != 0
+                println("---- trim executable output ----")
+                println(run_output)
+                println("---- end trim executable output ----")
+            end
+            @test !run_timed_out
+            @test run_exit == 0
         end
-        @test !run_timed_out
-        @test run_exit == 0
     end
     println(
         "[trim] compile DONE openapi_trim_workload.jl ($(round(time() - started; digits = 2))s)",

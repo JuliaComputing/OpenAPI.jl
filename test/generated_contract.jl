@@ -115,8 +115,10 @@
 
         current = OpenAPI.Runtime.CONTRACT_VERSION
         # Deliberate tripwire: update alongside every CONTRACT_VERSION bump.
-        @test current == 3
-        @test OpenAPI.Runtime.require_contract(current, OpenAPI.PACKAGE_VERSION) === nothing
+        @test current == 4
+        for supported in (3, current)
+            @test OpenAPI.Runtime.require_contract(supported, OpenAPI.PACKAGE_VERSION) === nothing
+        end
         for generated_contract in (1, 2, current + 1)
             mismatch = try
                 OpenAPI.Runtime.require_contract(generated_contract, "0.0.0")
@@ -128,8 +130,18 @@
             message = sprint(showerror, mismatch)
             @test occursin("produced by OpenAPI.jl v0.0.0", message)
             @test occursin("contract $generated_contract", message)
-            @test occursin("provides contract $current", message)
+            @test occursin("provides contracts 3 through $current", message)
             @test occursin("regenerate", message)
+        end
+
+        # Generated clients and servers load with either supported contract.
+        for (source, name) in ((client_source, :ContractClient), (server_source, :ContractServer))
+            for supported in (3, current)
+                stored_source = replace(source, guard => "Runtime.require_contract($supported, \"1.1.3\")")
+                host = Module(:StoredContractHost)
+                Base.include_string(host, stored_source, "stored-generated.jl")
+                @test isdefined(host, name)
+            end
         end
     end
 

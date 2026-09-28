@@ -1,5 +1,12 @@
 # Generated modules and the runtime contract
 
+The current runtime supports **contracts 3 through 4** and generates
+**contract 4** modules. Existing contract-3 clients and servers remain compatible
+and keep their generated behavior. Regenerate a server to use `OpenAPI.Reply`.
+Contract-4 modules require OpenAPI.jl 1.2 or later; older runtimes still reject
+contract 4 at load time. Packages that commit contract-4 generated modules
+should set `OpenAPI = "1.2"` in their `Project.toml` compatibility bounds.
+
 A generated module targets an OpenAPI.jl generated-code contract version. It
 also records the exact OpenAPI.jl version that produced it. The module imports
 internal `OpenAPI.Runtime` machinery and bakes runtime data shapes — operation
@@ -16,12 +23,14 @@ Every generated module therefore records and checks its provenance:
   `N` is the generated-code contract version
   ([`OpenAPI.Runtime.CONTRACT_VERSION`](@ref)) current at generation time.
 
-A release that changes any part of the generated-code contract bumps
-`CONTRACT_VERSION`, so a previously generated module fails at load time with
-an error naming the release that generated it and asking for regeneration —
-instead of failing mysteriously, or worse silently, inside the runtime.
-Releases with the same contract version remain load-compatible, so compatible
-runtime fixes do not require regeneration.
+A release that introduces a new generated-code contract bumps
+`CONTRACT_VERSION`. The runtime accepts every contract from
+`OpenAPI.Runtime.MIN_CONTRACT_VERSION` through `CONTRACT_VERSION`,
+inclusive. Additive changes can preserve support for older generated modules;
+breaking changes raise `MIN_CONTRACT_VERSION`. An unsupported module fails at
+load time with an error naming the release that generated it and asking for
+regeneration, instead of failing inside the runtime. Compatible runtime fixes
+do not require regeneration.
 
 ## When to regenerate
 

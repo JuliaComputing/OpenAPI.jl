@@ -15,7 +15,7 @@ import OpenAPI.Runtime:
     _encode, _encode_sequential_json, _form_fields, _header_atom, _header_scalar,
     _header_type_variant, _header_values, _is_json_media, _is_sequential_json_media,
     _media_type, _object, _parse_json, _required, _safe_header, _schema_valid,
-    _select_media, _validate_schema
+    _select_media, _select_response, _validate_schema
 """
 
 # Emitted after the schema data constants; packages the document-specific
@@ -690,25 +690,36 @@ function _success_response(responses)
 end
 
 function _server_response(operation, result)
-    descriptor = _success_response(operation.responses)
-    if descriptor === nothing
-        # The OAS Responses Object is non-exhaustive documentation, and some
-        # documents cover only error codes (flagged at planning time as
-        # :missing_success_response). Answer `nothing` with an empty 200; a
-        # typed value has no documented media to encode against.
-        result === nothing && return (200, Pair{String,String}[], UInt8[])
-        throw(ArgumentError(string(
-            "operation ",
-            operation.id,
-            " documents no success response; return `nothing` for an empty 200 or a framework response",
+    if result isa OpenAPI.Reply
+        status = result.status
+        descriptor = _select_response(operation.responses, status)
+        descriptor === nothing && throw(ArgumentError(string(
+            "operation ", operation.id, " does not document response status ", status,
+            "; return a framework response for unvalidated output",
         )))
+        result = result.body
+    else
+        descriptor = _success_response(operation.responses)
+        if descriptor === nothing
+            # The OAS Responses Object is non-exhaustive documentation, and some
+            # documents cover only error codes (flagged at planning time as
+            # :missing_success_response). Answer `nothing` with an empty 200; a
+            # typed value has no documented media to encode against.
+            result === nothing && return (200, Pair{String,String}[], UInt8[])
+            throw(ArgumentError(string(
+                "operation ",
+                operation.id,
+                " documents no success response; return `nothing` for an empty 200 or a framework response",
+            )))
+        end
+        status = _selector_status(descriptor.selector)
     end
-    status = _selector_status(descriptor.selector)
     if isempty(descriptor.media)
         result === nothing || throw(ArgumentError(string(
             "operation ",
             operation.id,
-            " documents no success response content; return `nothing` or a framework response",
+            " documents no response content for status ", status,
+            "; return `nothing` or a framework response",
         )))
         return (status, Pair{String,String}[], UInt8[])
     end
@@ -719,7 +730,7 @@ function _server_response(operation, result)
         throw(ArgumentError(string(
             "operation ",
             operation.id,
-            " cannot encode `nothing` using its documented non-JSON success media types",
+            " cannot encode `nothing` using its documented non-JSON media types for status ", status,
         )))
     end
     index = something(
@@ -835,7 +846,7 @@ function _server_stub_signature(operation::OperationPlan)
     end
     text = operation.name * "(" * join(positional, ", ")
     isempty(keywords) || (text *= "; " * join(keywords, ", "))
-    return text * ") -> " * operation.return_type
+    return text * ")"
 end
 
 function _emit_server_operations(io::IO, plan::ServerPlan)
@@ -906,6 +917,9 @@ function server_module_source(
     for operation in plan.operations
         println(io, "#     ", _server_stub_signature(operation))
     end
+    println(io, "# Plain results use the first documented success response. Return")
+    println(io, "# OpenAPI.Reply(status, body) to select and validate a different response,")
+    println(io, "# or a framework response for custom, unvalidated output.")
     println(io, "module ", plan.module_name, "\n")
     println(io, imports)
     plan.datetime === :zoned && println(io, "using TimeZones")
