@@ -587,9 +587,11 @@ function _portable_schema_ids(context::NormalizationContext, schemas)
         registry,
         context.resolver.root.resource.retrieval,
     )
-    labels = Dict{Resources.ResourceId,String}(
-        primary.id => "root-" * first(_content_digest(primary.contents), 20),
-    )
+    # The primary label is constant. Labels of referenced resources derive from
+    # their parent label and reference location, so an unrelated root edit must
+    # not rotate every generated schema ID. IDs are scoped to one generated
+    # module, and the "external-" and "resource-" prefixes cannot collide with it.
+    labels = Dict{Resources.ResourceId,String}(primary.id => "root")
 
     references = collect(getfield(template, :references))
     while true
