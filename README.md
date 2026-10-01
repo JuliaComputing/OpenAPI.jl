@@ -88,6 +88,9 @@ server = HTTP.serve!(router, "127.0.0.1", 8080)
 Requests are decoded and validated before handlers run; return values are
 validated and encoded from the documented responses. Generated stubs do not
 authenticate requests — apply a `middleware` for that.
+To pick up handler edits made with Revise.jl in a running server, wrap the
+handlers with `Base.invokelatest` through `middleware`; see
+[Developing handlers with Revise](https://juliacomputing.github.io/OpenAPI.jl/stable/servers/#Developing-handlers-with-Revise).
 
 ## Create a document from Julia declarations
 

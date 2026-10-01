@@ -112,6 +112,32 @@ handler contract — implementation module second, typed positional parameters,
 typed-value-or-`HTTP.Response` returns — matches the shape OpenAPI.jl 0.2.x
 users generated with `-g julia-server`.
 
+## Developing handlers with Revise
+
+[Revise.jl](https://github.com/timholy/Revise.jl) updates handler methods, but
+a running server keeps calling the definitions that existed when it started.
+HTTP.jl 2.x does not call handlers through `Base.invokelatest`, so a server
+task does not see methods defined after it began. Restart the server, or wrap
+each handler with `Base.invokelatest` through `middleware` while developing:
+
+```julia
+using Revise, HTTP
+includet("Handlers.jl")   # defines module Handlers
+include("ExampleServer.jl")
+
+router = HTTP.Router()
+ExampleServer.register!(router, Handlers;
+    middleware = handler -> (request -> Base.invokelatest(handler, request)))
+server = HTTP.serve!(router, "127.0.0.1", 8080)
+```
+
+Once Revise applies an edit to `Handlers.jl` (before your next REPL command,
+or when you call `Revise.revise()`), the next request uses the new definition
+without a restart.
+Generated servers do not do this by default because `Base.invokelatest`
+cannot be compiled with Julia's `--trim` option, and generated servers stay
+trim-compatible. Leave this middleware out of trimmed builds.
+
 ## Choosing a response status
 
 A plain return value uses the first documented success response. When an
