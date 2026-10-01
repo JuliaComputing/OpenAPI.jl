@@ -115,6 +115,9 @@ julia +1.12 --project=. -e 'using Pkg; Pkg.test()'
 julia +1.10 --project=. -e 'using Pkg; Pkg.test()'
 ```
 
+Set `JULIA_NUM_THREADS=4` (as CI does) so the runtime schema-cache stress test
+in `test/runtime.jl` runs threaded; `Pkg.test` forwards the thread count.
+
 The focused files separate concerns:
 
 - `test/normalization.jl`: loading, versions, immutability, generated source.
