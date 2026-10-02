@@ -13,6 +13,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     env:
       OPENAPI_SCHEMA_SUITE: ${{ matrix.version == '1' && 'all' || '' }}
+      # Pkg.test forwards the thread count, so the runtime cache stress test races.
+      JULIA_NUM_THREADS: 4
     strategy:
       fail-fast: false
       matrix:

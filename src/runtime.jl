@@ -57,6 +57,18 @@ function require_contract(version::Integer, generator::AbstractString)
 end
 
 """
+Compiled schema graphs and subschema views, published as immutable snapshots.
+Readers load a snapshot without locking; a writer holds `Spec.graph_lock`,
+copies the current snapshot, inserts, and publishes the copy. A published
+`Dict` is never mutated.
+"""
+mutable struct SchemaCache
+    @atomic graphs::Dict{Symbol,Any}
+    @atomic subschemas::Dict{Tuple{Symbol,String,String},Any}
+    SchemaCache() = new(Dict{Symbol,Any}(), Dict{Tuple{Symbol,String,String},Any}())
+end
+
+"""
 Document-specific data a generated module supplies to the shared runtime:
 schema resources for validation, security schemes, and server defaults.
 Mutable runtime state (the module-wide server override and the compiled
@@ -71,8 +83,7 @@ struct Spec
     directional_required::Vector{Any}
     default_server::String
     server::Base.RefValue{String}
-    graphs::Dict{Symbol,Any}
-    subschemas::Dict{Tuple{Symbol,String,String},Any}
+    cache::SchemaCache
     graph_lock::ReentrantLock
     # Generated data is required and name-mapped so an omitted keyword or a
     # declaration reorder cannot silently substitute an empty or adjacent
@@ -94,8 +105,7 @@ struct Spec
             directional_required,
             default_server = normalized_server,
             server = Ref(normalized_server),
-            graphs = Dict{Symbol,Any}(),
-            subschemas = Dict{Tuple{Symbol,String,String},Any}(),
+            cache = SchemaCache(),
             graph_lock = ReentrantLock(),
         )
         ordered = map(field -> getproperty(values, field), fieldnames(Spec))
@@ -139,9 +149,12 @@ function _schema_graph(spec::Spec, direction::Symbol = :neutral)
     direction in (:neutral, :input, :output) ||
         throw(ArgumentError("schema direction must be :neutral, :input, or :output"))
     isempty(spec.roots) && return nothing
-    haskey(spec.graphs, direction) && return spec.graphs[direction]
+    cached = get((@atomic spec.cache.graphs), direction, nothing)
+    cached === nothing || return cached
     return lock(spec.graph_lock) do
-        haskey(spec.graphs, direction) && return spec.graphs[direction]
+        # Recheck under the lock so each graph is compiled once.
+        published = get((@atomic spec.cache.graphs), direction, nothing)
+        published === nothing || return published
         documents = Dict{String,Any}(
             entry.id => JSON.parse(entry.json; duplicate_keys = :error) for
             entry in spec.resources
@@ -222,7 +235,9 @@ function _schema_graph(spec::Spec, direction::Symbol = :neutral)
             root_dialects,
             dialect_aliases,
         )
-        spec.graphs[direction] = graph
+        graphs = copy(@atomic spec.cache.graphs)
+        graphs[direction] = graph
+        @atomic spec.cache.graphs = graphs
         return graph
     end
 end
@@ -230,13 +245,22 @@ end
 function _schema_at(spec::Spec, descriptor, direction::Symbol = :neutral)
     descriptor === nothing && return nothing
     # Every validation of a generated model asks for the same few views, and building one
-    # parses the resource URI and walks its pointer; keep each view once it exists.
+    # parses the resource URI and walks its pointer; keep each view once it exists. Hits
+    # read the published snapshot without locking.
     key = (direction, String(descriptor.resource), String(descriptor.pointer))
-    cached = lock(() -> get(spec.subschemas, key, nothing), spec.graph_lock)
+    cached = get((@atomic spec.cache.subschemas), key, nothing)
     cached === nothing || return cached
     schema = _build_schema_at(spec, descriptor, direction)
-    lock(() -> (spec.subschemas[key] = schema), spec.graph_lock)
-    return schema
+    return lock(spec.graph_lock) do
+        # A racing miss may have published first; return its view so callers share one.
+        current = @atomic spec.cache.subschemas
+        published = get(current, key, nothing)
+        published === nothing || return published
+        subschemas = copy(current)
+        subschemas[key] = schema
+        @atomic spec.cache.subschemas = subschemas
+        return schema
+    end
 end
 
 function _build_schema_at(spec::Spec, descriptor, direction::Symbol)

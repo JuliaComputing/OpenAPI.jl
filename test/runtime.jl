@@ -680,4 +680,159 @@ end
     @test Runtime._schema_at(spec, descriptor) === view
     @test Runtime._schema_valid(spec, descriptor, 1)
     @test !Runtime._schema_valid(spec, descriptor, "one")
+    # Each direction keeps its own graph and view, and a new key leaves earlier entries.
+    graphs = Dict(
+        direction => Runtime._schema_graph(spec, direction) for
+        direction in (:neutral, :input, :output)
+    )
+    @test graphs[:neutral] !== graphs[:input] !== graphs[:output]
+    for direction in (:neutral, :input, :output)
+        directional = Runtime._schema_at(spec, descriptor, direction)
+        @test Runtime._schema_at(spec, descriptor, direction) === directional
+        @test Runtime._schema_graph(spec, direction) === graphs[direction]
+    end
+    @test Runtime._schema_at(spec, descriptor) === view
+    @test length(@atomic spec.cache.subschemas) == 3
+end
+
+@testset "runtime schema cache under concurrent decoding" begin
+    Runtime = OpenAPI.Runtime
+    Threads.nthreads() == 1 && @info(
+        "schema cache stress test runs on one thread; set JULIA_NUM_THREADS to exercise races",
+    )
+    tasks_count = 4 * Threads.nthreads()
+    directions = (:neutral, :input, :output)
+    names = ["d$index" for index in 1:8]
+
+    # Every round starts cold, so racing tasks contend for the first graph build and the
+    # first insertion of each view. Graphs carry mutable state, so `===` proves each one
+    # was compiled once; views are values bound to their graph.
+    resource = "https://example.test/concurrent-schema"
+    for round in 1:20
+        spec = Runtime.Spec(;
+            security_schemes = Dict{String,NamedTuple}(),
+            resources = Any[(
+                id = resource,
+                retrieval = resource,
+                media_type = "application/schema+json",
+                json = JSON.json(
+                    OpenAPI.obj(
+                        "\$defs" => OpenAPI.obj(
+                            (name => OpenAPI.obj("type" => "integer", "minimum" => index) for
+                            (index, name) in enumerate(names))...,
+                        ),
+                    ),
+                ),
+            )],
+            roots = Any[(
+                resource = resource,
+                pointer = "",
+                dialect = SchemaEngine.DRAFT202012,
+            )],
+            dialects = Any[],
+            directional_required = Any[],
+            default_server = "",
+        )
+        descriptors = [(resource = resource, pointer = "/\$defs/" * name) for name in names]
+        ready = Threads.Atomic{Int}(0)
+        tasks = map(1:tasks_count) do task_index
+            Threads.@spawn begin
+                Threads.atomic_add!(ready, 1)
+                while ready[] < tasks_count
+                    yield()
+                end
+                order = circshift(collect(eachindex(descriptors)), task_index)
+                seen = Dict{Any,Any}()
+                valid = true
+                for direction in directions, index in order
+                    descriptor = descriptors[index]
+                    seen[(direction, index)] = Runtime._schema_at(spec, descriptor, direction)
+                    valid &= Runtime._schema_valid(spec, descriptor, index; direction)
+                    valid &= !Runtime._schema_valid(spec, descriptor, index - 1; direction)
+                end
+                for direction in directions
+                    seen[direction] = Runtime._schema_graph(spec, direction)
+                end
+                (seen, valid)
+            end
+        end
+        results = fetch.(tasks)
+        @test all(last, results)
+        reference = first(first(results))
+        @test all(keys(seen) == keys(reference) && all(key -> seen[key] === reference[key], keys(seen))
+                  for (seen, _) in results)
+        @test length(@atomic spec.cache.subschemas) == length(directions) * length(names)
+        @test length(@atomic spec.cache.graphs) == length(directions)
+    end
+
+    # Generated model decoding validates through the module's shared spec.
+    document = OpenAPI.obj(
+        "openapi" => "3.2.0",
+        "info" => OpenAPI.obj("title" => "Concurrent", "version" => "1"),
+        "paths" => OpenAPI.obj(
+            "/order" => OpenAPI.obj(
+                "get" => OpenAPI.obj(
+                    "operationId" => "getOrder",
+                    "responses" => OpenAPI.obj(
+                        "200" => OpenAPI.obj(
+                            "description" => "order",
+                            "content" => OpenAPI.obj(
+                                "application/json" => OpenAPI.obj(
+                                    "schema" => OpenAPI.obj(
+                                        "\$ref" => "#/components/schemas/Order",
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        ),
+        "components" => OpenAPI.obj(
+            "schemas" => OpenAPI.obj(
+                "Widget" => OpenAPI.obj(
+                    "type" => "object",
+                    "required" => ["id"],
+                    "properties" => OpenAPI.obj(
+                        "id" => OpenAPI.obj("type" => "integer", "minimum" => 1),
+                    ),
+                ),
+                "Order" => OpenAPI.obj(
+                    "type" => "object",
+                    "required" => ["widget", "count"],
+                    "properties" => OpenAPI.obj(
+                        "widget" => OpenAPI.obj("\$ref" => "#/components/schemas/Widget"),
+                        "count" => OpenAPI.obj("type" => "integer", "maximum" => 10),
+                    ),
+                ),
+            ),
+        ),
+    )
+    host = Module(:ConcurrentDecodeClientHost)
+    Base.include_string(
+        host,
+        OpenAPI.client(document; name = "ConcurrentDecodeClient"),
+        "ConcurrentDecodeClient.jl",
+    )
+    C = Base.invokelatest(getfield, host, :ConcurrentDecodeClient)
+    decode(T, value) = Base.invokelatest(getfield(C, :_decode), T, value)
+    Order = Base.invokelatest(getfield, C, :OrderModel)
+    decoded = fetch.(map(1:tasks_count) do task_index
+        Threads.@spawn begin
+            ok = true
+            for count in 1:200
+                value = Dict("widget" => Dict("id" => task_index), "count" => count % 10)
+                ok &= decode(Order, value).widget.id == task_index
+                rejected = try
+                    decode(Order, Dict("widget" => Dict("id" => 0), "count" => count))
+                    false
+                catch error
+                    error isa Runtime.SchemaValidationError
+                end
+                ok &= rejected
+            end
+            ok
+        end
+    end)
+    @test all(decoded)
 end
