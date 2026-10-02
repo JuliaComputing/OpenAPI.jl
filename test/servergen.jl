@@ -1318,3 +1318,38 @@ end
         close(server)
     end
 end
+
+@testset "invokelatest middleware picks up redefined handlers" begin
+    document = """
+    openapi: 3.1.0
+    info: {title: Revisable, version: 1.0.0}
+    paths:
+      /greet:
+        get:
+          operationId: greet
+          responses:
+            "200":
+              description: greeting
+              content:
+                text/plain:
+                  schema: {type: string}
+    """
+    host = Module(:RevisableServerHost)
+    Base.include_string(host, OpenAPI.server(document; name = "RevisableServer"), "RevisableServer.jl")
+    S = Base.invokelatest(getfield, host, :RevisableServer)
+    impl = Module(:RevisableImpl)
+    Core.eval(impl, :(greet(request) = "v1"))
+    router = HTTP.Router()
+    Base.invokelatest(Base.invokelatest(getfield, S, :register!), router, impl;
+        middleware = handler -> (request -> Base.invokelatest(handler, request)))
+    server = HTTP.serve!(router, "127.0.0.1", 0; verbose = false)
+    try
+        url = "http://127.0.0.1:$(HTTP.port(server))/greet"
+        @test String(HTTP.get(url).body) == "v1"
+        # Revise redefines methods in place; the running server must use the new one.
+        Core.eval(impl, :(greet(request) = "v2"))
+        @test String(HTTP.get(url).body) == "v2"
+    finally
+        close(server)
+    end
+end
