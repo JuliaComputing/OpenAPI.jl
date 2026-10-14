@@ -434,17 +434,31 @@
                        string(char) : "%" * uppercase(string(byte; base = 16, pad = 2))
             @test invoke(:_escape, String([byte])) == expected
         end
-        # allowReserved on a path parameter keeps slash-delimited values intact
+        # Reserved expansion must still escape forbidden path characters
         @test invoke(:_path_parameter, "path", "opa/examples/public servers", :simple, false) ==
               "opa%2Fexamples%2Fpublic%20servers"
         @test invoke(:_path_parameter, "path", "opa/examples/public servers", :simple, false;
-                     allow_reserved = true) == "opa/examples/public%20servers"
+                     allow_reserved = true) == "opa%2Fexamples%2Fpublic%20servers"
         @test invoke(:_path_parameter, "path", ["a/b", "c d"], :simple, false;
-                     allow_reserved = true) == "a/b,c%20d"
+                     allow_reserved = true) == "a%2Fb,c%20d"
         @test invoke(:_path_parameter, "path", "a/b", :label, false; allow_reserved = true) ==
-              ".a/b"
+              ".a%2Fb"
         @test invoke(:_path_parameter, "path", "a/b", :matrix, false; allow_reserved = true) ==
-              ";path=a/b"
+              ";path=a%2Fb"
+        @test invoke(:_path_parameter, "path", Dict("a/b" => "c?d#e[f]"), :simple, true;
+                     allow_reserved = true) == "a%2Fb=c%3Fd%23e%5Bf%5D"
+        @test invoke(:_path_parameter, "path", ":@!\$&'()*+,;=", :simple, false;
+                     allow_reserved = true) == ":@!\$&'()*+,;="
+        content_path = (
+            location = :path, style = :none, explode = false,
+            name = "path", allow_reserved = true,
+            content = ((media_type = "text/plain",),),
+        )
+        @test invoke(
+            :_append_parameter!, C.DEFAULT_CLIENT, "/documents/{path}",
+            Tuple{String,String,Bool,Bool}[], Pair{String,String}[],
+            Tuple{String,String,Bool,Bool}[], content_path, "a/b?c#d",
+        ) == "/documents/a%2Fb%3Fc%23d"
         # escape_path_chars percent-encodes extra characters after standard
         # escaping (Rails routes treat a literal `.` as a format suffix)
         @test invoke(:_path_parameter, "id", "acme.example.com-42", :simple, false) ==
@@ -464,9 +478,9 @@
               ";v.1=a%2Eb"
         @test invoke(:_path_parameter, "id", Dict("k.1" => "v.2"), :matrix, true;
                      escape_chars = ".") == ";k%2E1=v%2E2"
-        # composes with allowReserved: reserved characters pass, listed ones are encoded
+        # Extra escaping composes with required path escaping
         @test invoke(:_path_parameter, "path", "a/b.c", :simple, false;
-                     allow_reserved = true, escape_chars = ".") == "a/b%2Ec"
+                     allow_reserved = true, escape_chars = ".") == "a%2Fb%2Ec"
         # a listed unreserved character that is already reserved-escaped is unaffected
         @test invoke(:_path_parameter, "id", "a b", :simple, false; escape_chars = " ") ==
               "a%20b"

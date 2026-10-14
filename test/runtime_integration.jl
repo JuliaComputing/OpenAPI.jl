@@ -856,9 +856,7 @@ end
         client = C.Client()
 
         @testset "allowReserved on a path parameter" begin
-            # A slash-delimited document path (OPA style) must reach the server
-            # as path segments, not as one %2F-joined segment; other unsafe
-            # characters are still percent-encoded.
+            # A path value stays in one segment even with reserved expansion.
             result = call(
                 :getdocument,
                 "opa/examples/public servers";
@@ -866,7 +864,7 @@ end
                 with_http_info = true,
             )
             request = take_request()
-            @test request.target == "/documents/opa/examples/public%20servers"
+            @test request.target == "/documents/opa%2Fexamples%2Fpublic%20servers"
             @test result.status == 200
             @test result.body["ok"] === true
         end
@@ -891,9 +889,9 @@ end
             @test result.status == 200
             @test result.body["ok"] === true
 
-            # composes with allowReserved: `/` still passes, `.` is encoded
+            # Extra escaping composes with required path escaping
             call(:getdocument, "opa/v1.2/data"; client = dotted_client)
-            @test take_request().target == "/documents/opa/v1%2E2/data"
+            @test take_request().target == "/documents/opa%2Fv1%2E2%2Fdata"
         end
 
         @testset "parameters, servers, and request overrides" begin
