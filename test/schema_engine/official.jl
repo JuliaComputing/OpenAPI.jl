@@ -34,8 +34,13 @@ function _official_schema_suite_dir()
     )
 end
 
-function _test_compiled_draft(directory, retriever, schema_dialect, base_uri)
-    files = sort(filter(name -> endswith(name, ".json"), readdir(directory)))
+function _test_compiled_draft(
+    directory,
+    retriever,
+    schema_dialect,
+    base_uri;
+    files = sort(filter(name -> endswith(name, ".json"), readdir(directory))),
+)
     @testset "$(file)" for file in files
         groups = JSON.parsefile(joinpath(directory, file))
         @testset "$(group["description"])" for group in groups
@@ -77,6 +82,14 @@ end
                 retriever,
                 schema_dialect,
                 "http://localhost:1234/$name/root",
+            )
+            # JSON Schema requires ECMA-262 `pattern` semantics; PCRE differs by default.
+            _test_compiled_draft(
+                joinpath(suite, name, "optional"),
+                retriever,
+                schema_dialect,
+                "http://localhost:1234/$name/root";
+                files = ["ecmascript-regex.json"],
             )
         end
     end
