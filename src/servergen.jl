@@ -925,6 +925,7 @@ function server_module_source(
     plan.datetime === :zoned && println(io, "using TimeZones")
     _emit_contract_guard(io)
     print(io, GENERATED_SERVER_IMPORTS, '\n')
+    _emit_datetime_codecs(io, plan.datetime)
     _emit_security(io, plan)
     _emit_schema_data(io, plan)
     print(io, GENERATED_SERVER_SPEC, '\n')
@@ -937,7 +938,11 @@ function server_module_source(
     end
     isempty(abstract_targets) || println(io)
     for (index, model) in enumerate(plan.models)
-        _emit_model(io, model, index, indices, abstract_targets, wrapped_aliases)
+        _emit_model(
+            io, model, index, indices, abstract_targets, wrapped_aliases;
+            encode = _datetime_encoder(plan.datetime),
+            decode = _datetime_decoder(plan.datetime),
+        )
     end
     _emit_server_operations(io, plan)
     print(io, glue, '\n')

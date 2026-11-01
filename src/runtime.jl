@@ -593,7 +593,7 @@ function _decode(::Type{Dates.DateTime}, value::AbstractString)
     # timestamps). Accept input liberally: a missing offset means UTC, the
     # same convention _encode uses when it stamps naive DateTimes with `Z`.
     matched = match(
-        r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:\d{2})?$",
+        r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:\d{2})?\z",
         value,
     )
     matched === nothing && throw(DecodeError("invalid RFC 3339 date-time $(repr(value))"))

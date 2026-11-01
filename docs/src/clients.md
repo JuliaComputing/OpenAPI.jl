@@ -139,7 +139,16 @@ Generated clients support:
 `format: date-time` maps to `Dates.DateTime` by default, decoding RFC 3339
 offsets by normalizing to UTC. Generate with `datetime = :zoned` to map to
 `TimeZones.ZonedDateTime` instead, preserving offsets end to end; the
-generated module then depends on TimeZones.jl.
+generated module then depends on TimeZones.jl. Under `:zoned`, a `date-time`
+value must carry `Z` or an offset, as RFC 3339 requires.
+
+`format: date-time-local` (the OpenAPI Format Registry's RFC 3339 date-time
+without a time zone) maps to `Dates.DateTime` under `:zoned`: a wall clock that
+decodes and encodes with no offset. A field that is an `anyOf` of both formats
+holds either type, chosen by the schema. Under the default `:utc` mapping,
+`Dates.DateTime` already means a UTC instant, so `date-time-local` stays a
+`String`. Under `:zoned`, planning rejects `date-time-local` in a parameter,
+a header, or a whole request or response body; use it inside an object schema.
 
 ## Source privacy
 

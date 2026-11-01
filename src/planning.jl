@@ -549,6 +549,21 @@ function _validate_datetime_option(datetime::Symbol)
     return datetime
 end
 
+# `date-time-local` (OpenAPI Format Registry) has no offset. Under `:zoned`, where
+# `date-time` is a `ZonedDateTime`, a `Dates.DateTime` can only mean that wall clock.
+# Under `:utc`, `Dates.DateTime` already means a UTC instant, so the field stays a string.
+_local_datetime_type!(::PlanningContext, ::Val) = "String"
+function _local_datetime_type!(context::PlanningContext, ::Val{:zoned})
+    context.uses_dates = true
+    return "Dates.DateTime"
+end
+_datetime_encoder(datetime::Symbol) = _datetime_encoder(Val(datetime))
+_datetime_encoder(::Val) = "_encode"
+_datetime_encoder(::Val{:zoned}) = "_encode_zoned"
+_datetime_decoder(datetime::Symbol) = _datetime_decoder(Val(datetime))
+_datetime_decoder(::Val) = "_decode"
+_datetime_decoder(::Val{:zoned}) = "_decode_zoned"
+
 function _model_name!(context::PlanningContext, view::SchemaView, suggested, mode)
     direction = _direction(context, view, mode)
     resolved = _resolved_view(view)
@@ -681,6 +696,8 @@ function _primitive_type!(
             context.uses_dates = true
             return context.datetime === :zoned ? "TimeZones.ZonedDateTime" :
                    "Dates.DateTime"
+        elseif format == "date-time-local"
+            return _local_datetime_type!(context, Val(context.datetime))
         elseif format == "time"
             context.uses_dates = true
             return "Dates.Time"
@@ -1468,6 +1485,7 @@ function _plan_operation!(context, operation, used_functions)
     parameters = _plan_parameters!(context, operation, name)
     request = _plan_request_body!(context, operation, name)
     responses, return_type = _plan_responses!(context, operation, name)
+    _check_wall_clock_positions!(context, Val(context.datetime), parameters, request, responses)
     return OperationPlan(
         name,
         operation,
@@ -1476,6 +1494,44 @@ function _plan_operation!(context, operation, used_functions)
         Tuple(responses),
         return_type,
     )
+end
+
+# Parameters, headers, and top-level bodies encode through the shared runtime,
+# which writes every `Dates.DateTime` as UTC. Under `:zoned` that type is a
+# `date-time-local` wall clock, so refuse these positions instead of shifting it.
+_check_wall_clock_positions!(context, ::Val, parameters, request, responses) = nothing
+function _check_wall_clock_positions!(context, ::Val{:zoned}, parameters, request, responses)
+    aliases = Dict(model.name => model.alias for model in context.models if model.kind === :alias)
+    positions = Tuple{String,Provenance}[]
+    for parameter in parameters
+        push!(positions, (parameter.type, parameter.parameter.provenance))
+    end
+    request === nothing || push!(positions, (request.type, request.body.provenance))
+    for response in responses, (_, type) in (response.media_types..., response.header_types...)
+        push!(positions, (type, response.response.provenance))
+    end
+    for (type, provenance) in positions
+        _has_wall_clock(type, aliases) || continue
+        _error!(
+            context.bag,
+            :unsupported_date_time_local_position,
+            "date-time-local is supported under datetime = :zoned only inside object " *
+            "schemas, not as a parameter, header, or whole body",
+            SourceLocation(provenance.node.resource, provenance.node.pointer),
+        )
+    end
+    return
+end
+
+function _has_wall_clock(type::AbstractString, aliases, seen = Set{String}())
+    occursin(r"\bDates\.DateTime\b", type) && return true
+    for (name, alias) in aliases
+        name in seen && continue
+        occursin(Regex("\\b" * name * "\\b"), type) || continue
+        push!(seen, name)
+        _has_wall_clock(alias, aliases, seen) && return true
+    end
+    return false
 end
 
 function _has_positional_encoding(encoding::NormalizedEncoding)

@@ -22,6 +22,8 @@ Implemented model behavior includes:
   offsets by normalizing to UTC; generate with `datetime = :zoned` to map to
   `TimeZones.ZonedDateTime` instead, preserving offsets end to end (the
   generated module then depends on TimeZones.jl);
+- `format: date-time-local` maps to `Dates.DateTime`, a wall clock with no
+  offset, under `datetime = :zoned`, and to `String` under the default `:utc`;
 - deterministic names with protection against Julia keywords, Base/Core names,
   and generated runtime names.
 
