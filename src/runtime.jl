@@ -563,6 +563,8 @@ _decode(::Type{Nothing}, ::Nothing) = nothing
 _decode(::Type{Nothing}, value) = throw(DecodeError("expected null, got $(typeof(value))"))
 _decode(::Type{String}, value::AbstractString) = String(value)
 _decode(::Type{Bool}, value::Bool) = value
+_decode(::Type{Bool}, value) = throw(DecodeError("expected a boolean, got $(typeof(value))"))
+_decode(::Type{Bool}, value::Integer) = throw(DecodeError("expected a boolean, got $(typeof(value))"))
 _decode(::Type{T}, value::Integer) where {T<:Integer} = try
     value isa Bool && throw(DecodeError("expected an integer, got Bool"))
     convert(T, value)

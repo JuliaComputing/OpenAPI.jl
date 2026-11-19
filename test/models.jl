@@ -21,6 +21,7 @@
         "ClosedRecord",
         "ConditionalRecord",
         "NumericChoice",
+        "NanChoice",
     )
         id = lowercase(name)
         paths["/" * id] = OpenAPI.obj(
@@ -61,6 +62,13 @@
             ),
             "NumericChoice" => OpenAPI.obj(
                 "type" => ["integer", "number"],
+            ),
+            "NanChoice" => OpenAPI.obj(
+                "oneOf" => Any[
+                    OpenAPI.obj("const" => "NaN"),
+                    OpenAPI.obj("type" => "number"),
+                    OpenAPI.obj("type" => "boolean"),
+                ],
             ),
             "Record" => OpenAPI.obj(
                 "type" => "object",
@@ -156,6 +164,13 @@
     @test call(:_decode, C.NullableValue, "ok") == "ok"
     @test call(:_decode, C.NumericChoice, 3) === Int64(3)
     @test call(:_decode, C.NumericChoice, 3.5) === 3.5
+
+    for (input, expected) in (1.0 => 1.0, 1 => 1.0, true => true, "NaN" => "NaN")
+        for validate in (true, false)
+            decoded = call(:_decode, C.NanChoice, input, validate).value
+            @test decoded === expected
+        end
+    end
 
     record = call(
         :_decode,
