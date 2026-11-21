@@ -1,3 +1,16 @@
+# Path escaping in 1.1.x
+
+Path parameters with `allowReserved: true` now percent-encode `/`, `?`, `#`,
+`[`, and `]`. Versions 1.1.1 through 1.1.3 sent these characters unescaped.
+For example, `opa/examples` now becomes `opa%2Fexamples` in the request path.
+This follows the OpenAPI path rules and lets generated servers recover the
+original value within one route segment.
+
+Applications that used the raw-slash behavior for Open Policy Agent or other
+multi-segment endpoints must verify that the server accepts encoded slashes.
+There is no standard `allowReserved` option for sending raw path separators.
+Other valid reserved characters and existing percent-escapes are preserved.
+
 # Migrating from OpenAPI.jl 0.2.x to 1.0
 
 OpenAPI.jl 1.0 replaces the 0.2.x model — a runtime library consumed by code
@@ -46,7 +59,7 @@ OpenAPI.server("openapi.json"; name = "MyServer", path = "MyServer.jl")
 | `pre_request_hook`, `get_return_type` | `request_headers` / `request_options` keywords; typed responses come from the document |
 | Chunk readers (`LineChunkReader`, …) for streaming | `stream_to::Channel` keyword; framing follows the response media type, customizable with `codec!` |
 | `httplib = Downloads` or `HTTP` backends | HTTP.jl only |
-| `Client(url; escape_path_params = false)` | Declare `allowReserved: true` on the path parameter in the document; the generated client then leaves reserved characters such as `/` unescaped for that parameter. Requires a 3.0 or 3.2 document — 3.1 scopes `allowReserved` to query parameters and rejects it on a path parameter at load time |
+| `Client(url; escape_path_params = false)` | There is no equivalent for unescaped `/`, `?`, or `#` in path values: OpenAPI requires them to be percent-encoded. `allowReserved: true` preserves other valid reserved path characters and existing percent-escapes. The loader accepts this on 3.0 and 3.2 path parameters; 3.1 rejects it |
 | `pre_request_hook` rewriting the path to send `%2E` for `.` | `Client(url; escape_path_chars = ".")` percent-encodes the listed characters in every path parameter value on top of the standard RFC 3986 escaping |
 | Constructor/`setproperty!` validation, `val_format` overloads | Full JSON Schema validation at encode/decode time; disable per client with `validate_requests` / `validate_responses` |
 | `mutable struct` models, `haspropertyat` / `getpropertyat` | Immutable keyword-constructed structs; optional absent fields are `ABSENT` |

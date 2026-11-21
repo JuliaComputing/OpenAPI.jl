@@ -114,12 +114,13 @@ Generated clients support:
   plus the bracket-path `deepObject` extension for arrays and nested values
   (see [deepObject bracket paths](@ref));
 - `allowReserved`, `allowEmptyValue`, explode defaults, and parameter `content`.
-  `allowReserved: true` is honoured on path parameters too, so a
-  slash-delimited value such as an OPA document path is sent as-is instead of
-  with every `/` percent-encoded. OAS 3.2 documents this for path parameters
-  and 3.0 tolerates it, but 3.1 allows `allowReserved` only on query
-  parameters, so a 3.1 document that declares it on a path parameter fails
-  validation when the document is loaded;
+  OAS 3.2 permits `allowReserved: true` on path parameters, but path values
+  must still escape `/`, `?`, and `#`; `[` and `]` are also not valid path
+  characters. Other reserved characters, such as `:` and `@`, pass through.
+  Existing percent-escapes pass through too: `a%2Fb` decodes to `a/b`, so use
+  `a%252Fb` to send the literal text `a%2Fb`. The loader also accepts the field
+  on 3.0 path parameters; 3.1 restricts it to query parameters and rejects it
+  on a path parameter. See the [OAS 3.2 path templating rules](https://spec.openapis.org/oas/v3.2.0.html#path-templating).
 - JSON and structured-suffix JSON media types;
 - text and binary bodies;
 - `application/x-www-form-urlencoded` bodies;

@@ -398,6 +398,74 @@ empty200(req) = nothing
 nullout(req) = nothing
 """
 
+@testset "reserved path parameter round trips" begin
+    for version in ("3.0.3", "3.2.0")
+        paths = OpenAPI.obj()
+        implementations = String[]
+        for style in ("simple", "label", "matrix"), suffix in ("", "/versions")
+            id = style * (isempty(suffix) ? "tail" : "middle")
+            paths["/$id/{path}$suffix"] = OpenAPI.obj(
+                "get" => OpenAPI.obj(
+                    "operationId" => id,
+                    "parameters" => Any[server_parameter(
+                        "path", "path", OpenAPI.obj("type" => "string");
+                        required = true, style, allowReserved = true,
+                    )],
+                    "responses" => OpenAPI.obj("200" => OpenAPI.obj(
+                        "description" => "decoded path",
+                        "content" => OpenAPI.obj("text/plain" => OpenAPI.obj(
+                            "schema" => OpenAPI.obj("type" => "string"),
+                        )),
+                    )),
+                ),
+            )
+            push!(implementations, "$id(request, path) = path")
+        end
+        document = OpenAPI.obj(
+            "openapi" => version,
+            "info" => OpenAPI.obj("title" => "Reserved paths", "version" => "1"),
+            "paths" => paths,
+        )
+        host = Module(:ReservedPathHost)
+        Base.include_string(host, OpenAPI.server(document; name = "ReservedServer"))
+        Base.include_string(host, OpenAPI.client(document; name = "ReservedClient"))
+        impl = Module(:ReservedPathImpl)
+        Base.include_string(impl, join(implementations, "\n"))
+        router = HTTP.Router()
+        target = Ref("")
+        middleware = handler -> request -> begin
+            target[] = request.target
+            handler(request)
+        end
+        Base.invokelatest(host.ReservedServer.register!, router, impl; middleware)
+        server = HTTP.serve!(router, "127.0.0.1", 0; verbose = false)
+        try
+            Base.invokelatest(host.ReservedClient.server!, "http://127.0.0.1:$(HTTP.port(server))")
+            for style in ("simple", "label", "matrix"), suffix in ("", "/versions")
+                id = style * (isempty(suffix) ? "tail" : "middle")
+                prefix = style == "label" ? "." : style == "matrix" ? ";path=" : ""
+                for (value, wire, decoded) in (
+                    ("opa/examples/public servers", "opa%2Fexamples%2Fpublic%20servers", "opa/examples/public servers"),
+                    ("a?b#c[d]", "a%3Fb%23c%5Bd%5D", "a?b#c[d]"),
+                    ("a:b@c", "a:b@c", "a:b@c"),
+                    ("a%2Fb", "a%2Fb", "a/b"),
+                    ("a%252Fb", "a%252Fb", "a%2Fb"),
+                )
+                    response = Base.invokelatest(
+                        getfield(host.ReservedClient, Symbol(id)), value;
+                        with_http_info = true,
+                    )
+                    @test response.status == 200
+                    @test response.body == decoded
+                    @test target[] == "/$id/$prefix$wire$suffix"
+                end
+            end
+        finally
+            close(server)
+        end
+    end
+end
+
 @testset "server generation" begin
     server_source = OpenAPI.server(SERVER_ROUNDTRIP_DOCUMENT; name = "RoundTripServer")
     @test server_source == OpenAPI.server(SERVER_ROUNDTRIP_DOCUMENT; name = "RoundTripServer")
